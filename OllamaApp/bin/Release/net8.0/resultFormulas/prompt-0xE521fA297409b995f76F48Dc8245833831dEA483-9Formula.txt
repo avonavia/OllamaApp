@@ -1,0 +1,62 @@
+[assembly: FormulaAssembly("SKIM")]
+
+namespace Sauron.Formula.SKIM
+{
+    public class SKIMFormula : IFormulaPlugin
+    {
+        // Calculate PNL for skim method of Solidity contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction is a skim operation (no other operations in the same tx allowed)
+            if (!info.DecodedData?.MethodSignature?.Equals("skim", StringComparison.OrdinalIgnoreCase) ?? true || info.Transfers == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get unique tokens in transaction
+            var distinctTokens = info.GetDistinctTokens();
+            if (distinctTokens == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Initialize dictionary to store address PNLs
+            var pnlResults = new Dictionary<string, BigDecimal>();
+
+            // Iterate over all distinct tokens in transaction
+            foreach (var tokenInfo in distinctTokens)
+            {
+                // Filter out transfers related to the current token and from this contract
+                var tokenTransfersFromContract = info.Transfers
+                    .Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol && t.FromAddress == info.ToAddress);
+
+                // Calculate total amount skimmed for the current token
+                var totalSkimmedAmount = BigDecimal.Zero;
+                foreach (var transfer in tokenTransfersFromContract)
+                    totalSkimmedAmount += transfer.Amount;
+
+                // Get token price
+                var tokenPrice = tokenPrices?.FirstOrDefault(t => t.Key == tokenInfo.Symbol).Value ?? 0m;
+
+                // Calculate PNL in ETH for the current token and add it to the result dictionary (PNL is positive if user received tokens)
+                var pnl = totalSkimmedAmount * new BigDecimal(tokenPrice);
+                foreach (var address in info.FromAddresses.Concat(info.ToAddresses))
+                    UpdateDictionaryValue(pnlResults, address, pnl);
+            }
+
+            // Subtract fee from all addresses (assuming that fee is paid in ETH)
+            if (!string.IsNullOrEmpty(info.Fee?.Value))
+                foreach (var address in pnlResults.Keys)
+                    UpdateDictionaryValue(pnlResults, address, -new BigDecimal(info.Fee.Value));
+
+            // Convert dictionary to list of key-value pairs and return the result
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+
+        // Helper method to update value in dictionary (create new entry if it doesn't exist or add to existing entry)
+        private void UpdateDictionaryValue(Dictionary<string, BigDecimal> dict, string key, BigDecimal value)
+        {
+            if (!dict.ContainsKey(key))
+                dict[key] = value;
+            else
+                dict[key] += value;
+        }
+    }
+}

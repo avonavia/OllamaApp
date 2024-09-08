@@ -1,0 +1,33 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var distinctTokens = GetDistinctTokens(info.Transfers);
+            if (distinctTokens == null || !distinctTokens.Any()) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            var tokenBalances = info.Transfers?.GroupBy(t => t.TokenInfo.Symbol).ToDictionary(g => g.Key, g => g.Sum(t => t.Amount));
+            var contractAddress = info.ToAddress;
+
+            // PNL calculation is the difference between the current value of tokens in the contract and the initial reserve values
+            // Assume that reserve0 and reserve1 are initialized with some values and stored somewhere
+            BigDecimal pnlToken0 = (tokenBalances[distinctTokens.First().Symbol] - new BigDecimal(reserve0)) * new BigDecimal(tokenPrices?.FirstOrDefault(p => p.Key == distinctTokens.First().Symbol).Value ?? 1);
+            BigDecimal pnlToken1 = (tokenBalances[distinctTokens.Last().Symbol] - new BigDecimal(reserve1)) * new BigDecimal(tokenPrices?.FirstOrDefault(p => p.Key == distinctTokens.Last().Symbol).Value ?? 1);
+
+            // PNL is calculated for user addresses, not tokens
+            var pnl = new Dictionary<string, BigDecimal> { { contractAddress, pnlToken0 + pnlToken1 } };
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl);
+        }
+
+        private IEnumerable<TokenInfo>? GetDistinctTokens(List<TokenTransferInfo> transfers)
+        {
+            return transfers?.Select(t => t.TokenInfo).DistinctBy(t => t.Symbol);
+        }
+    }
+}
+```

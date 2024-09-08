@@ -1,0 +1,54 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Helpers;
+using Sauron.Formula.Common;
+using Sauron.Model;
+
+[assembly: FormulaAssembly("Mint")]  // Assembly name should match the method name in Solidity contract
+
+namespace Sauron.Formula.MINT
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = (BigDecimal)info.DecodedData[0]; // Assuming getReserves() returns reserves in the same order as they are stored in DecodedData
+            var reserve1 = (BigDecimal)info.DecodedData[1];
+
+            BigDecimal balance0 = info.TokenBalances[info.FromAddress][0]; // Token balances should be present in TransactionInfo object
+            BigDecimal balance1 = info.TokenBalances[info.FromAddress][1];
+
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            var totalSupply = (BigDecimal)info.DecodedData[2]; // Assuming totalSupply is the third item in DecodedData
+            BigDecimal liquidity;
+
+            if (totalSupply == 0)
+            {
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - Constants.MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                liquidity = Math.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+            }
+
+            // PNL is calculated for user addresses, not tokens
+            // If the receiving address is different from the sender's address, then the sent amount should be subtracted from the PNL
+            BigDecimal pnl = liquidity;
+            if (info.ToAddress != info.FromAddress)
+            {
+                BigDecimal token0Price = tokenPrices?.FirstOrDefault(tp => tp.Key == info.TokenSymbols[0]).Value ?? 1;
+                BigDecimal token1Price = tokenPrices?.FirstOrDefault(tp => tp.Key == info.TokenSymbols[1]).Value ?? 1;
+                pnl -= (amount0 * token0Price + amount1 * token1Price);
+            }
+
+            // Return the PNL in Eth, no conversion is necessary as it's already in Eth
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl: pnl);
+        }
+    }
+}
+```

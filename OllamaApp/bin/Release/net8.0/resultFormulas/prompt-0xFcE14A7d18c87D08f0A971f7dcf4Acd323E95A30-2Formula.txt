@@ -1,0 +1,53 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get the distinct tokens in transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+
+            foreach (var token in tokens)
+            {
+                // Get the transfers for this token
+                var tokenTransfers = info.GetTokenTransfers(token).ToList();
+
+                if (!tokenTransfers.Any()) continue;
+
+                // Calculate the total amount of tokens sent to other addresses (excluding fees)
+                BigDecimal sentAmount = tokenTransfers
+                    .Where(t => t.ToAddress != info.FromAddress && t.ToAddress != info.ToAddress)
+                    .Sum(t => t.Amount);
+
+                // Calculate the total amount of tokens received from other addresses (excluding fees)
+                BigDecimal receivedAmount = tokenTransfers
+                    .Where(t => t.FromAddress != info.FromAddress && t.FromAddress != info.ToAddress)
+                    .Sum(t => t.Amount);
+
+                // Calculate the PNL for this token
+                var pnl = receivedAmount - sentAmount;
+
+                // If token price is provided, convert PNL to ETH
+                if (tokenPrices != null)
+                {
+                    var tokenPrice = tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value;
+                    if (tokenPrice > 0)
+                        pnl *= new BigDecimal((decimal)1 / tokenPrice);
+                }
+
+                result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl));
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}
+```

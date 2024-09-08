@@ -1,0 +1,45 @@
+Here's a C# Formula method that calculates PNL for the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("_burn")]
+
+namespace Sauron.Formula._burn
+{
+    public class _burnFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.FromAddress == "0x0") // Checking if the sender is a zero address, similar to Solidity's account == address(0) check
+                {
+                    continue; // Skip this transfer as it represents burning tokens from a zero address
+                }
+
+                BigDecimal amount = transfer.Amount - info.Fee; // Subtracting the transaction fee
+
+                if (transfer.ToAddress == "0x0") // Checking if the recipient is a zero address, similar to Solidity's _update(account, address(0), value) call
+                {
+                    // Tokens are burned, so we subtract the amount from the sender's PNL
+                    UpdatePnl(pnl, transfer.FromAddress, -amount);
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnl };
+        }
+
+        private void UpdatePnl(Dictionary<string, BigDecimal> pnl, string address, BigDecimal amount)
+        {
+            if (!pnl.ContainsKey(address))
+            {
+                pnl[address] = BigDecimal.Zero;
+            }
+            pnl[address] += amount;
+        }
+    }
+}
+```
+
+This C# code calculates the PNL for each address involved in token burning transactions in a decentralized exchange. It checks if the sender is not a zero address and then subtracts the burned tokens from their PNL, as burning tokens reduces the holder's balance in the token contract. The `UpdatePnl` method is used to accumulate the PNL for each address in the provided dictionary.

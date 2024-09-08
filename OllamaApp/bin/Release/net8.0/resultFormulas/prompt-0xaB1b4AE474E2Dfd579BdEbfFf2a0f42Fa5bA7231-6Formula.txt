@@ -1,0 +1,38 @@
+Here is the C# Formula method for the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get balances and reserves
+            var balance0 = BigDecimal.Parse(info.TokenBalances[info.FromAddress][info.ContractA]);
+            var balance1 = BigDecimal.Parse(info.TokenBalances[info.FromAddress][info.ContractB]);
+            var reserve0 = info.Reserves[0];
+            var reserve1 = info.Reserves[1];
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Check if it's the first mint
+            var totalSupply = BigDecimal.Parse(info.TotalSupply);
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = Math.Sqrt(amount0 * amount1) - BigDecimal.MinValue; // MINIMUM_LIQUIDITY is not provided, assuming MinValue
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            // Calculate PNL: No need to calculate if sender and receiver are the same since fee still exists
+            var pnl = -liquidity;
+            if (tokenPrices != null)
+                pnl *= BigDecimal.Parse(tokenPrices.FirstOrDefault(x => x.Key == info.ContractA).Value ?? 1); // convert to Eth
+
+            return new CalculationResult<BigDecimal?>(pnl, null);
+        }
+    }
+}
+```

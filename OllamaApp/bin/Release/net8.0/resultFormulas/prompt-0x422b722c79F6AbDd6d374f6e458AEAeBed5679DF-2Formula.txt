@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the distinct tokens in this transaction.
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null || !tokens.Any()) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            // Initialize an empty dictionary to store the PNL for each user.
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                // Get the transfers related to this token.
+                var transfers = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+                // Calculate the total amount sent and received for each user.
+                foreach (var transfer in transfers)
+                {
+                    if (!pnl.ContainsKey(transfer.From)) pnl[transfer.From] = BigDecimal.Zero;
+                    if (!pnl.ContainsKey(transfer.To)) pnl[transfer.To] = BigDecimal.Zero;
+
+                    // If the transfer is from the user's address, subtract the amount.
+                    if (transfer.From == info.From) pnl[transfer.From] -= transfer.Amount;
+
+                    // If the transfer is to the user's address, add the amount.
+                    if (transfer.To == info.From) pnl[transfer.To] += transfer.Amount;
+                }
+            }
+
+            // Convert the PNL to Eth by dividing it by the token price.
+            if (tokenPrices != null && tokenPrices.Any())
+            {
+                var tokenPrice = tokenPrices.First().Value;
+                foreach (var user in pnl.Keys)
+                    pnl[user] /= new BigDecimal(tokenPrice);
+            }
+
+            // Return the PNL for each user as a list of KeyValuePairs.
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

@@ -1,0 +1,39 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers is null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>("No transfers found in the transaction.", null);
+
+            var distinctTokens = info.GetDistinctTokens();
+            if (distinctTokens is null || !distinctTokens.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>("No unique tokens found in the transaction.", null);
+
+            var userAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            if (userAddress != toAddress) // Skim is not done to the same address as sender
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>($"Skim operation was not performed on user's address ({userAddress}).", null);
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in distinctTokens)
+            {
+                var transfersForToken = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol).ToList();
+                if (!transfersForToken.Any())
+                    continue;
+
+                var totalAmount = transfersForToken.Sum(t => t.Amount);
+                var price = tokenPrices?.FirstOrDefault(p => p.Key == token.Symbol).Value ?? 0m;
+                pnl[token.Symbol] = totalAmount * (decimal)price; // Assuming PNL is calculated in Eth, so we don't convert it
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, pnl);
+        }
+    }
+}
+```

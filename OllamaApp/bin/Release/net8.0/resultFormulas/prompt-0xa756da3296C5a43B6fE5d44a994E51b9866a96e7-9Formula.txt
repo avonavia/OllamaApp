@@ -1,0 +1,18 @@
+//Note: This is a stub for the Solidity contract method _approve. It doesn't calculate PNL as the _approve method does not involve any transfer of tokens or Ether.
+   //Instead, it updates the allowance amount for an owner to spend on behalf of another address (spender).
+
+    using Sauron.Core;
+    using System.Collections.Generic;
+    using Nethereum.Util;
+
+    namespace Sauron.Formula.Approve
+
+    public class ApproveFormula : IFormulaPlugin
+    {
+        // This formula does not return any PNL as it doesn't involve any transfer of tokens or Ether.
+        // Instead, it updates the allowance amount for an owner to spend on behalf of another address (spender).
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }

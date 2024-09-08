@@ -1,0 +1,46 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using System.Linq;
+using Sauron.Formula;
+using Nethereum.Hex.HexConvertors.Extensions;
+using BigDecimal = System.Numerics.BigInteger; // Assuming BigDecimal is represented as BigInteger in C#
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fetching relevant information from TransactionInfo object
+            var balance0 = new BigDecimal(info.ReadableInputDatas["balance0"].ToString().HexToByteArray());
+            var balance1 = new BigDecimal(info.ReadableInputDatas["balance1"].ToString().HexToByteArray());
+            var liquidity = new BigDecimal(info.ReadableInputDatas["liquidity"].ToString().HexToByteArray());
+            var _totalSupply = new BigDecimal(info.ReadableInputDatas["_totalSupply"].ToString().HexToByteArray());
+            var toAddress = info.ReadableInputDatas["to"];
+
+            // Calculating amounts
+            var amount0 = (liquidity * balance0) / _totalSupply;
+            var amount1 = (liquidity * balance1) / _totalSupply;
+
+            // Assuming fee is subtracted from the amounts and the user sent tokens to a different address
+            if(info.ToAddress != info.FromAddress)
+            {
+                // PNL for token0
+                var pnlToken0 = -amount0 * BigDecimal.Parse((tokenPrices?.FirstOrDefault(x => x.Key == "token0").Value).ToString());
+
+                // PNL for token1
+                var pnlToken1 = -amount1 * BigDecimal.Parse((tokenPrices?.FirstOrDefault(x => x.Key == "token1").Value).ToString());
+
+                // Total PNL is sum of both tokens' PNLs
+                var totalPnl = pnlToken0 + pnlToken1;
+
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>() { Value = new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>("PNL", totalPnl) } };
+            }
+            else
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>() { Value = null }; // No PNL calculated if user sent tokens to themself
+        }
+    }
+}
+```

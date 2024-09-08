@@ -1,0 +1,17 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // No need to calculate PNL as the function only returns reserves and timestamp, not making any transfers.
+            // However, if there is a specific requirement or context for calculating PNL based on reserves, we can modify this code accordingly.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = null };
+        }
+    }
+}
+```

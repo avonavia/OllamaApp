@@ -1,0 +1,50 @@
+```csharp
+[assembly: FormulaAssembly("Sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Get token balances in the contract
+            var token0Balance = info.GetTokenBalances().FirstOrDefault(t => t.Key.Symbol == "TOKEN0").Value;
+            var token1Balance = info.GetTokenBalances().FirstOrDefault(t => t.Key.Symbol == "TOKEN1").Value;
+
+            // Calculate PNL for users who hold these tokens
+            foreach (var address in info.Addresses)
+            {
+                var userToken0Balance = info.Transfers.Where(t => t.FromAddress == address && t.TokenInfo.Symbol == "TOKEN0").Sum(t => t.Amount);
+                var userToken1Balance = info.Transfers.Where(t => t.FromAddress == address && t.TokenInfo.Symbol == "TOKEN1").Sum(t => t.Amount);
+
+                // Calculate PNL using the Uniswap V2 formula for syncing reserves with token balances
+                var k = token0Balance * token1Balance;
+                var newReserve0 = (BigDecimal)Math.Sqrt((double)(k / userToken1Balance));
+                var newReserve1 = k / newReserve0;
+
+                // Calculate PNL as the difference between the new and current reserves multiplied by token prices
+                var pnlToken0 = (newReserve0 - info.Reserves[0]) * tokenPrices?.FirstOrDefault(p => p.Key == "TOKEN0").Value ?? 1;
+                var pnlToken1 = (newReserve1 - info.Reserves[1]) * tokenPrices?.FirstOrDefault(p => p.Key == "TOKEN1").Value ?? 1;
+
+                // Subtract fees from PNL if user sent tokens to the contract
+                var feeToken0 = info.Transfers.Where(t => t.ToAddress == info.ContractAddress && t.TokenInfo.Symbol == "TOKEN0").Sum(t => t.Amount);
+                var feeToken1 = info.Transfers.Where(t => t.ToAddress == info.ContractAddress && t.TokenInfo.Symbol == "TOKEN1").Sum(t => t.Amount);
+
+                pnlToken0 -= feeToken0 * tokenPrices?.FirstOrDefault(p => p.Key == "TOKEN0").Value ?? 1;
+                pnlToken1 -= feeToken1 * tokenPrices?.FirstOrDefault(p => p.Key == "TOKEN1").Value ?? 1;
+
+                // Add PNL to the result
+                if (pnl.ContainsKey(address))
+                    pnl[address] += pnlToken0 + pnlToken1;
+                else
+                    pnl.Add(address, pnlToken0 + pnlToken1);
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+        }
+    }
+}
+```

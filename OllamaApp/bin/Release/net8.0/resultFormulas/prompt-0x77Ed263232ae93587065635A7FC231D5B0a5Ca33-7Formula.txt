@@ -1,0 +1,42 @@
+Using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Models.Tokens;
+using Sauron.Formula.Interfaces;
+using Sauron.Core.Models.Transactions;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        /// <summary>
+        /// Calculates the Profit and Loss (PNL) for a burn transaction in UniswapV2 contract.
+        /// </summary>
+        /// <param name="info">The transaction information.</param>
+        /// <param name="tokenPrices">The prices of tokens in US dollars.</param>
+        /// <returns>The PNL calculation result for the user addresses involved in the transaction.</returns>
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var totalSupply = (BigDecimal)info.DecodedData["totalSupply"];
+            var reserve0 = (BigDecimal)(ulong)info.DecodedData["reserve0"];
+            var reserve1 = (BigDecimal)(ulong)info.DecodedData["reserve1"];
+            var liquidity = (BigDecimal)info.DecodedData["liquidity"];
+            var balance0 = (BigDecimal)info.TokenBalances[info.DecodedData["token0"]];
+            var balance1 = (BigDecimal)info.TokenBalances[info.DecodedData["token1"]];
+
+            // Calculate the amounts burned
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // Check if any tokens were burned (should always be true due to safety checks in Solidity contract)
+            if (amount0 <= 0 || amount1 <= 0) return CalculationResult<BigDecimal?>.Error("UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED");
+
+            // Assuming token prices are provided, calculate the PNL in Eth (assuming Eth is used as reference currency)
+            var pnl = (amount0 * (decimal)tokenPrices?.FirstOrDefault(x => x.Key == info.DecodedData["token0"]).Value ?? 1m) +
+                      (amount1 * (decimal)tokenPrices?.FirstOrDefault(x => x.Key == info.DecodedData["token1"]).Value ?? 1m);
+            pnl -= info.Fee.TokenAmount; // Subtract transaction fee from PNL
+
+            return CalculationResult<BigDecimal?>.Success(-pnl); // Negative PNL since user is burning tokens
+        }
+    }
+}

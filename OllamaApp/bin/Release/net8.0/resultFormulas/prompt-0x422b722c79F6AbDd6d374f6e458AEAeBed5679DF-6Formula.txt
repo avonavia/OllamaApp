@@ -1,0 +1,44 @@
+```csharp
+// assembly: FormulaAssembly("Mint")
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        // Assume that info.FromAddress is the contract address, info.ToAddress is the 'to' argument of mint function
+        // Also assume that we have the necessary methods like GetReserves(), TotalSupply() which returns BigDecimal, and BalanceOf(token) which also returns BigDecimal
+
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var (reserve0, reserve1, _) = GetReserves();
+            var balance0 = BalanceOf(info.Token0);
+            var balance1 = BalanceOf(info.Token1);
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Fee is not calculated here as it's not directly related to PNL, and the contract doesn't return fee information
+
+            BigDecimal liquidity;
+            var totalSupply = TotalSupply();
+            if (totalSupply == 0)
+            {
+                const decimal MINIMUM_LIQUIDITY = 1m; // Assume MINIMUM_LIQUIDITY is defined and constant in the contract
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                liquidity = BigDecimal.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+            }
+
+            if (liquidity <= 0)
+                return new CalculationResult<BigDecimal?>(null, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
+
+            // PNL is calculated for user addresses, not tokens. If the user receives liquidity tokens, their value doesn't change, hence PNL = 0.
+            // But if the user sends tokens to the contract (which can be checked by comparing balance changes), we assume that the value of sent tokens is the PNL.
+            var pnl = amount0 * tokenPrices[info.Token0].Value + amount1 * tokenPrices[info.Token1].Value; // Assuming token prices are provided
+
+            return new CalculationResult<BigDecimal?>(pnl, null);
+        }
+    }
+}
+```

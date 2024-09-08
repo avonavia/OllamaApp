@@ -1,0 +1,45 @@
+// Assembly info for PNL calculation without messages for user
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var distinctTokens = info.GetDistinctTokens();
+            if (distinctTokens == null || !tokenPrices?.Any() ?? false)
+                return null; // Not enough information to calculate PNL
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach(var token in distinctTokens)
+            {
+                var transfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+                if (transfers != null && transfers.Any())
+                {
+                    // Calculate total amount transferred for this token
+                    BigDecimal transferAmount = transfers.Sum(t => t.Amount);
+
+                    // Subtract fee from PNL, as it's considered a cost to the user
+                    BigDecimal pnlAmount = transferAmount - info.Fee;
+
+                    // Convert to Eth if token price is provided
+                    var tokenPrice = tokenPrices?.FirstOrDefault(t => t.Key == token.Symbol).Value ?? 0;
+                    if (tokenPrice > 0)
+                        pnlAmount /= new BigDecimal((decimal)tokenPrice);
+
+                    // Update user's PNL for this token
+                    var fromAddress = info.FromAddress?.ToLower();
+                    if (!string.IsNullOrEmpty(fromAddress) && pnl.ContainsKey(fromAddress))
+                        pnl[fromAddress] += pnlAmount;
+                    else if (!string.IsNullOrEmpty(fromAddress))
+                        pnl[fromAddress] = pnlAmount;
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>() { Result = pnl };
+        }
+    }
+}

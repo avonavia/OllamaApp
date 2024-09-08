@@ -1,0 +1,12 @@
+// As per the Solidity contract method, this formula is responsible for approving the token transfer from one address to another. However, since it doesn't directly impact profit and loss (PNL), we won't calculate any PNL in this scenario. Instead, we will just confirm if the required conditions are met or not based on the Solidity contract requirements.
+
+[assembly: FormulaAssembly("_approve")]
+
+namespace Sauron.Formula._approve
+{
+    public class _approveFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the owner address is not zero
+            if (info.FromAddress == "0x0000000000000000000000000000000

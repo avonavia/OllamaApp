@@ -1,0 +1,25 @@
+```csharp
+// UniswapV2: Initialize PNL Calculation Formula
+[assembly: FormulaAssembly("Initialize")]
+namespace Sauron.Formula.Initialize
+public class InitializeFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Check if the transaction is called by factory address
+        // PNL calculation is not performed for this method
+        if (info.FromAddress != "FACTORY_ADDRESS")
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("UniswapV2: FORBIDDEN");
+
+        // Initialize PNL dictionary with zero values for both tokens
+        var pnl = new Dictionary<string, BigDecimal>
+        {
+            [info.GetDistinctTokens().ElementAt(0).Symbol] = 0,
+            [info.GetDistinctTokens().ElementAt(1).Symbol] = 0
+        };
+
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+    }
+}
+```

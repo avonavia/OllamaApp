@@ -1,0 +1,62 @@
+```csharp
+// Assembly information for the formula name
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        // Calculation method for the PNL
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the necessary variables from TransactionInfo object
+            BigDecimal balance0 = (BigDecimal)info.TokenBalances[info.FromAddress][info.Contracts[0].Address];
+            BigDecimal balance1 = (BigDecimal)info.TokenBalances[info.FromAddress][info.Contracts[1].Address];
+            BigDecimal reserve0 = info.Reserves[0];
+            BigDecimal reserve1 = info.Reserves[1];
+
+            // Calculate the amount of tokens that will be minted
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            BigDecimal totalSupply = info.TotalSupply;
+            BigDecimal liquidity;
+
+            // Calculate the liquidity based on the total supply
+            if (totalSupply == 0)
+            {
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MinimumLiquidity;
+            }
+            else
+            {
+                liquidity = BigDecimal.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+            }
+
+            // Subtract the fee if it was applied
+            if (info.Fee > 0)
+            {
+                liquidity -= info.Fee;
+            }
+
+            // If user sends tokens to their own address, PNL is zero
+            if (info.ToAddress == info.FromAddress)
+            {
+                return new CalculationResult<BigDecimal?>(0);
+            }
+
+            // Convert liquidity to Eth using token prices
+            BigDecimal liquidityInEth = (tokenPrices[info.Contracts[0].Address] * amount0 + tokenPrices[info.Contracts[1].Address] * amount1) / totalSupply * liquidity;
+
+            // PNL is calculated for the user, not tokens, so return negative value if user received tokens
+            if (liquidity > 0)
+            {
+                return new CalculationResult<BigDecimal?>(-liquidityInEth);
+            }
+            else
+            {
+                return new CalculationResult<BigDecimal?>(null);
+            }
+        }
+    }
+}
+```

@@ -1,0 +1,34 @@
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    using System;
+    using System.Collections.Generic;
+    using Nethereum.Util;
+
+    public class _updateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize PNL as 0
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            if (info.ToAddress != info.FromAddress && tokenPrices != null)
+            {
+                // Get the price of tokens used in the transaction
+                var balance0Price = new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.TokenIn).Value);
+                var balance1Price = new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.TokenOut).Value);
+
+                // Calculate the amount of tokens in Eth
+                var balance0InEth = UnitConversion.Convert.FromWei(info.AmountIn, (int)info.DecimalsIn) * balance0Price;
+                var balance1InEth = UnitConversion.Convert.FromWei(info.AmountOut, (int)info.DecimalsOut) * balance1Price;
+
+                // Calculate the PNL for the user
+                pnl[info.FromAddress] = -balance0InEth + balance1InEth;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnl };
+        }
+    }
+}

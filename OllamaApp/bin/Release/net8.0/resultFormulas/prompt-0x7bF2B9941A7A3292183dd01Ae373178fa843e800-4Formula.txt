@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2PNL")]
+
+namespace Sauron.Formula.UniswapV2PNL
+{
+    public class UniswapV2PNLFormula : IFormulaPlugin
+    {
+        // Calculation of PNL for swaps in the UniswapV2 contract
+        // Returns a dictionary with user addresses and their corresponding PNLs
+        // PNL is calculated as the difference between the amount of ETH received after swap and the amount spent before swap, minus fees
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction is a swap
+            if (info.FunctionName != "_update")
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var result = new Dictionary<string, BigDecimal>();
+
+            // Get user addresses and balance changes
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            var balance0Change = (BigDecimal)info.Arguments[0];
+            var balance1Change = (BigDecimal)info.Arguments[1];
+
+            // Calculate PNL for user who sent tokens
+            if (balance0Change > 0)
+                result[fromAddress] = balance0Change * -1 - info.Fee;
+
+            // Calculate PNL for user who received tokens
+            if (balance1Change > 0)
+            {
+                // Convert balance1Change to ETH using reserve prices and add it to the recipient's account
+                var ethReceived = balance1Change * new BigDecimal((decimal)info.Arguments[3]) / new BigDecimal((decimal)info.Arguments[2]);
+                if (result.ContainsKey(toAddress))
+                    result[toAddress] += ethReceived - info.Fee;
+                else
+                    result[toAddress] = ethReceived - info.Fee;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

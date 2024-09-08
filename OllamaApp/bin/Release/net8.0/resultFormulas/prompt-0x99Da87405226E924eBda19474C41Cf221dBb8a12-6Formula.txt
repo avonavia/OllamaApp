@@ -1,0 +1,41 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using Sauron.Core.Models;
+using Nethereum.Util;
+using System.Numerics;
+
+[assembly: FormulaAssembly("UniswapV2Mint")]
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        // Calculate PNL for the UniswapV2 Mint function
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = new BigDecimal(info.DecodedInput[0]);
+            var balance1 = new BigDecimal(info.DecodedInput[1]);
+            var _reserve0 = new BigDecimal(info.DecodedOutput[0]);
+            var _reserve1 = new BigDecimal(info.DecodedOutput[1]);
+            var amount0 = balance0 - _reserve0;
+            var amount1 = balance1 - _reserve1;
+
+            var _totalSupply = new BigDecimal(info.DecodedState["totalSupply"]);
+
+            // Calculate liquidity based on total supply and reserves
+            BigDecimal liquidity;
+            if (_totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - new BigDecimal("1e3"); // MINIMUM_LIQUIDITY is 1000 in UniswapV2
+            else
+                liquidity = BigDecimal.Min(amount0 * _totalSupply / _reserve0, amount1 * _totalSupply / _reserve1);
+
+            // If toAddress is the same as fromAddress (minting tokens to self), return negative PNL as the fee is still deducted
+            if (info.ToAddress == info.FromAddress)
+                return new CalculationResult<BigDecimal?>(-liquidity);
+
+            // Otherwise, return zero PNL since no funds were transferred to or from user
+            return new CalculationResult<BigDecimal?>(0);
+        }
+    }
+}
+```

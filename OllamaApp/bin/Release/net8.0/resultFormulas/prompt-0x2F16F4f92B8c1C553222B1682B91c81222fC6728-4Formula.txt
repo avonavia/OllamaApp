@@ -1,0 +1,37 @@
+// This method calculates PNL for transferFrom transaction on ERC20 token
+
+[assembly: FormulaAssembly("transferFrom")]
+
+namespace Sauron.Formula.TransferFrom
+{
+    public class TransferFromFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize a list to store PNL results
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            // If there are no transfers in transaction or it's not an ERC20 token, return empty result
+            if (info.Transfers == null || info.TokenInfo == null)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnlResults);
+
+            // Get token price or use 1 if not provided
+            var tokenPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == info.TokenInfo.Symbol).Value ?? 1;
+
+            foreach (var transfer in info.Transfers)
+            {
+                // If transfer is from user, subtract amount and fee from PNL
+                if (transfer.FromAddress == info.UserAddress)
+                    pnlResults.Add(new KeyValuePair<string, BigDecimal>(transfer.FromAddress, -(transfer.Amount + info.Fee) * tokenPrice));
+
+                // If transfer is to user, add amount to PNL (no need to subtract fee as it's already taken out)
+                if (transfer.ToAddress == info.UserAddress)
+                    pnlResults.Add(new KeyValuePair<string, BigDecimal>(transfer.ToAddress, transfer.Amount * tokenPrice));
+            }
+
+            // Return PNL results as a calculation result object
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnlResults);
+        }
+    }
+}

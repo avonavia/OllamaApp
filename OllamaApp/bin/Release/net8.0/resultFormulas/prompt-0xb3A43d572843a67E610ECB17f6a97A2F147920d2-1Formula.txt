@@ -1,0 +1,34 @@
+// This is a C# Formula method for the Solidity contract method getReserves()
+
+using System.Numerics;
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if necessary information exists in the TransactionInfo object
+            if (info.Reserve0 != null && info.Reserve1 != null && info.BlockTimestampLast != null)
+            {
+                // Create a new list to hold the result
+                var results = new List<KeyValuePair<string, BigDecimal>>();
+
+                // Add reserve0 to the result list with a key "Reserve0"
+                results.Add(new KeyValuePair<string, BigDecimal>("Reserve0", new BigDecimal((BigInteger)info.Reserve0)));
+
+                // Add reserve1 to the result list with a key "Reserve1"
+                results.Add(new KeyValuePair<string, BigDecimal>("Reserve1", new BigDecimal((BigInteger)info.Reserve1)));
+
+                // Add blockTimestampLast to the result list with a key "BlockTimestampLast"
+                results.Add(new KeyValuePair<string, BigDecimal>("BlockTimestampLast", new BigDecimal((BigInteger)info.BlockTimestampLast)));
+
+                // Return the result as CalculationResult object
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+            }
+
+            // If necessary information does not exist, return null as CalculationResult object
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}

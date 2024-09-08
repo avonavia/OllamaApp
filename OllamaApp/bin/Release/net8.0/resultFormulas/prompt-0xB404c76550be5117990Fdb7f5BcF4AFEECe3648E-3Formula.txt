@@ -1,0 +1,39 @@
+Here is a possible implementation of the `initialize` method in C#, following the provided code and answer rules:
+
+```csharp
+using Sauron.Models;
+using Nethereum.Hex.HexConvertors.Extensions;
+using System.Collections.Generic;
+
+namespace Sauron.Formula.InitializeUniswapV2
+{
+    public class InitializeUniswapV2Formula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the sender is the factory address
+            if (info.FromAddress != info.FactoryAddress || !IsValidInitializeMethodSignature(info))
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "UniswapV2: FORBIDDEN");
+
+            // Extract token0 and token1 addresses from input data
+            var token0Address = info.InputData.HexToByteArray().Take(32).ToHex();
+            var token1Address = info.InputData.HexToByteArray().Skip(32).Take(32).ToHex();
+
+            // Return the addresses of token0 and token1 as a result (no PNL calculation is necessary for this method)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>>()
+            {
+                new KeyValuePair<string, BigDecimal>("token0", token0Address),
+                new KeyValuePair<string, BigDecimal>("token1", token1Address)
+            }, null);
+        }
+
+        // Helper method to check if the input data corresponds to the `initialize` method signature
+        private bool IsValidInitializeMethodSignature(TransactionInfo info)
+        {
+            var expectedSignature = "0x906a948e"; // Function selector for initialize(address,address)
+            return info.InputData.StartsWith(expectedSignature);
+        }
+    }
+}
+```

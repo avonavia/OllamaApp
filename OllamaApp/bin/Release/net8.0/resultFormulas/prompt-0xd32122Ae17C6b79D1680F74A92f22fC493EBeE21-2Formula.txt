@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+            if (info.Transfers != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Assume that 'token' is the token address and 'to' is the recipient address
+                    var token = transfer.TokenInfo;
+                    var to = transfer.ToAddress;
+                    var value = transfer.Amount;
+
+                    // Check if the transaction involves a user-initiated token transfer
+                    if (info.FromAddress == to)
+                        continue;
+
+                    // Calculate PNL:
+                    // If the 'from' address is the same as the token sender, it means that the tokens were sent by the user
+                    // In this case, subtract the token value from the user's total (negative PNL)
+                    if (info.FromAddress == transfer.FromAddress)
+                        pnlResults.Add(new KeyValuePair<string, BigDecimal>(to, -value));
+                    // If the 'from' address is the same as the recipient, it means that the tokens were received by the user
+                    // In this case, add the token value to the user's total (positive PNL)
+                    else if (info.FromAddress == to)
+                        pnlResults.Add(new KeyValuePair<string, BigDecimal>(to, value));
+                }
+            }
+
+            // Subtract fee from the 'from' address total
+            var userIndex = pnlResults.FindIndex(x => x.Key == info.FromAddress);
+            if (userIndex != -1)
+                pnlResults[userIndex] = new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlResults[userIndex].Value - info.Fee);
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+        }
+    }
+}
+```

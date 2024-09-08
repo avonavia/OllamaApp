@@ -1,0 +1,67 @@
+Here is a C# formula method for this Solidity contract method:
+
+```CSharp
+// This C# formula calculates PNL based on the _mintFee function in the provided Solidity contract.
+[assembly: FormulaAssembly("_MintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // PNL is calculated for user addresses and it's returned in Eth. So the result is a dictionary of users and their PNL.
+            var results = new Dictionary<string, BigDecimal>();
+
+            // Extract reserve0 and reserve1 from TransactionInfo object assuming they are present in the correct format.
+            // For demonstration purposes only, no actual implementation provided here as it's not clear how these values can be extracted from TransactionInfo object.
+            var _reserve0 = BigDecimal.Zero;
+            var _reserve1 = BigDecimal.Zero;
+
+            // Extract feeTo and kLast from the Solidity contract state or by calling view functions, assuming they are accessible here.
+            // For demonstration purposes only, no actual implementation provided here as it's not clear how these values can be extracted.
+            var feeTo = "0x";
+            var _kLast = BigDecimal.Zero;
+
+            if (feeTo != "0x")
+            {
+                if (_kLast != BigDecimal.Zero)
+                {
+                    var rootK = BigDecimal.Sqrt(_reserve0 * _reserve1);
+                    var rootKLast = BigDecimal.Sqrt(_kLast);
+
+                    if (rootK > rootKLast)
+                    {
+                        // Assuming totalSupply is accessible here, for demonstration purposes only, no actual implementation provided.
+                        var totalSupply = BigDecimal.Zero;
+
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = (rootK * 5) + rootKLast;
+                        var liquidity = numerator / denominator;
+
+                        if (liquidity > BigDecimal.Zero)
+                        {
+                            // Assuming fee is charged in token0, for demonstration purposes only, no actual implementation provided.
+                            // Convert the amount of tokens to Eth using tokenPrices.
+                            var pnl = -(liquidity * new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == "Token0").Value));
+
+                            // Add or update PNL for feeTo address in results dictionary.
+                            if (results.ContainsKey(feeTo))
+                                results[feeTo] += pnl;
+                            else
+                                results.Add(feeTo, pnl);
+                        }
+                    }
+                }
+            }
+            else if (_kLast != BigDecimal.Zero)
+            {
+                _kLast = BigDecimal.Zero;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+        }
+    }
+}
+```

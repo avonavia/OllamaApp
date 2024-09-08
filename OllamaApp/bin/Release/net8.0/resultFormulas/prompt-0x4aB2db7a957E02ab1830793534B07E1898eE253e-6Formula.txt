@@ -1,0 +1,27 @@
+// This is just an example, as this Solidity function doesn't have any logic to calculate PNL. It just sets the pause state of the contract.
+   // Therefore, for a relevant C# formula method, we would need more context or information about how this pause state affects transactions and PNL calculation.
+   // For now, I'll assume that when the contract is paused, no transactions occur, which means no PNL change.
+
+using System;
+using System.Collections.Generic;
+using Sauron.Core;
+using Nethereum.Hex.HexConvertors.Extensions;
+using Nethereum.RPC.Eth.DTOs;
+
+[assembly: FormulaAssembly("SetPaused")]
+namespace Sauron.Formula.SetPaused
+{
+    public class SetPausedFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.DecodedInput != null && info.DecodedInput.MethodName == "setPaused" && info.DecodedInput.ParameterValues[0] is bool state && state)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(new List<KeyValuePair<string, BigDecimal>>()); // Return empty list as there's no PNL change when contract is paused.
+
+            else if (info.Transfers != null)
+                return CalculatePNL(info); // If the contract is not being paused, calculate PNL normally by calling your existing method here.
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null);
+        }
+    }
+}

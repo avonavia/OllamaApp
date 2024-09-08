@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("TransferPNL")]
+
+namespace Sauron.Formula.TransferPNL
+{
+    public class TransferPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assume that Fee is already subtracted from the total amount in TransactionInfo object.
+            var result = new Dictionary<string, BigDecimal>();
+
+            if (info?.Transfers != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // If the sender is not the same as the recipient, PNL calculation is performed for user addresses.
+                    if (!string.Equals(transfer.FromAddress, transfer.ToAddress, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Calculate PNL in Eth based on token prices and amounts.
+                        var pnl = -transfer.Amount * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(t => t.Key == transfer.TokenInfo.Symbol).Value ?? 0);
+
+                        // Add or update the PNL for each user address.
+                        if (result.ContainsKey(transfer.FromAddress))
+                            result[transfer.FromAddress] += pnl;
+                        else
+                            result[transfer.FromAddress] = pnl;
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+        }
+    }
+}
+```

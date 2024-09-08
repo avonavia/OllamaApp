@@ -1,0 +1,41 @@
+```csharp
+// Assembly info
+[assembly: FormulaAssembly("MINT_FORMULA")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFORMULA : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserve balances and contract balances
+            var balance0 = BigDecimal.FromString(info.TokenBalances[info.ToAddress][0]);
+            var balance1 = BigDecimal.FromString(info.TokenBalances[info.ToAddress][1]);
+            var reserve0 = BigDecimal.FromString(info.Reserves[0]);
+            var reserve1 = BigDecimal.FromString(info.Reserves[1]);
+
+            // Calculate amounts to be minted
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Check if total supply is zero and calculate liquidity
+            BigDecimal liquidity;
+            var totalSupply = BigDecimal.FromString(info.TotalSupply);
+            if (totalSupply == 0)
+                liquidity = (amount0 * amount1).Sqrt() - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+
+            // If toAddress is the same as fromAddress, no PNL change, return 0
+            if (info.ToAddress == info.FromAddress)
+                return new CalculationResult<BigDecimal?>(BigDecimal.Zero);
+
+            // Calculate PNL in ETH (assuming token prices are provided in ETH/Token)
+            var pnl = -liquidity * (tokenPrices[info.Token0].Value + tokenPrices[info.Token1].Value) / 2;
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

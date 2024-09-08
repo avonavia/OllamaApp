@@ -1,0 +1,50 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.Transfers == null || !info.Transfers.Any() || string.IsNullOrEmpty(info.ToAddress))
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            var tokensWithAmounts = GetTokensWithAmounts(info.Transfers);
+
+            foreach (var tokenAmount in tokensWithAmounts)
+            {
+                // If the user sent tokens to themselves, no PNL is calculated as there's no transaction fee in this case
+                if (tokenAmount.Key.Address == fromAddress && tokenAmount.Key.Address == toAddress)
+                    continue;
+
+                var pnl = BigDecimal.Zero;
+                // If the user is sending tokens, PNL will be negative
+                if (fromAddress == info.FromAddress)
+                    pnl -= CalculateTokenValue(tokenAmount.Key, tokenAmount.Value, tokenPrices);
+                // If the user is receiving tokens, PNL will be positive
+                else if (toAddress == info.ToAddress)
+                    pnl += CalculateTokenValue(tokenAmount.Key, tokenAmount.Value, tokenPrices);
+
+                results.Add(new KeyValuePair<string, BigDecimal>(fromAddress, pnl));
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+
+        private BigDecimal CalculateTokenValue(TokenInfo token, BigDecimal amount, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            if (tokenPrices == null || !tokenPrices.Any())
+                return amount;
+
+            var price = tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value;
+            return price > 0 ? amount * new BigDecimal((decimal)price) : amount;
+        }
+    }
+}
+```

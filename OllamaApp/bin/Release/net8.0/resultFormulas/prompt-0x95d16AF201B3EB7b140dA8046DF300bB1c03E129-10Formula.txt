@@ -1,0 +1,47 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Fetch user addresses from transaction
+            var userAddresses = info.FromAddresses.Concat(info.ToAddresses).Distinct().ToList();
+
+            // For each token in the transfer list, calculate PNL for each user address
+            foreach (var transfer in info.Transfers)
+            {
+                if (!transfer.Success || transfer.TokenInfo == null) continue;
+
+                var tokenSymbol = transfer.TokenInfo.Symbol;
+                var tokenDecimals = transfer.TokenInfo.Decimals;
+
+                foreach (var address in userAddresses)
+                {
+                    // Calculate PNL only for the token0 and token1 from the UniswapV2Pair contract
+                    if (tokenSymbol != info.PairAddresses[0] && tokenSymbol != info.PairAddresses[1]) continue;
+
+                    var balance = transfer.FromAddress == address ? -transfer.Amount : transfer.Amount;
+                    var valueInEth = (BigDecimal)balance / (BigDecimal)(1 * Math.Pow(10, tokenDecimals));
+
+                    if (!pnlDictionary.ContainsKey(address))
+                        pnlDictionary[address] = BigDecimal.Zero;
+
+                    // Update PNL for the address based on the token price (if provided) or assume 1:1 ratio with ETH
+                    var price = tokenPrices?.FirstOrDefault(p => p.Key == tokenSymbol).Value ?? 1M;
+                    pnlDictionary[address] += valueInEth * price - info.Fee;
+                }
+            }
+
+            // Convert PNL dictionary to list of KeyValuePairs and return as calculation result
+            var pnlList = pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value));
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.SuccessWithData(pnlList);
+        }
+    }
+}
+```

@@ -1,0 +1,17 @@
+//Note: The Solidity contract method 'increaseAllowance' is used to increase the allowance of an approved address (spender) for transferring tokens from the caller's account. However, this method does not directly affect the profit and loss (PNL) of any addresses as it only modifies permissions but doesn't involve any token transfers. Therefore, a C# Formula for calculating PNL based on this Solidity contract method is not applicable in this context. The provided C# code will return a CalculationResult with null value since the method does not have an impact on PNL.
+
+```csharp
+[assembly: FormulaAssembly("IncreaseAllowance")]
+
+namespace Sauron.Formula.IncreaseAllowance
+{
+    public class IncreaseAllowanceFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null); //No impact on PNL
+        }
+    }
+}
+```

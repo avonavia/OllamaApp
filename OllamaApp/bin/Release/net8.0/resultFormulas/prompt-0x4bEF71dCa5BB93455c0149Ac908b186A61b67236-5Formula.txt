@@ -1,0 +1,52 @@
+Using the provided rules and the Solidity contract method "_mintFee", I will create an equivalent C# Formula method:
+
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var feeToAddress = info.FeeTo; // Assuming this property exists in TransactionInfo object
+
+            if (feeToAddress != "0x0")
+            {
+                BigDecimal reserve0 = info.Reserve0; // Assuming these properties exist in TransactionInfo object
+                BigDecimal reserve1 = info.Reserve1;
+
+                BigDecimal _kLast = info.KLast; // Assuming this property exists in TransactionInfo object
+
+                if (_kLast != 0)
+                {
+                    BigDecimal rootK = (reserve0 * reserve1).Sqrt();
+                    BigDecimal rootKLast = _kLast.Sqrt();
+
+                    if (rootK > rootKLast)
+                    {
+                        BigDecimal totalSupply = info.TotalSupply; // Assuming this property exists in TransactionInfo object
+                        BigDecimal numerator = totalSupply * (rootK - rootKLast);
+                        BigDecimal denominator = rootK * 5 + rootKLast;
+                        BigDecimal liquidity = numerator / denominator;
+
+                        if (liquidity > 0)
+                        {
+                            // Calculate PNL for the feeToAddress
+                            // Assuming tokenPrices contains ETH price and totalSupply is in ETH
+                            BigDecimal pnl = liquidity * tokenPrices.First(kvp => kvp.Key == "ETH").Value;
+
+                            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                                (new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(feeToAddress, pnl) });
+                        }
+                    }
+                }
+            }
+
+            // If no fee is minted, return null
+            return null;
+        }
+    }
+}
+```
+This C# code defines a Formula method for calculating the PNL of the "_mintFee" Solidity contract method. The formula follows the rules provided and calculates the PNL for the feeTo address if applicable. If no fee is minted, the method returns null.

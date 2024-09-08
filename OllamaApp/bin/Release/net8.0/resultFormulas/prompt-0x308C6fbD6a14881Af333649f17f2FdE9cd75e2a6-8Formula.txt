@@ -1,0 +1,35 @@
+// The following is a C# method for calculating PNL based on the provided Solidity contract method for swapping tokens in UniswapV2.
+   // This method assumes that `amount0Out`, `amount1Out`, `reserve0` and `reserve1` are already known values.
+
+using System;
+using System.Numerics;
+
+public class PnlCalculator
+{
+    public BigInteger CalculatePnl(BigInteger amount0Out, BigInteger amount1Out, BigInteger reserve0, BigInteger reserve1, bool isSelfSwap)
+    {
+        // Initial PNL is set to 0.
+        var pnl = BigInteger.Zero;
+
+        // If the user swaps tokens with themselves, there is no fee involved.
+        if (isSelfSwap)
+        {
+            return pnl;
+        }
+
+        // The amount of token0 and token1 that the contract will receive after the swap.
+        var newReserve0 = reserve0 - amount0Out;
+        var newReserve1 = reserve1 - amount1Out;
+
+        // Calculate the value of tokens received by the user in Eth (assuming 1 Eth = 10^18 Wei).
+        var ethValueReceived = (amount0Out * BigInteger.Pow(10, 18)) / reserve0 + (amount1Out * BigInteger.Pow(10, 18)) / reserve1;
+
+        // Calculate the value of tokens held by the contract in Eth after the swap.
+        var ethValueHeld = (newReserve0 * BigInteger.Pow(10, 18)) / reserve0 + (newReserve1 * BigInteger.Pow(10, 18)) / reserve1;
+
+        // Calculate PNL as the difference between Eth value held and Eth value received. If user sent tokens to another address, this will be a negative value.
+        pnl = ethValueHeld - ethValueReceived;
+
+        return pnl;
+    }
+}

@@ -1,0 +1,43 @@
+"""Make a C# Formula method for this Solidity contract method:
+
+function _tokenSwap(
+        address fromToken,
+        address toToken,
+        uint256 amount,
+        uint256 minAmountOut,
+        uint24 feeTier
+    ) internal virtual override returns (uint256 amountOut) {
+        if (fromToken == toToken) {
+            return amount;
+        }
+        // if fromToken is ETH, convert it to WETH for swap
+        address realFromToken = _getRealToken(fromToken);
+        address weth9 = IPeripheryImmutableState(SWAP_ROUTER).WETH9();
+        if (fromToken == address(0)) {
+            IWETH9(weth9).deposit{ value: amount }();
+        }
+        // if toToken is ETH, swap for WETH and then withdraw for ETH
+        address realToToken = _getRealToken(toToken);
+        if (realFromToken != weth9 || realToToken != weth9) {
+            TransferHelper.safeApprove(realFromToken, SWAP_ROUTER, amount);
+            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+                tokenIn: realFromToken,
+                tokenOut: realToToken,
+                fee: feeTier,
+                recipient: address(this),
+                deadline: block.timestamp + 30 hours,
+                amountIn: amount,
+                amountOutMinimum: minAmountOut,
+                sqrtPriceLimitX96: 0
+            });
+            amountOut = ISwapRouter(SWAP_ROUTER).exactInputSingle(params);
+        } else {
+            amountOut = amount;
+        }
+        if (toToken == address(0)) {
+            IWETH9(realToToken).withdraw(amountOut);
+        }
+        return amountOut;
+    }
+
+Return only a C# code. Follow all the code and answer rules in your system prompt"""

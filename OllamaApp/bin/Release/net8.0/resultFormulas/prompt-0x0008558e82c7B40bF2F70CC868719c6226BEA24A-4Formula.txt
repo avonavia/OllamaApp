@@ -1,0 +1,52 @@
+```csharp
+// Assembly info
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // This formula calculates PNL for UniswapV2's _update function
+        // It assumes that the user is a liquidity provider and calculates the difference between initial and final reserve values
+        // PNL is calculated in Ether, not converted to any other token
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get initial reserve values from TransactionInfo object
+            var reserve0Initial = (BigDecimal)info.DecodedInput[0];
+            var reserve1Initial = (BigDecimal)info.DecodedInput[1];
+
+            // Calculate final reserve values based on input parameters
+            var balance0 = (BigDecimal)info.DecodedInput[2];
+            var balance1 = (BigDecimal)info.DecodedInput[3];
+            var reserve0Final = BigDecimal.Min(balance0, (BigDecimal)uint.MaxValue);
+            var reserve1Final = BigDecimal.Min(balance1, (BigDecimal)uint.MaxValue);
+
+            // Calculate PNL for each token in the pool
+            var pnlToken0 = reserve0Final - reserve0Initial;
+            var pnlToken1 = reserve1Final - reserve1Initial;
+
+            // Convert PNL to Ether using token prices (if available)
+            if (tokenPrices != null && tokenPrices.Any())
+            {
+                var priceToken0 = tokenPrices.FirstOrDefault(x => x.Key == "TOKEN0").Value;
+                var priceToken1 = tokenPrices.FirstOrDefault(x => x.Key == "TOKEN1").Value;
+
+                if (priceToken0 > 0) pnlToken0 *= (decimal)priceToken0;
+                if (priceToken1 > 0) pnlToken1 *= (decimal)priceToken1;
+            }
+
+            // Calculate total PNL as a sum of both tokens' PNLs
+            var totalPnl = pnlToken0 + pnlToken1;
+
+            // Subtract fee from the total PNL
+            var fee = info.GasUsed * (BigDecimal)info.GasPrice;
+            totalPnl -= fee;
+
+            // Return CalculationResult with a single KeyValuePair containing user's address and calculated PNL
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                (new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(info.FromAddress, totalPnl) });
+        }
+    }
+}
+```

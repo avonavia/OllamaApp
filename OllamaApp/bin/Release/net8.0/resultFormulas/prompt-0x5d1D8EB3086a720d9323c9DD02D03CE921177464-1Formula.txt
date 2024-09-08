@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+            var blockTimestampLast = info.BlockTimestampLast;
+
+            // Assuming that there's no PNL calculation for this method, as per the rules provided.
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+        }
+    }
+}
+```

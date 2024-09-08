@@ -1,0 +1,23 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using System.Linq;
+using Sauron.Core.Formulas;
+using Sauron.Core.Types;
+
+[assembly: FormulaAssembly("_mintFee")]  // This should be EXACTLY as function name in Solidity contract
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assume that info.DecodedParams contains the decoded parameters of the _mintFee function
+            var reserve0 = (BigDecimal)info.DecodedParams[0];
+            var reserve1 = (BigDecimal)info.DecodedParams[1];
+
+            var feeTo = info.ContractCalls.FirstOrDefault(c => c.MethodName == "feeTo")?.ReturnData;  // Fetch the feeTo address from contract calls
+
+            if (feeTo != null && feeTo != "0x0000000000000000000000000000000

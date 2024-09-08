@@ -1,0 +1,39 @@
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            if (info.FromAddress == info.ToAddress || string.IsNullOrEmpty(info.ToAddress))
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (!pnl.ContainsKey(info.FromAddress))
+                    pnl[info.FromAddress] = 0;
+
+                var tokenPrice = GetTokenPrice(transfer.TokenInfo, tokenPrices);
+                pnl[info.FromAddress] -= transfer.Amount * tokenPrice; // subtract the transferred amount from sender's PNL
+            }
+
+            if (pnl.ContainsKey(info.FromAddress))
+                pnl[info.ToAddress] = -pnl[info.FromAddress]; // add the same absolute value to receiver's PNL
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl);
+        }
+
+        private BigDecimal GetTokenPrice(TokenInfo tokenInfo, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            if (tokenPrices == null)
+                return 0; // or any default value you want to use when no prices are provided
+
+            var price = tokenPrices.FirstOrDefault(p => p.Key == tokenInfo.Symbol);
+            return new BigDecimal((decimal)(price.Value > 0 ? price.Value : 1)); // if price is not found or is zero, use 1 as default price
+        }
+    }
+}

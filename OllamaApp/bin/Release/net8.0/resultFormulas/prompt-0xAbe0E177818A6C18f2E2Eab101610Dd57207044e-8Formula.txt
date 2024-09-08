@@ -1,0 +1,32 @@
+```csharp
+// Assembly Information
+[assembly: AssemblyTitle("PNL Calculation")]
+[assembly: AssemblyDescription("C# formula for PNL calculation based on UniswapV2 swap method")]
+[assembly: AssemblyVersion("1.0.0.0")]
+
+using System;
+
+public class PNLCalculator
+{
+    public decimal CalculatePNL(decimal balanceBefore, decimal balanceAfter, decimal reserveBefore, decimal reserveAfter, decimal fee)
+    {
+        // calculate input and output amounts
+        decimal amountIn = 0M;
+        decimal amountOut = 0M;
+
+        if (balanceAfter > balanceBefore && balanceAfter > reserveBefore)
+            amountOut = balanceAfter - reserveBefore;
+        else if (balanceBefore > balanceAfter && balanceBefore > reserveBefore)
+            amountIn = balanceBefore - reserveBefore;
+
+        // calculate PNL
+        decimal pnl = 0M;
+        if (amountIn > 0)
+            pnl -= amountIn + fee; // subtract input amount and fee
+        else if (amountOut > 0)
+            pnl += amountOut - fee; // add output amount and subtract fee
+
+        return pnl;
+    }
+}
+```

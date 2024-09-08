@@ -1,0 +1,49 @@
+Using the rules provided for creating the correct PNL formula, here's a C# method for calculating PNL based on the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlDict = new Dictionary<string, BigDecimal>();
+
+            // Get balance of tokens for the contract address
+            var token0Balance = info.Transfers
+                .Where(t => t.TokenInfo.Symbol == "token0")
+                .Sum(t => t.Amount);
+            var token1Balance = info.Transfers
+                .Where(t => t.TokenInfo.Symbol == "token1")
+                .Sum(t => t.Amount);
+
+            // Calculate PNL for each user address that has transfers related to the contract
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.FromAddress != info.ToAddress && transfer.ToAddress != info.ToAddress)
+                    continue; // Skip transfers not directly involving the contract address
+
+                var userPnl = BigDecimal.Zero;
+
+                if (transfer.TokenInfo.Symbol == "token0")
+                    userPnl -= token0Balance * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(t => t.Key == "token0").Value ?? 1);
+                else if (transfer.TokenInfo.Symbol == "token1")
+                    userPnl -= token1Balance * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(t => t.Key == "token1").Value ?? 1);
+
+                userPnl += transfer.Amount * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(t => t.Key == transfer.TokenInfo.Symbol).Value ?? 1);
+
+                if (pnlDict.ContainsKey(transfer.FromAddress))
+                    pnlDict[transfer.FromAddress] += userPnl;
+                else
+                    pnlDict[transfer.FromAddress] = userPnl;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDict);
+        }
+    }
+}
+```
+This code calculates the profit and loss for each user address involved in transactions related to the given contract. It assumes that the `info.Transfers` list contains all relevant token transfer information, and the `tokenPrices` dictionary contains the current prices of tokens. The PNL is calculated based on the difference between the value of tokens held by the contract and the value of tokens transferred in and out of the contract.

@@ -1,0 +1,64 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_Initialize")]
+
+namespace Sauron.Formula.UniswapV2_Initialize;
+
+using Nethereum.Hex.HexConvertors.Extensions;
+using Sauron.Core.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+
+public class UniswapV2_InitializeFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Initialize a dictionary to store user addresses and their PNL
+        var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+        // Get the fromAddress (sender of the transaction)
+        string fromAddress = info.From;
+
+        // Calculate the total amount of token0 and token1 transfers
+        var tokenTransfers = info.GetTokensWithAmounts(info.Transfers);
+        BigDecimal token0Amount = 0, token1Amount = 0;
+
+        foreach (var transfer in tokenTransfers)
+        {
+            if (transfer.Key.Address == info.InputData?.HexToByteArray()?.Take(24).Skip(4).ToHex(true)) // token0 address
+                token0Amount += transfer.Value;
+            else if (transfer.Key.Address == info.InputData?.HexToByteArray()?.Skip(36).Take(20).ToHex(true)) // token1 address
+                token1Amount += transfer.Value;
+        }
+
+        // Since the transaction is initializing a new pool, no PNL is calculated for sender
+        if (!pnlDictionary.ContainsKey(fromAddress))
+            pnlDictionary[fromAddress] = 0;
+
+        // Calculate PNL for other users (if any) based on their token transfers
+        var userTransfers = info.GetUserTransfers();
+        foreach (var transfer in userTransfers)
+        {
+            if (!pnlDictionary.ContainsKey(transfer.Key))
+                pnlDictionary[transfer.Key] = 0;
+
+            // If the user transferred tokens to initialize the pool, subtract their value from PNL
+            if (transfer.Value.Any(t => t.TokenInfo.Address == info.InputData?.HexToByteArray()?.Take(24).Skip(4).ToHex(true) || // token0 address
+                                          t.TokenInfo.Address == info.InputData?.HexToByteArray()?.Skip(36).Take(20).ToHex(true))) // token1 address
+            {
+                foreach (var userTokenTransfer in transfer.Value)
+                {
+                    if (tokenPrices != null && tokenPrices.Any(p => p.Key == userTokenTransfer.TokenInfo.Symbol))
+                    {
+                        var price = tokenPrices.FirstOrDefault(p => p.Key == userTokenTransfer.TokenInfo.Symbol).Value;
+                        pnlDictionary[transfer.Key] -= (BigDecimal)(price * (decimal)userTokenTransfer.Amount);
+                    }
+                }
+            }
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>() { Result = pnlDictionary };
+    }
+}
+```

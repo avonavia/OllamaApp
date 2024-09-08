@@ -1,0 +1,46 @@
+Here is a C# formula method for the provided Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fetch relevant information from TransactionInfo object
+            BigDecimal reserve0 = info.Reserve0;
+            BigDecimal reserve1 = info.Reserve1;
+            BigDecimal balance0 = info.Balance0;
+            BigDecimal balance1 = info.Balance1;
+            BigDecimal totalSupply = info.TotalSupply;
+            string toAddress = info.ToAddress;
+
+            // Calculate amounts of tokens
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            // Check if fees are applied
+            bool feeOn = totalSupply > 0 && (amount0 * totalSupply / reserve0 < amount1 * totalSupply / reserve1);
+
+            // Calculate liquidity based on conditions
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            // If toAddress is not the same as sender address (fromAddress), calculate PNL. Otherwise, set it to 0.
+            if (toAddress != info.FromAddress)
+                return new CalculationResult<BigDecimal?>(-liquidity - feeOn ? info.Fee : 0); // Subtract fees if applicable
+            else
+                return new CalculationResult<BigDecimal?>(0); // No PNL for minting to the same address
+        }
+    }
+}
+```
+
+Note that this formula assumes that `info.Reserve0`, `info.Reserve1`, `info.Balance0`, `info.Balance1`, `info.TotalSupply`, `info.ToAddress`, and `info.FromAddress` are properties or fields of the `TransactionInfo` object, and `info.Fee` represents the transaction fee.
+
+Additionally, this formula uses a constant `MINIMUM_LIQUIDITY`. It is not provided in the given Solidity contract code, so it needs to be defined as a constant in your C# project or set a default value. This formula also assumes that all calculations are done using BigDecimal data type for precision.

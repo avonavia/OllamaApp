@@ -1,0 +1,64 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Interfaces;
+using Sauron.Core.Models;
+
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2PNLFormula : IFormulaPlugin
+    {
+        private BigInteger _previousReserve0;
+        private BigInteger _previousReserve1;
+        private uint _previousBlockTimestampLast;
+        private BigInteger _price0CumulativeLast;
+        private BigInteger _price1CumulativeLast;
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.Transfers == null || !info.Transfers.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+
+            foreach (var transfer in info.Transfers)
+            {
+                var balance0 = transfer.FromAddress == "TOKEN0_ADDRESS" ? BigInteger.Subtract(BigInteger.Parse(transfer.Amount), BigInteger.Parse(info.Fee)) : _previousReserve0;
+                var balance1 = transfer.FromAddress == "TOKEN1_ADDRESS" ? BigInteger.Subtract(BigInteger.Parse(transfer.Amount), BigInteger.Parse(info.Fee)) : _previousReserve1;
+                var reserve0 = (BigInteger)uint.Parse(balance0.ToString());
+                var reserve1 = (BigInteger)uint.Parse(balance1.ToString());
+
+                if (reserve0 != 0 && reserve1 != 0)
+                {
+                    uint currentBlockTimestampLast = info.TimeStamp;
+                    uint timeElapsed = (currentBlockTimestampLast - _previousBlockTimestampLast);
+
+                    _price0CumulativeLast += BigInteger.Multiply(UQ112x112Encode(_reserve1).Divide(_reserve0), BigInteger.Parse(timeElapsed.ToString()));
+                    _price1CumulativeLast += BigInteger.Multiply(UQ112x112Encode(_reserve0).Divide(_reserve1), BigInteger.Parse(timeElapsed.ToString()));
+                }
+
+                // Calculate PNL for the user address, not tokens
+                if (transfer.FromAddress == "USER_ADDRESS")
+                    result.Add(new KeyValuePair<string, BigDecimal>(transfer.FromAddress, new BigDecimal(_price1CumulativeLast - _previousReserve1)));
+                else if (transfer.ToAddress == "USER_ADDRESS")
+                    result.Add(new KeyValuePair<string, BigDecimal>(transfer.ToAddress, new BigDecimal(_price0CumulativeLast - _previousReserve0)));
+
+                _previousReserve0 = reserve0;
+                _previousReserve1 = reserve1;
+                _previousBlockTimestampLast = info.TimeStamp;
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+
+        private static BigInteger UQ112x112Encode(BigInteger value)
+        {
+            // Implement this function to replicate the UQ112x112 encoding logic from Solidity
+            throw new NotImplementedException("UQ112x112 encoding logic is not implemented");
+        }
+    }
+}
+```

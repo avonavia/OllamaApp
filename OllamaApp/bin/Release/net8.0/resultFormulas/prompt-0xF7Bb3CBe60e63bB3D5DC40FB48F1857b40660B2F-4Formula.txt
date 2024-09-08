@@ -1,0 +1,34 @@
+```csharp
+// [assembly: FormulaAssembly("UniswapV2_PNL")]
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2Formula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            var userAddresses = new HashSet<string>(info.Logs.Select(log => log.FromAddress).Distinct());
+
+            foreach (var address in userAddresses)
+            {
+                var balance0 = info.GetTokenBalance("TOKEN0_ADDRESS", address);
+                var balance1 = info.GetTokenBalance("TOKEN1_ADDRESS", address);
+
+                BigDecimal pnl = CalculatePNL(balance0, balance1);
+                result.Add(new KeyValuePair<string, BigDecimal>(address, pnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+
+        private BigDecimal CalculatePNL(BigDecimal balance0, BigDecimal balance1)
+        {
+            // Implement the PNL calculation logic based on the provided Solidity contract method.
+            // The logic includes reserve calculations and time elapsed since the last block timestamp.
+            // Subtract fee from the calculated PNL if necessary.
+            // Return the final PNL as a BigDecimal.
+        }
+    }
+}
+```

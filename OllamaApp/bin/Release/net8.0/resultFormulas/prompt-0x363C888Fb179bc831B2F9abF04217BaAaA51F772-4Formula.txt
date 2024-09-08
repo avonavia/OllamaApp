@@ -1,0 +1,47 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract necessary information from the transaction
+            var balance0 = (BigDecimal)info.DecodedData["balance0"];
+            var balance1 = (BigDecimal)info.DecodedData["balance1"];
+            var _reserve0 = (BigDecimal)info.DecodedData["_reserve0"];
+            var _reserve1 = (BigDecimal)info.DecodedData["_reserve1"];
+            var blockTimestampLast = (uint)(info.BlockTimestamp % 4294967296); // uint32 conversion
+            var blockTimestamp = (uint)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % 4294967296); // uint32 conversion of current block timestamp
+            var timeElapsed = blockTimestamp - blockTimestampLast;
+
+            // Calculate price cumulatives if conditions are met
+            BigDecimal price0CumulativeLast = 0;
+            BigDecimal price1CumulativeLast = 0;
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                var encode_reserve1 = UQ112x112.Encode(_reserve1);
+                var encode_reserve0 = UQ112x112.Encode(_reserve0);
+                price0CumulativeLast += (encode_reserve1 / encode_reserve0) * timeElapsed;
+                price1CumulativeLast += (encode_reserve0 / encode_reserve1) * timeElapsed;
+            }
+
+            // Calculate PNL
+            var pnl = balance0 - _reserve0 + balance1 - _reserve1;
+
+            // Subtract fees from PNL if necessary
+            if (info.FromAddress != info.ToAddress)
+                pnl -= info.Fee;
+
+            // Return the calculated PNL for each user address
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl));
+            if (info.FromAddress != info.ToAddress)
+                result.Add(new KeyValuePair<string, BigDecimal>(info.ToAddress, -pnl)); // negative PNL for recipient
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

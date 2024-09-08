@@ -1,0 +1,44 @@
+```csharp
+// assembly info
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        // Calculate PNL for a mint transaction in UniswapV2 contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = info.TokenBalances[info.ContractAddress][info.Data.From];
+            var balance1 = info.TokenBalances[info.Data.To][info.ContractAddress]; // Assuming the other token is in 'to' address
+            var reserve0 = info.Reserves[0];
+            var reserve1 = info.Reserves[1];
+
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            var totalSupply = info.TotalSupply; // Assuming TotalSupply is accessible from TransactionInfo
+
+            BigDecimal liquidity, pnl;
+
+            if (totalSupply == 0)
+            {
+                liquidity = Math.Sqrt(amount0 * amount1) - MinimumLiquidity;
+            }
+            else
+            {
+                liquidity = Math.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+            }
+
+            // If minted tokens are sent to a different address, user has received value so PNL is positive
+            if (info.Data.To != info.Data.From)
+                pnl = liquidity;
+            else
+                pnl = -(info.Gas * info.GasPrice); // If tokens are minted to the same address, only gas fee is incurred
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>("PNL", pnl) });
+        }
+    }
+}
+```

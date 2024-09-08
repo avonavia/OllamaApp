@@ -1,0 +1,48 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.initialize
+{
+    public class initializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var fromAddress = info.From;
+            var toAddresses = info.Transfers?.Select(t => t.To).Distinct().Where(a => a != info.From);
+
+            if (!toAddresses.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success();
+
+            var token0 = GetTokenSymbol(info.Inputs[0]); // Assuming that _token0 is the first input
+            var token1 = GetTokenSymbol(info.Inputs[1]); // Assuming that _token1 is the second input
+
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var toAddress in toAddresses)
+            {
+                if (!pnlDictionary.ContainsKey(toAddress))
+                    pnlDictionary[toAddress] = 0;
+
+                // Subtract the cost of tokens if necessary
+                var token0Transfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token0 && t.To == toAddress);
+                var token1Transfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token1 && t.To == toAddress);
+
+                if (token0Transfers != null)
+                    pnlDictionary[toAddress] -= token0Transfers.Sum(t => t.Amount);
+
+                if (token1Transfers != null)
+                    pnlDictionary[toAddress] -= token1Transfers.Sum(t => t.Amount);
+            }
+
+            var results = pnlDictionary.Select(kv => new KeyValuePair<string, BigDecimal>(kv.Key, kv.Value));
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+
+        private string GetTokenSymbol(object input) // This is just a placeholder function for getting token symbol from input. Replace it with actual implementation.
+        {
+            return "TOKEN_SYMBOL";
+        }
+    }
+}
+```

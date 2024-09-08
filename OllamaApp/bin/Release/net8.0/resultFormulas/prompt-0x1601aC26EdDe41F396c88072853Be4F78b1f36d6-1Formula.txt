@@ -1,0 +1,14 @@
+//Method to get reserves from TransactionInfo object
+    public (BigDecimal reserve0, BigDecimal reserve1, uint blockTimestampLast) GetReserves(TransactionInfo info)
+    {
+        if (info.DecodedData is PairData pairData && pairData.Reserve0 != null && pairData.Reserve1 != null && pairData.BlockTimestampLast != null)
+        {
+            return (pairData.Reserve0, pairData.Reserve1, pairData.BlockTimestampLast);
+        }
+        else
+        {
+            // If decoded data is not available or does not contain the required information, return default values or throw an exception based on your application's needs.
+            // For this example, I will return (0, 0, 0) as a placeholder.
+            return (0, 0, 0);
+        }
+    }

@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("sync")] // Name must be EXACTLY as in Solidity contract
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var token0Balance = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == "token0")?.Amount ?? 0;
+            var token1Balance = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == "token1")?.Amount ?? 0;
+            var reserve0 = BigDecimal.FromDecimal((decimal)info.Data["reserve0"]); // assuming that reserve0 and reserve1 are available in the data object of TransactionInfo
+            var reserve1 = BigDecimal.FromDecimal((decimal)info.Data["reserve1"]);
+
+            var pnlToken0 = (token0Balance * tokenPrices?.FirstOrDefault(t => t.Key == "token0").Value ?? 1) - (reserve0 * tokenPrices?.FirstOrDefault(t => t.Key == "token0").Value ?? 1);
+            var pnlToken1 = (token1Balance * tokenPrices?.FirstOrDefault(t => t.Key == "token1").Value ?? 1) - (reserve1 * tokenPrices?.FirstOrDefault(t => t.Key == "token1").Value ?? 1);
+            var pnlEth = pnlToken0 + pnlToken1; // converting PNL to Eth assuming that both tokens are priced in Eth
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>()
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>>()
+                {
+                    new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlEth)
+                }
+            };
+        }
+    }
+}
+```

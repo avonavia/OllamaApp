@@ -1,0 +1,44 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Assuming that _reserve0 and _reserve1 are available in the TransactionInfo object
+            BigDecimal reserve0 = info.Reserve0;
+            BigDecimal reserve1 = info.Reserve1;
+            string feeToAddress = info.FeeToAddress; // This should be populated from the factory method call outside of this formula
+            bool feeOn = !string.IsNullOrEmpty(feeToAddress);
+
+            if (feeOn)
+            {
+                BigDecimal kLast = info.KLast;
+                if (kLast != 0)
+                {
+                    BigDecimal rootK = Math.Sqrt(reserve0 * reserve1);
+                    BigDecimal rootKLast = Math.Sqrt(kLast);
+                    if (rootK > rootKLast)
+                    {
+                        BigDecimal numerator = info.TotalSupply * (rootK - rootKLast);
+                        BigDecimal denominator = 5 * rootK + rootKLast;
+                        BigDecimal liquidity = numerator / denominator;
+                        if (liquidity > 0)
+                            result.Add(new KeyValuePair<string, BigDecimal>(feeToAddress, liquidity));
+                    }
+                }
+            }
+            else if (info.KLast != 0)
+            {
+                info.KLast = 0; // Update KLast in TransactionInfo object as it is modified here
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

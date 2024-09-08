@@ -1,0 +1,63 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Nethereum.Hex.HexConvertors.Extensions;
+using Sauron.Core.Helpers;
+using Sauron.Core.Interfaces;
+using Sauron.Types;
+
+[assembly: FormulaAssembly("UniswapV2_Update")]
+
+namespace Sauron.Formula.UniswapV2_Update
+{
+    public class UniswapV2_UpdateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            // Extract balance and reserve values from transaction input
+            var inputs = info.Input?.HexToByteArray();
+            if (inputs == null || inputs.Length < 68) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+
+            var balance0 = BitConverter.ToUInt32(inputs, 4);
+            var balance1 = BitConverter.ToUInt32(inputs, 8);
+            var _reserve0 = (ulong)BitConverter.ToUInt64(inputs, 12) & 0xFFFFFFFFF000; // uint112
+            var _reserve1 = (ulong)BitConverter.ToUInt64(inputs, 32) & 0xFFFFFFFFF000; // uint112
+
+            var blockTimestamp = (uint)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % Math.Pow(2, 32));
+            var timeElapsed = blockTimestamp - info.BlockInfo?.BlockTimestamp ?? 0; // overflow is desired
+
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                var price0CumulativeLast = BigDecimalHelper.ToBigDecimal(info.ContractState["price0CumulativeLast"]?.Value ?? "0");
+                var price1CumulativeLast = BigDecimalHelper.ToBigDecimal(info.ContractState["price1CumulativeLast"]?.Value ?? "0");
+
+                price0CumulativeLast += (BigInteger)UQ112x112Encode(_reserve1).uqdiv(new BigInteger(_reserve0)) * timeElapsed;
+                price1CumulativeLast += (BigInteger)UQ112x112Encode(_reserve0).uqdiv(new BigInteger(_reserve1)) * timeElapsed;
+            }
+
+            // Calculate PNL for user addresses, assuming that tokens have prices and user has balance of both tokens
+            var token0Price = new BigDecimal(tokenPrices?.FirstOrDefault(x => x.Key == info.TokenInfo.Address).Value ?? 1);
+            var token1Price = new BigDecimal(tokenPrices?.FirstOrDefault(x => x.Key == info.ToAddress).Value ?? 1);
+
+            var initialToken0Balance = BigDecimalHelper.ToBigDecimal(info.UserStates[info.FromAddress]["balance"]?.Value ?? "0");
+            var finalToken0Balance = (BigInteger)balance0;
+            var initialToken1Balance = BigDecimalHelper.ToBigDecimal(info.UserStates[info.FromAddress][info.ToAddress]["balance"]?.Value ?? "0");
+            var finalToken1Balance = (BigInteger)balance1;
+
+            var token0Change = (finalToken0Balance - initialToken0Balance) * token0Price;
+            var token1Change = (finalToken1Balance - initialToken1Balance) * token1Price;
+
+            var pnl = token0Change + token1Change - info.TransactionFee * info.EthPrice;
+
+            result[info.FromAddress] = pnl;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+
+        private static UQ112x112Encode(ulong value) => (UQ112x112)(value << 112);
+    }
+}
+```

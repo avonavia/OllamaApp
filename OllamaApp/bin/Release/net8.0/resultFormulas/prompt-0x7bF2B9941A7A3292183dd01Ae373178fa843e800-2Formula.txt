@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var userAddresses = new HashSet<string>(info.Users); // Get all unique user addresses in the transaction
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                if (!userAddresses.Contains(transfer.FromAddress)) continue; // Skip if the user is not a participant of this transaction
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value ?? 0m; // Get price of the token or use 0 if not found
+                var amountInEth = (decimal)transfer.Amount * tokenPrice / (10m.PowerI((int)transfer.TokenInfo.Decimals)); // Convert token amount to Eth
+
+                if (!pnlResult.ContainsKey(transfer.FromAddress)) pnlResult[transfer.FromAddress] = new BigDecimal(); // Initialize PNL for the user address
+                pnlResult[transfer.FromAddress] -= new BigDecimal(amountInEth); // Subtract sent amount from PNL (assuming loss)
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnlResult.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)) };
+        }
+    }
+}
+```
+This C# code defines a formula for calculating the profit and loss (PNL) in Ethereum transactions that involve token transfers using the `_safeTransfer` method from a Solidity contract. The formula subtracts the value of each token transferred by the user from their total PNL, assuming that the transfer represents a loss. The code uses the `TokenTransferInfo` objects in the `TransactionInfo` object to determine which tokens were transferred and how much, and it uses an optional `tokenPrices` parameter to convert the token amounts to Ethereum (ETH). Finally, the formula returns the PNL for each user address involved in the transaction.

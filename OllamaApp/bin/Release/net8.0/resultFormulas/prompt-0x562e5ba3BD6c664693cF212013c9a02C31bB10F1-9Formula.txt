@@ -1,0 +1,34 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get tokens and their balances in the contract
+            var token0Balance = info.GetTokenBalance(info.TokenInfo.First(t => t.Symbol == "TOKEN0").Address);
+            var token1Balance = info.GetTokenBalance(info.TokenInfo.First(t => t.Symbol == "TOKEN1").Address);
+
+            // Calculate the amount of tokens to skim for each token
+            var skimAmountToken0 = token0Balance - new BigDecimal(info.Reserve0);
+            var skimAmountToken1 = token1Balance - new BigDecimal(info.Reserve1);
+
+            // Get the price of each token (assuming tokenPrices is provided in ETH/token)
+            var token0Price = new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == "TOKEN0").Value ?? 0);
+            var token1Price = new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == "TOKEN1").Value ?? 0);
+
+            // Calculate the PNL for the user in ETH (negative as the user is withdrawing funds)
+            var pnlToken0 = -skimAmountToken0 * token0Price;
+            var pnlToken1 = -skimAmountToken1 * token1Price;
+
+            results.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlToken0 + pnlToken1));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+        }
+    }
+}
+```

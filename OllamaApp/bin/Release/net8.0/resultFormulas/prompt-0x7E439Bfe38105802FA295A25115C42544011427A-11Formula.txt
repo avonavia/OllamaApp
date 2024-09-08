@@ -1,0 +1,47 @@
+[assembly: FormulaAssembly("PERMIT")]
+
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Entities.Common;
+using Sauron.Core.Interfaces;
+
+namespace Sauron.Formula.PERMIT
+{
+    public class PERMITFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // PNL is calculated only for the sender of the tokens (owner)
+            var pnlResults = new Dictionary<string, BigDecimal>();
+
+            // Get the owner and spender addresses from transfers object in TransactionInfo
+            string ownerAddress = info.Transfers[0].From;
+            string spenderAddress = info.Transfers[0].To;
+
+            // Check if the transfer is not to the same address (user sending tokens to themselves)
+            bool selfTransfer = ownerAddress == spenderAddress;
+
+            foreach (var transfer in info.Transfers)
+            {
+                // Find the token price from input or use 0 if not available
+                decimal tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenSymbol).Value ?? 0;
+
+                BigDecimal valueInEth = (transfer.Amount * new BigDecimal((decimal)tokenPrice)) / new BigDecimal(info.GasPrice);
+
+                // Subtract fee from the value in ETH if it's not a self-transfer, as gas is paid by sender in that case
+                if (!selfTransfer)
+                    valueInEth -= info.Fee;
+
+                // Update PNL for owner address (as we're calculating PNL only for user addresses)
+                if (pnlResults.ContainsKey(ownerAddress))
+                    pnlResults[ownerAddress] += valueInEth;
+                else
+                    pnlResults[ownerAddress] = valueInEth;
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+        }
+    }
+}

@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Get user addresses from transaction info
+            var userAddresses = info.GetUniqueAddresses();
+
+            // Iterate over each user address
+            foreach (var address in userAddresses)
+            {
+                var tokenBalances = info.Transfers?.Where(t => t.FromAddress == address || t.ToAddress == address).Select(t => new KeyValuePair<TokenInfo, BigDecimal>(t.TokenInfo, t.Amount)) ?? Enumerable.Empty<KeyValuePair<TokenInfo, BigDecimal>>();
+                var token0Balance = tokenBalances.Where(b => b.Key.Symbol == "token0").Select(b => b.Value).FirstOrDefault() - info.Reserve0;
+                var token1Balance = tokenBalances.Where(b => b.Key.Symbol == "token1").Select(b => b.Value).FirstOrDefault() - info.Reserve1;
+
+                // Calculate PNL for each token based on the updated balances and reserve values
+                var pnlForToken0 = CalculatePNL(token0Balance, tokenPrices?.Where(p => p.Key == "token0").Select(p => p.Value).FirstOrDefault() ?? 0);
+                var pnlForToken1 = CalculatePNL(token1Balance, tokenPrices?.Where(p => p.Key == "token1").Select(p => p.Value).FirstOrDefault() ?? 0);
+
+                // Add PNL for each token to the user's total PNL
+                var currentPnl = BigDecimal.Zero;
+                if (pnl.ContainsKey(address))
+                    currentPnl = pnl[address];
+                pnl[address] = currentPnl + pnlForToken0 + pnlForToken1 - info.Fee;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+        }
+
+        private BigDecimal CalculatePNL(BigDecimal balanceDelta, decimal tokenPrice)
+        {
+            // PNL = (Token Amount * Token Price) - Initial Investment
+            return balanceDelta * new BigDecimal(tokenPrice);
+        }
+    }
+}
+```
+This C# formula calculates the PNL for each user address in the transaction based on the updated balances of token0 and token1, and their respective reserve values. The formula iterates over each unique user address, retrieves the token balances for that address, calculates the balance delta for each token, and then uses the `CalculatePNL` method to calculate the PNL for each token based on its balance delta and price. Finally, it adds the PNL for each token to the user's total PNL and subtracts the transaction fee before returning the results as a dictionary of user addresses and their corresponding PNL values.

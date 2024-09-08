@@ -1,0 +1,33 @@
+[assembly: FormulaAssembly("GetReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction is a call to getReserves function
+            if (info.FunctionName == "getReserves")
+            {
+                // Get reserve0, reserve1 and blockTimestampLast from TransactionInfo object
+                BigDecimal reserve0 = info.DecodedOutputs[0];
+                BigDecimal reserve1 = info.DecodedOutputs[1];
+                uint blockTimestampLast = (uint)info.DecodedOutputs[2];
+
+                // Create a dictionary to store the results
+                var result = new Dictionary<string, BigDecimal>
+                {
+                    {"Reserve0", reserve0},
+                    {"Reserve1", reserve1},
+                    {"BlockTimestampLast", new BigDecimal(blockTimestampLast)}
+                };
+
+                // Return the dictionary as CalculationResult
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+            }
+
+            // If the transaction is not a call to getReserves function, return null
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}

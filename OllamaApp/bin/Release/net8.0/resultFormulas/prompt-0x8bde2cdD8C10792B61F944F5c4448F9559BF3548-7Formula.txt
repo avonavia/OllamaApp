@@ -1,0 +1,50 @@
+```csharp
+// Assembly info is not necessary for this example as it's a console application
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Models;
+using Sauron.Formula.Interface;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the reserves and balances from TransactionInfo object as BigDecimal
+            var reserve0 = new BigDecimal(info.GetProperty("_reserve0"));
+            var reserve1 = new BigDecimal(info.GetProperty("_reserve1"));
+            var balance0 = new BigDecimal(info.GetProperty("balance0"));
+            var balance1 = new BigDecimal(info.GetProperty("balance1"));
+            var liquidity = new BigDecimal(info.GetProperty("liquidity"));
+            var totalSupply = new BigDecimal(info.GetProperty("_totalSupply"));
+
+            // Calculate amount0 and amount1
+            var amount0 = (liquidity * balance0) / totalSupply;
+            var amount1 = (liquidity * balance1) / totalSupply;
+
+            // Assume that fee is already subtracted from amount0 and amount1
+            // Calculate PNL in Eth, assuming token prices are provided
+            var pnlEth = BigDecimal.Zero;
+            if(tokenPrices != null)
+            {
+                var token0Price = new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.GetProperty("_token0")).Value);
+                var token1Price = new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.GetProperty("_token1")).Value);
+
+                pnlEth += amount0 * token0Price;
+                pnlEth += amount1 * token1Price;
+            }
+
+            // If toAddress is the same as fromAddress, PNL is considered zero
+            if (info.GetProperty("to") == info.From)
+                return CalculationResult<BigDecimal>.Success(BigDecimal.Zero);
+
+            // Otherwise, subtract amount0 and amount1 from user's balance in Eth
+            pnlEth -= pnlEth;
+
+            return CalculationResult<BigDecimal>.Success(pnlEth);
+        }
+    }
+}
+```

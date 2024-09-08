@@ -1,0 +1,36 @@
+[assembly: FormulaAssembly("Sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.Transfers == null || !info.Transfers.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.WithSuccess(result);
+
+            var token0 = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == "token0")?.Amount ?? BigDecimal.Zero;
+            var token1 = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == "token1")?.Amount ?? BigDecimal.Zero;
+
+            // Assuming reserve0 and reserve1 are obtained from the smart contract state
+            var reserve0 = new BigDecimal(/* obtain reserve0 value here */);
+            var reserve1 = new BigDecimal(/* obtain reserve1 value here */);
+
+            var pnl = _calculatePnl(token0, token1, reserve0, reserve1) - info.Fee;
+
+            result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl));
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.WithSuccess(result);
+        }
+
+        private BigDecimal _calculatePnl(BigDecimal token0Balance, BigDecimal token1Balance, BigDecimal reserve0, BigDecimal reserve1)
+        {
+            // Implement the PNL calculation logic here based on the Solidity contract method's formula
+            // This would typically involve comparing the current token balances and reserves with previous values
+            throw new NotImplementedException("PNL calculation logic not implemented");
+        }
+    }
+}

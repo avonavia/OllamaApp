@@ -1,0 +1,44 @@
+```csharp
+// Formula name should be exactly as function name in Solidity contract, so we use InitializeFormula
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+
+public class InitializeFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Get the distinct tokens in the transaction
+        var tokens = info.GetDistinctTokens();
+
+        // Initialize a dictionary to store PNL for each address
+        var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+        // Iterate through each token
+        foreach (var token in tokens)
+        {
+            // Get the transfers related to this token
+            var transfersForToken = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol).ToList();
+
+            // Calculate PNL for each transfer and add it to the dictionary
+            foreach (var transfer in transfersForToken)
+            {
+                if (!pnlDictionary.ContainsKey(transfer.FromAddress))
+                    pnlDictionary[transfer.FromAddress] = BigDecimal.Zero;
+
+                if (!pnlDictionary.ContainsKey(transfer.ToAddress))
+                    pnlDictionary[transfer.ToAddress] = BigDecimal.Zero;
+
+                // PNL calculation for the sender (subtracting fee)
+                pnlDictionary[transfer.FromAddress] -= transfer.Amount - info.Fee;
+
+                // PNL calculation for the recipient
+                pnlDictionary[transfer.ToAddress] += transfer.Amount;
+            }
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+    }
+}
+```

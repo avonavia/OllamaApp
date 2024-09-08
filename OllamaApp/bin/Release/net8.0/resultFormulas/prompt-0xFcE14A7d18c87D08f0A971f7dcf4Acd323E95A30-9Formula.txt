@@ -1,0 +1,51 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Nethereum.Hex.HexConvertors.Extensions;
+using Sauron.Core.Cryptography;
+using Sauron.Core.Types;
+using Sauron.Formula.Common;
+using Sauron.Tokens;
+
+[assembly: FormulaAssembly("skim")] // this should match the Solidity function name exactly
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlPairs = new List<KeyValuePair<string, BigDecimal>>(); // Initialize the list to store PNL pairs
+
+            if (info.Transfers == null || !info.Transfers.Any()) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.FromError("No token transfers found in transaction");
+
+            var uniqueTokens = info.GetDistinctTokens(); // Get distinct tokens from the transaction
+
+            if (uniqueTokens == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.FromError("Unable to retrieve unique tokens from transaction");
+
+            foreach (var token in uniqueTokens)
+            {
+                var transfers = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol); // Get all transfers for the current token
+                var totalAmountSkimmed = transfers.Sum(t => t.Amount); // Calculate the total amount skimmed for the token
+
+                if (tokenPrices != null) // If token prices are provided, calculate PNL in Eth
+                {
+                    var price = tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value;
+                    var pnlInEth = totalAmountSkimmed * (BigDecimal)price;
+                    if (info.FromAddress != info.ToAddress) pnlInEth -= info.Fee; // Subtract fee if toAddress is different from fromAddress
+
+                    pnlPairs.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress.EnsHexAddressFormat(), -pnlInEth)); // Add PNL for the fromAddress
+                }
+                else // If token prices are not provided, return the total amount skimmed without calculating PNL
+                {
+                    pnlPairs.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress.EnsHexAddressFormat(), -totalAmountSkimmed)); // Add negative amount for the fromAddress to indicate that tokens were sent out
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.FromData(pnlPairs);
+        }
+    }
+}
+```

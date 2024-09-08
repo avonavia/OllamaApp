@@ -1,0 +1,23 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // This formula doesn't calculate any PNL as it is an initialization method in the UniswapV2 contract.
+            // However, we can return tokens involved in the transaction with their amounts for informational purposes.
+
+            var result = info.GetDistinctTokens()?
+                .Select(token => new KeyValuePair<string, BigDecimal>(
+                    token.Address,
+                    info.Transfers?.FirstOrDefault(t => t.TokenInfo.Address == token.Address)?.Amount ?? BigDecimal.Zero))
+                .ToList();
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.SuccessWithData(result);
+        }
+    }
+}
+```

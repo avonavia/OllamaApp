@@ -1,0 +1,40 @@
+```csharp
+using System;
+
+public class UniswapV2PNLCalculator
+{
+    // Assembly info for PNL calculation without messages for user
+    [assembly: System.Reflection.AssemblyTitle("UniswapV2 Profit and Loss Calculator")]
+    [assembly: System.Reflection.AssemblyDescription("Calculates profit and loss for UniswapV2 swaps")]
+    [assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+    // Method to calculate PNL based on the provided swap method from Solidity contract
+    public static decimal CalculatePNL(decimal userBalanceBeforeSwap, decimal userBalanceAfterSwap,
+        decimal reserveTokenOutBeforeSwap, decimal pricePerTokenOut)
+    {
+        // Calculate amount of tokens out that user sent in the swap
+        decimal amountTokenOutSent = reserveTokenOutBeforeSwap - (userBalanceAfterSwap / pricePerTokenOut);
+
+        // If user did not receive any tokens, PNL is 0
+        if (amountTokenOutSent == 0)
+            return 0;
+
+        // Calculate the cost of tokens out that user sent in Eth (before swap)
+        decimal costOfTokensOutBeforeSwap = amountTokenOutSent * pricePerTokenOut;
+
+        // If user balance after swap is greater than or equal to before swap, user did not send any tokens.
+        if (userBalanceAfterSwap >= userBalanceBeforeSwap)
+            return -costOfTokensOutBeforeSwap;  // Return negative cost of tokens out as PNL (loss)
+
+        // Calculate the amount of Eth that user received in the swap
+        decimal ethReceived = userBalanceBeforeSwap - userBalanceAfterSwap;
+
+        // If user received more Eth than the cost of tokens out, return profit minus fees
+        if (ethReceived > costOfTokensOutBeforeSwap)
+            return ethReceived - costOfTokensOutBeforeSwap * 0.003M;   // 0.003M is totalFee in percentage
+
+        // If user received less Eth than the cost of tokens out, return loss plus fees
+        return (costOfTokensOutBeforeSwap - ethReceived) + costOfTokensOutBeforeSwap * 0.003M;
+    }
+}
+```

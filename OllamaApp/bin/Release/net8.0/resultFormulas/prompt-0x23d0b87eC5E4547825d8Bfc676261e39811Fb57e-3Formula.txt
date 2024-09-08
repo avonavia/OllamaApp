@@ -1,0 +1,24 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming that `info.DecodedData` contains the decoded data from the transaction
+            // and `info.FromAddress` is the sender of the transaction
+
+            // Check if msg.sender is equal to factory
+            var factory = GetFactoryAddress(); // Implement a method to get the factory address
+            if (info.FromAddress != factory)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Unauthorized: msg.sender is not equal to factory");
+
+            // No need to calculate PNL as this function only initializes token addresses and does not involve any transfer of tokens
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>>(), null);
+        }
+    }
+}
+```

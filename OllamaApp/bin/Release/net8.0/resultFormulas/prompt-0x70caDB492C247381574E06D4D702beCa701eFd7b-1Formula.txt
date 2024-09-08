@@ -1,0 +1,16 @@
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<Tuple<BigDecimal, BigDecimal, uint>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal((ulong)info.Reserve0); // assuming Reserve0 is a ulong value in TransactionInfo object
+            var reserve1 = new BigDecimal((ulong)info.Reserve1); // assuming Reserve1 is a ulong value in TransactionInfo object
+            var blockTimestampLast = info.BlockTimestampLast; // assuming BlockTimestampLast is a uint value in TransactionInfo object
+
+            return CalculationResult<Tuple<BigDecimal, BigDecimal, uint>>.Success(new Tuple<BigDecimal, BigDecimal, uint>(reserve0, reserve1, blockTimestampLast));
+        }
+    }
+}

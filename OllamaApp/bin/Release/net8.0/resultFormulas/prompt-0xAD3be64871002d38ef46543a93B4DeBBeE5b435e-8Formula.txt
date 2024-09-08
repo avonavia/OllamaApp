@@ -1,0 +1,49 @@
+Here is a possible implementation of the PNL calculation formula in C#:
+```csharp
+using System;
+using System.Numerics;
+
+[assembly: AssemblyTitle("PNLCalculator")]
+[assembly: AssemblyDescription("A calculator for PNL in UniswapV2 swaps")]
+[assembly: AssemblyVersion("1.0.0.0")]
+
+public class PnlCalculator
+{
+    // Calculate PNL for a swap transaction
+    public static decimal CalculatePnl(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1)
+    {
+        // Check if the output amounts are valid
+        if (amount0Out <= 0 && amount1Out <= 0)
+            throw new ArgumentException("UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
+
+        // Calculate balances after the swap
+        decimal balance0 = reserve0 - amount0Out;
+        decimal balance1 = reserve1 - amount1Out;
+
+        // Calculate input amounts
+        decimal amount0In = Math.Max(balance0, 0);
+        decimal amount1In = Math.Max(balance1, 0);
+
+        // Check if the input amounts are valid
+        if (amount0In <= 0 && amount1In <= 0)
+            throw new InvalidOperationException("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+
+        // Calculate adjusted balances
+        decimal balance0Adjusted = BigDecimal.Multiply(balance0, 1000) - BigDecimal.Multiply(amount0In, 3);
+        decimal balance1Adjusted = BigDecimal.Multiply(balance1, 1000) - BigDecimal.Multiply(amount1In, 3);
+
+        // Calculate the minimum required adjusted balance product
+        decimal minBalanceProduct = BigDecimal.Multiply(BigDecimal.Multiply(reserve0, reserve1), 1000 * 1000);
+
+        // Check if the adjusted balances are valid
+        if (BigDecimal.Multiply(balance0Adjusted, balance1Adjusted) < minBalanceProduct)
+            throw new InvalidOperationException("UniswapV2: K");
+
+        // Calculate PNL as the difference between input and output amounts
+        decimal pnl = amount0In - amount0Out + amount1In - amount1Out;
+
+        return pnl;
+    }
+}
+```
+This code defines a static `CalculatePnl` method that takes the output amounts of tokens 0 and 1, as well as the current reserves of tokens 0 and 1 in the pool. The method first checks if the output amounts are valid, then calculates the balances after the swap and the input amounts. It also performs additional safety checks to ensure that the adjusted balances are sufficient for the swap. Finally, it calculates the PNL as the difference between the input and output amounts of tokens 0 and 1, and returns this value in Ether.

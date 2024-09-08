@@ -1,0 +1,59 @@
+```csharp
+// Assembly information for PNL calculation without messages for user
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DynamicProxyGenAssembly2")]
+
+namespace Sauron.Formula.BurnFORMULA
+{
+    using Nethereum.Hex.HexTypes;
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+
+    public class BurnFORMULAFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigInteger?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Ensure that the required data is present in TransactionInfo object
+            if (info.Data == null || !info.Data.StartsWith("0x79ba5097") || // Function selector for burn method
+                info.TokenBalancesBefore == null || info.TokenBalancesAfter == null)
+            {
+                return new CalculationResult<BigInteger?> { Success = false };
+            }
+
+            var token0BalanceBefore = GetTokenBalance(info.TokenBalancesBefore, info.ContractAddresses["token0"]);
+            var token1BalanceBefore = GetTokenBalance(info.TokenBalancesBefore, info.ContractAddresses["token1"]);
+            var liquidity = info.TokenBalancesBefore[info.From];
+
+            // Calculate the total supply before burn
+            var totalSupply = token0BalanceBefore + token1BalanceBefore;
+
+            // Calculate the amount of tokens burned
+            var amount0Burned = (liquidity * token0BalanceBefore) / totalSupply;
+            var amount1Burned = (liquidity * token1BalanceBefore) / totalSupply;
+
+            var pnl = CalculatePNL(amount0Burned, amount1Burned, info.TokenPrices);
+
+            // If user sent tokens to themselves, no fee is charged
+            if (!info.From.Equals(info.To, StringComparison.OrdinalIgnoreCase))
+                pnl -= info.Fee;
+
+            return new CalculationResult<BigInteger?> { Success = true, Result = pnl };
+        }
+
+        private BigInteger GetTokenBalance(Dictionary<string, BigInteger> tokenBalances, string tokenAddress)
+        {
+            if (tokenBalances.TryGetValue(tokenAddress, out var balance))
+                return balance;
+            else
+                throw new ArgumentException($"No balance found for token: {tokenAddress}");
+        }
+
+        private BigInteger CalculatePNL(BigInteger amount0Burned, BigInteger amount1Burned, Dictionary<string, decimal> tokenPrices)
+        {
+            // PNL is calculated as the value of tokens burned in Eth
+            var pnl = (amount0Burned * (BigInteger)tokenPrices["token0"]) + (amount1Burned * (BigInteger)tokenPrices["token1"]);
+            return pnl;
+        }
+    }
+}
+```

@@ -1,0 +1,35 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var transfers = info.GetTransfers();
+            var distinctTokens = info.GetDistinctTokens();
+            var toAddress = info.To;
+
+            if (distinctTokens == null || !distinctTokens.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in distinctTokens)
+            {
+                var tokenTransfers = transfers.Where(t => t.TokenInfo.Symbol == token.Symbol && t.To == toAddress).Sum(t => t.Amount);
+                if (tokenPrices != null && tokenPrices.Any(p => p.Key == token.Symbol))
+                    pnl[toAddress] = pnl.ContainsKey(toAddress) ? pnl[toAddress] + tokenTransfers * tokenPrices.First(p => p.Key == token.Symbol).Value : tokenTransfers * tokenPrices.First(p => p.Key == token.Symbol).Value;
+            }
+
+            // Subtract fee from PNL
+            if (pnl.ContainsKey(toAddress) && info.Fee != null)
+                pnl[toAddress] -= info.Fee.Value;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl);
+        }
+    }
+}
+```
+This C# code calculates the PNL for a user who receives tokens from the `skim` method of a Solidity contract. It first gets all transfers to the specified address (`to`) and then sums up the amounts of each distinct token transferred. If token prices are provided, it calculates the total value of these tokens in ETH. Finally, it subtracts any fees from the PNL and returns the result.

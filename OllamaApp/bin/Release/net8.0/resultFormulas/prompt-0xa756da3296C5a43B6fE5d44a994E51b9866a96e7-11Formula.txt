@@ -1,0 +1,46 @@
+```csharp
+[assembly: FormulaAssembly("swapTokensForEth")]
+
+namespace Sauron.Formula.SwapTokensForEth
+{
+    public class SwapTokensForEthFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !tokenPrices?.Any() ?? false)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var userAddresses = info.FromAddresses.Union(info.ToAddresses).Distinct();
+
+            // Assuming that the token is always the first in the path and WETH is always the second
+            var tokenTransfers = info.GetTokenTransfers(info.Transfers.FirstOrDefault()?.TokenInfo);
+
+            var userPNLs = new Dictionary<string, BigDecimal>();
+
+            foreach (var address in userAddresses)
+            {
+                var totalTokenAmountSentByUser = tokenTransfers
+                    .Where(t => t.FromAddress == address && t.ToAddress != info.ContractAddress)
+                    .Sum(t => t.Value);
+
+                var totalEthReceivedByUser = info.GetEtherTransfers()
+                    .Where(t => t.ToAddress == address && t.FromAddress == info.ContractAddress)
+                    .Sum(t => t.Value);
+
+                // Subtracting fees from the received ETH
+                totalEthReceivedByUser -= info.Fee;
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == info.Transfers.FirstOrDefault()?.TokenInfo.Symbol).Value ?? 0;
+
+                // Calculating PNL in ETH
+                var pnlInEth = totalEthReceivedByUser - (totalTokenAmountSentByUser * new BigDecimal(tokenPrice));
+
+                userPNLs[address] = pnlInEth;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(userPNLs);
+        }
+    }
+}
+```

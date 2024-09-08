@@ -1,0 +1,67 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+
+    public class _updateFormula : IFormulaPlugin
+    {
+        private BigInteger price0CumulativeLast = 0;
+        private BigInteger price1CumulativeLast = 0;
+        private uint blockTimestampLast = 0;
+        private BigInteger reserve0 = 0;
+        private BigInteger reserve1 = 0;
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            uint balance0 = info.FromBalance; // Replace with actual property from TransactionInfo class
+            uint balance1 = info.ToBalance;   // Replace with actual property from TransactionInfo class
+            BigInteger _reserve0 = reserve0;
+            BigInteger _reserve1 = reserve1;
+
+            if (balance0 <= (uint)(BigInteger.Pow(2, 112) - 1) && balance1 <= (uint)(BigInteger.Pow(2, 112) - 1))
+            {
+                uint blockTimestamp = (uint)((DateTimeOffset)info.BlockTime).ToUnixTimeSeconds() % (uint)(Math.Pow(2, 32)); // Replace with actual property from TransactionInfo class
+                uint timeElapsed = blockTimestamp - blockTimestampLast;
+
+                if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+                {
+                    price0CumulativeLast += (_reserve1 * BigInteger.Pow(2, 112)) / _reserve0 * timeElapsed;
+                    price1CumulativeLast += (_reserve0 * BigInteger.Pow(2, 112)) / _reserve1 * timeElapsed;
+                }
+
+                reserve0 = (BigInteger)balance0;
+                reserve1 = (BigInteger)balance1;
+                blockTimestampLast = blockTimestamp;
+            }
+            else
+            {
+                // Handle the overflow case or throw an error as required by the Solidity contract
+            }
+
+            BigDecimal pnl = CalculatePNL(info.FromAddress, info.ToAddress, tokenPrices); // Implement this method based on your requirements
+
+            var result = new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>(info.FromAddress, -pnl)
+            };
+
+            if (info.FromAddress != info.ToAddress) // Assuming PNL for the recipient is not calculated as it's done for the sender
+            {
+                result.Add(new KeyValuePair<string, BigDecimal>(info.ToAddress, pnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+
+        private BigDecimal CalculatePNL(string fromAddress, string toAddress, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            // Implement PNL calculation based on the provided addresses and token prices
+            throw new NotImplementedException();
+        }
+    }
+}
+```

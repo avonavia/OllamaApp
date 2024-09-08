@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal(info.DecodedInput[0]);
+            var reserve1 = new BigDecimal(info.DecodedInput[1]);
+            var kLast = info.Transaction.BlockNumber > 1 ? GetKLastFromPreviousBlock() : BigDecimal.Zero; // assume GetKLastFromPreviousBlock() is a method that gets the value of kLast from previous block
+
+            var feeTo = GetFeeTo(); // assume GetFeeTo() is a method that gets the feeTo address
+            bool feeOn = feeTo != "0x0";
+
+            BigDecimal pnl = BigDecimal.Zero;
+            if (feeOn)
+            {
+                if (kLast > BigDecimal.Zero)
+                {
+                    var rootK = (reserve0 * reserve1).Sqrt();
+                    var rootKLast = kLast.Sqrt();
+
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = GetTotalSupply(); // assume GetTotalSupply() is a method that gets the total supply of tokens
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = (rootK * 5) + rootKLast;
+                        var liquidity = numerator / denominator;
+
+                        if (liquidity > BigDecimal.Zero)
+                            pnl -= ConvertToEth(liquidity, tokenPrices); // assume ConvertToEth() is a method that converts the amount of tokens to Eth using provided prices
+                    }
+                }
+            }
+            else if (kLast > BigDecimal.Zero)
+            {
+                kLast = BigDecimal.Zero;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>()
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) }
+            };
+        }
+    }
+}
+```

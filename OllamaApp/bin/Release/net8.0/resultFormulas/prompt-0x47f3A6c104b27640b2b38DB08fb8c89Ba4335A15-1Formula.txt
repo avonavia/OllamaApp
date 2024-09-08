@@ -1,0 +1,23 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        // This formula returns reserves and the last block timestamp of a liquidity pool
+        // Returns null if transaction info does not contain required data
+        public CalculationResult<(BigDecimal reserve0, BigDecimal reserve1, uint blockTimestampLast)> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new CalculationResult<(BigDecimal reserve0, BigDecimal reserve1, uint blockTimestampLast)>();
+
+            // Check if the required data exists in transaction info
+            if (info.Reserve0 == null || info.Reserve1 == null || info.BlockTimestampLast == null)
+                return result;
+
+            // Return reserves and last block timestamp
+            result.Result = (info.Reserve0, info.Reserve1, info.BlockTimestampLast);
+            return result;
+        }
+    }
+}
+```

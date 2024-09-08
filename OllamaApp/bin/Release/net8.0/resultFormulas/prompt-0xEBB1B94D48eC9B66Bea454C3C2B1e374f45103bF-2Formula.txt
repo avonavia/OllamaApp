@@ -1,0 +1,48 @@
+Here is the corresponding C# Formula method:
+
+```csharp
+using Nethereum.Util;
+using System.Numerics;
+using Sauron.Formula.Common;
+using System.Linq;
+using System.Collections.Generic;
+
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        private const string TransferSelector = "0xa9059cbb"; // This is a placeholder, replace with actual selector if available
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var resultDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.ToAddress == info.FromAddress && transfer.Data.StartsWith(TransferSelector))
+                {
+                    // Decrease PNL by transferred token value in ETH
+                    if (tokenPrices != null)
+                    {
+                        var tokenPrice = tokenPrices.FirstOrDefault(t => t.Key == transfer.TokenInfo.Symbol).Value;
+                        var pnlChange = -(transfer.Amount * new BigDecimal((decimal)tokenPrice));
+                        UpdatePNL(resultDictionary, info.FromAddress, pnlChange);
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(resultDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+
+        private void UpdatePNL(Dictionary<string, BigDecimal> pnlMap, string address, BigDecimal change)
+        {
+            if (pnlMap.ContainsKey(address))
+                pnlMap[address] += change;
+            else
+                pnlMap.Add(address, change);
+        }
+    }
+}
+```

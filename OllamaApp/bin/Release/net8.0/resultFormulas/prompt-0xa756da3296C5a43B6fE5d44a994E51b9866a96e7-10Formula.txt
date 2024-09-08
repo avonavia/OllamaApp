@@ -1,0 +1,43 @@
+Here is a C# method that calculates the PNL based on the provided Solidity contract method:
+```csharp
+using System;
+using System.Numerics;
+
+public class Calculator
+{
+    // Assuming all necessary state variables are defined as properties of this class
+
+    public BigInteger CalculatePNL(BigInteger fromBalance, BigInteger toBalance, BigInteger amount)
+    {
+        var taxAmount = BigInteger.Zero;
+
+        if (from != Owner && to != Owner && to != TaxWallet && !Bots[From] && !Bots[To])
+        {
+            if(BuyCount == 0)
+                taxAmount = amount * (BuyCount > ReduceBuyTaxAt ? FinalBuyTax : InitialBuyTax) / 100;
+            else
+                taxAmount = amount * TransferTax / 100;
+
+            if (From == UniswapV2Pair && To != Address(UniswapV2Router) && !IsExcludedFromFee[To])
+            {
+                // Add additional checks and calculations for PNL based on UniswapV2Pair transfer
+            }
+
+            if (To == UniswapV2Pair && From != Address(this))
+            {
+                taxAmount = amount * (BuyCount > ReduceSellTaxAt ? FinalSellTax : InitialSellTax) / 100;
+                // Add additional calculations for PNL based on UniswapV2Pair transfer
+            }
+        }
+
+        var pnl = BigInteger.Zero;
+        if (taxAmount > 0)
+            pnl -= taxAmount * EthPrice; // Assuming EthPrice is the current price of ETH in USD
+
+        pnl += amount * EthPrice - taxAmount * EthPrice; // Add the value of the transferred tokens and subtract the tax amount
+
+        return pnl;
+    }
+}
+```
+The method calculates the PNL by first checking if any tax is applicable based on the provided Solidity contract method. If tax applies, it calculates the tax amount and updates the PNL accordingly. Finally, it returns the total PNL in USD. Note that this code assumes that all necessary state variables are defined as properties of the `Calculator` class, and that `EthPrice` is a property that represents the current price of ETH in USD.

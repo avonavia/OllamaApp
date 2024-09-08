@@ -1,0 +1,60 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserve0 and reserve1 values from the transaction input data
+            var _reserve0 = DecodeUint112(info.InputData);
+            var _reserve1 = DecodeUint112(info.InputData, 34);
+
+            // Calculate the feeTo address using IUniswapV2Factory interface and factory address
+            var feeTo = GetFeeToAddressUsingIUniswapV2Factory(info.ContractAddress);
+
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            if (feeTo != "0x0") // If feeTo is not zero address
+            {
+                var kLast = GetKLastValue(); // Assuming there's a method to get the value of kLast
+                if (kLast != 0)
+                {
+                    var rootK = BigDecimal.Sqrt(_reserve0 * _reserve1);
+                    var rootKLast = BigDecimal.Sqrt(kLast);
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = GetTotalSupply(); // Assuming there's a method to get the value of totalSupply
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = rootK * 5 + rootKLast;
+                        var liquidity = numerator / denominator;
+                        if (liquidity > 0)
+                        {
+                            // Subtract the minted fee from the user's address PNL
+                            UpdatePnlResult(pnlResult, info.FromAddress, -liquidity);
+
+                            // Add the minted fee to the feeTo address PNL
+                            UpdatePnlResult(pnlResult, feeTo, liquidity);
+                        }
+                    }
+                }
+            }
+            else if (GetKLastValue() != 0) // If feeTo is zero address and kLast is not zero
+            {
+                SetKLastValue(0); // Assuming there's a method to set the value of kLast
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult);
+        }
+
+        private void UpdatePnlResult(Dictionary<string, BigDecimal> pnlResult, string address, BigDecimal amount)
+        {
+            if (pnlResult.ContainsKey(address))
+                pnlResult[address] += amount;
+            else
+                pnlResult.Add(address, amount);
+        }
+    }
+}
+```

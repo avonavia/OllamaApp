@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")] // This should be EXACTLY as function name in Solidity contract
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.From == info.FromAddress && transfer.To != info.FromAddress) // User sent tokens to someone else
+                {
+                    var tokenSymbol = transfer.TokenInfo.Symbol;
+                    var amountSent = transfer.Amount - info.Fee; // Subtracting fee
+                    var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == tokenSymbol).Value ?? 0m; // Get price of the token if provided, else default to 0
+                    var amountInEth = (decimal)amountSent * tokenPrice;
+
+                    if (!pnl.ContainsKey(info.FromAddress))
+                        pnl[info.FromAddress] = new BigDecimal(-amountInEth); // Negative PNL as user sent tokens
+                    else
+                        pnl[info.FromAddress] -= amountInEth; // Subtract from existing PNL
+                }
+                else if (transfer.To == info.FromAddress && transfer.From != info.FromAddress) // User received tokens from someone else
+                {
+                    var tokenSymbol = transfer.TokenInfo.Symbol;
+                    var amountReceived = transfer.Amount;
+                    var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == tokenSymbol).Value ?? 0m; // Get price of the token if provided, else default to 0
+                    var amountInEth = (decimal)amountReceived * tokenPrice;
+
+                    if (!pnl.ContainsKey(info.FromAddress))
+                        pnl[info.FromAddress] = new BigDecimal(amountInEth); // Positive PNL as user received tokens
+                    else
+                        pnl[info.FromAddress] += amountInEth; // Add to existing PNL
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

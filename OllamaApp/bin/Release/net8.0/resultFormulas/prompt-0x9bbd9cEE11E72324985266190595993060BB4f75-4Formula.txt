@@ -1,0 +1,58 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // Calculate PNL based on the provided transaction information and token prices
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Ensure that required fields are not null
+            if (info.ToAddress == null || info.FromAddress == null || info.BlockTimestamp == null || info.InputParameters == null || info.InputParameters.Count < 4)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Parse input parameters
+            var balance0 = (uint)info.InputParameters[0];
+            var balance1 = (uint)info.InputParameters[1];
+            var _reserve0 = (uint)(BigInteger)info.InputParameters[2];
+            var _reserve1 = (uint)(BigInteger)info.InputParameters[3];
+
+            // Calculate price cumulatives and time elapsed
+            uint blockTimestampLast = 0; // This value should be retrieved from the contract's state
+            uint price0CumulativeLast = 0, price1CumulativeLast = 0; // These values should be retrieved from the contract's state
+
+            var blockTimestamp = (uint)(info.BlockTimestamp % BigInteger.Pow(2, 32));
+            var timeElapsed = blockTimestamp - blockTimestampLast;
+
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                var reserveRatio0 = (BigDecimal)_reserve1 / (BigDecimal)_reserve0;
+                var reserveRatio1 = (BigDecimal)_reserve0 / (BigDecimal)_reserve1;
+
+                price0CumulativeLast += (uint)(reserveRatio0 * timeElapsed);
+                price1CumulativeLast += (uint)(reserveRatio1 * timeElapsed);
+            }
+
+            // Calculate PNL based on the swap amounts and token prices
+            var pnl = BigDecimal.Zero;
+            if (info.ToAddress != info.FromAddress)
+            {
+                var amount0In = new BigDecimal(balance0 - _reserve0);
+                var amount1In = new BigDecimal(balance1 - _reserve1);
+
+                pnl -= amount0In * tokenPrices?.FirstOrDefault(t => t.Key == "Token0").Value ?? 0;
+                pnl += amount1In * tokenPrices?.FirstOrDefault(t => t.Key == "Token1").Value ?? 0;
+            }
+
+            // Subtract transaction fee from PNL
+            if (info.GasPrice != null && info.GasUsed != null)
+                pnl -= info.GasPrice * info.GasUsed;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+    }
+}
+```

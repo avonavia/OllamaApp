@@ -1,0 +1,15 @@
+Here's how you can create an equivalent method for the Solidity function `swapTokensForExactTokens` in C#. This is assuming that you have methods for equivalent functionality already implemented:
+
+```csharp
+public async Task<uint[]> SwapTokensForExactTokensAsync(uint amountOut, uint amountInMax, IList<string> path, string to, uint deadline)
+{
+    var amounts = await UniswapV2Library.GetAmountsInAsync(_factory, amountOut, path);
+
+    if (amounts[0] > amountInMax)
+        throw new Exception("UniswapV2Router: EXCESSIVE_INPUT_AMOUNT");
+
+    await TransferHelper.SafeTransferFromAsync(path[0], _msgSender, UniswapV2Library.PairFor(_factory, path[0], path[1]), amounts[0]);
+
+    return await SwapAsync(amounts, path, to);
+}
+```

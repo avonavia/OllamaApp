@@ -1,0 +1,27 @@
+```csharp
+using System;
+using System.Numerics;
+
+namespace Sauron.Formula
+{
+    public static class TryMul
+    {
+        /// <summary>
+        /// Tries to perform multiplication of two unsigned big integers.
+        /// </summary>
+        /// <param name="a">The first unsigned big integer.</param>
+        /// <param name="b">The second unsigned big integer.</param>
+        /// <returns>A tuple where the first element indicates whether the operation was successful and the second element is the result of the multiplication if it was successful.</returns>
+        public static (bool Success, BigInteger Result) TryMultiply(BigInteger a, BigInteger b)
+        {
+            if (a == 0) return (true, 0);
+
+            BigInteger c = a * b;
+            if (c / a != b) return (false, 0);
+
+            return (true, c);
+        }
+    }
+}
+```
+In this C# code, we have defined a static class `TryMul` with a method `TryMultiply`. This method takes two `BigInteger` parameters `a` and `b`, and returns a tuple where the first element is a `bool` indicating whether the multiplication was successful (i.e., whether overflow occurred) and the second element is the result of the multiplication if it was successful, or 0 otherwise. The method follows the logic of the Solidity function you provided.

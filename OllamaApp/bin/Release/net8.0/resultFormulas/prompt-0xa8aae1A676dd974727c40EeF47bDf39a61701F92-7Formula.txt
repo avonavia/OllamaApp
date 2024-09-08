@@ -1,0 +1,29 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: Sauron.Core.ModuleInfo("Sauron.Formula.Burn", "1.0.0")]
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Calculation method for Burn transaction
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = (decimal)info.Reserves[0];
+            var reserve1 = (decimal)info.Reserves[1];
+            var balance0 = (decimal)info.Balances[0];
+            var balance1 = (decimal)info.Balances[1];
+            var liquidity = (decimal)info.Liquidity;
+            var totalSupply = (decimal)info.TotalSupply;
+
+            // Calculate the amount of tokens burned for each token
+            var amount0 = BigDecimal.Multiply(liquidity, balance0).Divide(totalSupply);
+            var amount1 = BigDecimal.Multiply(liquidity, balance1).Divide(totalSupply);
+
+            // Calculate the value of tokens burned in Eth
+            var pnl = BigDecimal.Subtract((amount0 * tokenPrices["Token0"] + amount1 * tokenPrices["Token1"]), info.Fee);
+
+            return new CalculationResult<BigDecimal?>(pnl, null);
+        }
+    }
+}
+```

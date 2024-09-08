@@ -1,0 +1,85 @@
+```csharp
+// Assembly info for PNL calculation formula of _update function
+[assembly: FormulaAssembly("UniswapV2_Update")]
+
+namespace Sauron.Formula.UniswapV2_Update
+{
+    using Nethereum.RPC.Eth.DTOs;
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+    using System.Linq;
+
+    public class UniswapV2_UpdateFormula : IFormulaPlugin
+    {
+        // Calculation formula for _update method in Solidity contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info == null || !info.Transfers.Any()) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null);
+
+            // Variables to hold the cumulative prices for both tokens
+            BigDecimal price0CumulativeLast = 0;
+            BigDecimal price1CumulativeLast = 0;
+
+            // Variable to hold the last block timestamp
+            uint blockTimestampLast = 0;
+
+            var pnlData = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                // Check if the token is involved in the pair and calculate PNL based on that
+                if (transfer.TokenAddress == info.ContractInfo.Address) // Assuming token0 address
+                {
+                    var balance0 = new BigDecimal(transfer.ToAmount);
+                    var reserve1 = new BigDecimal((uint)info.ContractState[nameof(reserve1)] ?? 0);
+                    if (balance0 > uint.MaxValue || reserve1 > uint.MaxValue) continue; // Skip calculation for overflow cases
+
+                    CalculateCumulativePrices(ref price0CumulativeLast, ref price1CumulativeLast, blockTimestampLast, info.BlockNumber, balance0, reserve1);
+                    blockTimestampLast = (uint)(info.BlockNumber % uint.MaxValue); // Update last block timestamp
+
+                    var pnl = CalculatePNL(price0CumulativeLast, price1CumulativeLast, balance0, reserve1, transfer.Fee);
+                    AddOrUpdatePNL(pnlData, transfer.FromAddress, pnl);
+                }
+                else if (transfer.TokenAddress == "TOKEN1_ADDRESS") // Assuming token1 address
+                {
+                    var balance1 = new BigDecimal(transfer.ToAmount);
+                    var reserve0 = new BigDecimal((uint)info.ContractState[nameof(reserve0)] ?? 0);
+                    if (balance1 > uint.MaxValue || reserve0 > uint.MaxValue) continue; // Skip calculation for overflow cases
+
+                    CalculateCumulativePrices(ref price0CumulativeLast, ref price1CumulativeLast, blockTimestampLast, info.BlockNumber, balance1, reserve0);
+                    blockTimestampLast = (uint)(info.BlockNumber % uint.MaxValue); // Update last block timestamp
+
+                    var pnl = CalculatePNL(price1CumulativeLast, price0CumulativeLast, balance1, reserve0, transfer.Fee);
+                    AddOrUpdatePNL(pnlData, transfer.FromAddress, pnl);
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(pnlData);
+        }
+
+        // Helper function to calculate cumulative prices for both tokens
+        private void CalculateCumulativePrices(ref BigDecimal price0CumulativeLast, ref BigDecimal price1CumulativeLast, uint blockTimestampLast, ulong currentBlockNumber, BigDecimal balance, BigDecimal reserve)
+        {
+            var timeElapsed = (uint)(currentBlockNumber % uint.MaxValue) - blockTimestampLast; // Overflow is desired
+            if (timeElapsed > 0 && reserve != 0)
+                price0CumulativeLast += BigDecimal.Divide(balance, reserve) * timeElapsed;
+        }
+
+        // Helper function to calculate PNL for a given token balance and reservation
+        private BigDecimal CalculatePNL(BigDecimal priceCumulativeLast, BigDecimal reserve, BigDecimal balance, BigDecimal otherReserve, BigDecimal fee)
+            => (priceCumulativeLast * balance / reserve - otherReserve) - fee;
+
+        // Helper function to add or update PNL data for a given address
+        private void AddOrUpdatePNL(Dictionary<string, BigDecimal> pnlData, string address, BigDecimal pnl)
+        {
+            if (pnlData.ContainsKey(address))
+                pnlData[address] += pnl;
+            else
+                pnlData.Add(address, pnl);
+        }
+    }
+}
+```
+This code assumes that the addresses for token0 and token1 are known and hardcoded as "TOKEN0_ADDRESS" and "TOKEN1_ADDRESS", respectively. Also, it calculates PNL for each transfer involving either of the tokens in the pair. The implementation can be further optimized based on actual data structures and requirements.

@@ -1,0 +1,34 @@
+Here's the corresponding C# code for your Solidity function:
+
+```csharp
+namespace Sauron.Formula.TryMod
+{
+    public class TryModFormula : IFormulaPlugin
+    {
+        // Method to calculate modulo and check if divisor is zero
+        public CalculationResult<KeyValuePair<bool, BigInteger>> Formula(BigInteger a, BigInteger b)
+        {
+            bool isSuccess;
+            BigInteger result;
+
+            unchecked
+            {
+                if (b == 0)
+                {
+                    isSuccess = false;
+                    result = 0;
+                }
+                else
+                {
+                    isSuccess = true;
+                    result = a % b;
+                }
+            }
+
+            return CalculationResult<KeyValuePair<bool, BigInteger>>.Success(new KeyValuePair<bool, BigInteger>(isSuccess, result));
+        }
+    }
+}
+```
+
+The provided code defines a class `TryModFormula` which implements the interface `IFormulaPlugin`. It contains a method named `Formula` that takes two parameters of type `BigInteger`. This method performs modulo operation on these parameters and checks if the divisor is zero. It returns a `CalculationResult<KeyValuePair<bool, BigInteger>>`, which consists of a boolean value (true if divisor was not zero, false otherwise) and the result of the modulo operation.

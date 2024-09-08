@@ -1,0 +1,61 @@
+Here is a C# Formula method for the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("UNISWAPV2_PNL")]
+
+namespace Sauron.Formula.UNISWAPV2
+{
+    public class UNISWAPV2PNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Assuming balance0 and balance1 are the initial balances of tokens 0 and 1 for the user
+            BigDecimal balance0 = info.FromBalance;
+            BigDecimal balance1 = info.ToBalance;
+
+            // Assuming _reserve0 and _reserve1 are the reserves of tokens 0 and 1 in the pool
+            // These values can be fetched from the blockchain state or the TransactionInfo object
+            BigDecimal reserve0 = new BigDecimal(info.Reserve0);
+            BigDecimal reserve1 = new BigDecimal(info.Reserve1);
+
+            // Assuming price0CumulativeLast and price1CumulativeLast are the cumulative prices of tokens 0 and 1 since the last sync event
+            // These values can be fetched from the blockchain state or calculated using previous transactions
+            BigDecimal price0CumulativeLast = new BigDecimal(info.Price0CumulativeLast);
+            BigDecimal price1CumulativeLast = new BigDecimal(info.Price1CumulativeLast);
+
+            // Assuming blockTimestampLast is the timestamp of the last sync event
+            // This value can be fetched from the blockchain state or calculated using previous transactions
+            uint32 blockTimestampLast = info.BlockTimestampLast;
+
+            // Calculate the current block timestamp
+            uint32 blockTimestamp = (uint32)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % Math.Pow(2, 32));
+
+            // Calculate the time elapsed since the last sync event
+            uint32 timeElapsed = blockTimestamp - blockTimestampLast;
+
+            if (timeElapsed > 0 && reserve0 != 0 && reserve1 != 0)
+            {
+                // Update the cumulative prices based on the new reserves and time elapsed
+                price0CumulativeLast += (UQ112x112.Encode(reserve1).UDiv(reserve0)) * timeElapsed;
+                price1CumulativeLast += (UQ112x112.Encode(reserve0).UDiv(reserve1)) * timeElapsed;
+            }
+
+            // Calculate the PNL for each user address involved in the transaction
+            BigDecimal pnlUser0 = (balance0 - reserve0) * price0CumulativeLast / new BigDecimal(Math.Pow(2, 112));
+            BigDecimal pnlUser1 = (balance1 - reserve1) * price1CumulativeLast / new BigDecimal(Math.Pow(2, 112));
+
+            // Add the PNL results to the list
+            pnlResults.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlUser0 - info.Fee));
+            if (info.ToAddress != info.FromAddress)
+            {
+                pnlResults.Add(new KeyValuePair<string, BigDecimal>(info.ToAddress, pnlUser1));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults);
+        }
+    }
+}
+```

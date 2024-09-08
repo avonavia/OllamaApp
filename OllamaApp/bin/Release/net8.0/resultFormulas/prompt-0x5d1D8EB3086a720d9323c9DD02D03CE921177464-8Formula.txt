@@ -1,0 +1,25 @@
+```csharp
+using System;
+// PNL Calculation for UniswapV2 swap function
+namespace UniswapPNLCalculator
+{
+    public class SwapPNLCalculator
+    {
+        // Method to calculate PNL for a given swap transaction. Returns PNL in Eth.
+        public static decimal CalculateSwapPNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1,
+                                              decimal token0PriceInEth, decimal token1PriceInEth, decimal feePercent)
+        {
+            // Calculating the input amounts considering the fee
+            decimal amount0In = amount0Out / (1 - feePercent) * (reserve1 - amount1Out) / reserve1;
+            decimal amount1In = amount1Out / (1 - feePercent) * (reserve0 - amount0Out) / reserve0;
+
+            // Calculating the value of tokens in and out in Eth
+            decimal valueOfTokensInEth = amount0In * token0PriceInEth + amount1In * token1PriceInEth;
+            decimal valueOfTokensOutEth = amount0Out * token0PriceInEth + amount1Out * token1PriceInEth;
+
+            // Calculating PNL
+            return valueOfTokensOutEth - valueOfTokensInEth;
+        }
+    }
+}
+```

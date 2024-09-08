@@ -1,0 +1,57 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get unique tokens in transaction
+            var distinctTokens = info.GetDistinctTokens();
+
+            if (distinctTokens == null || !tokenPrices?.Any() ?? false)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Initialize a dictionary to store PNL for each address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in distinctTokens)
+            {
+                // Get the price of the token
+                var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == token.Symbol).Value;
+
+                if (tokenPrice <= 0)
+                    continue;
+
+                // Calculate PNL for each transfer in the transaction
+                foreach (var transfer in info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol))
+                {
+                    var pnl = BigDecimal.Zero;
+
+                    if (transfer.FromAddress == info.ContractAddress)
+                        // If tokens were sent from the contract, subtract the value of those tokens from PNL
+                        pnl -= transfer.Amount * tokenPrice;
+                    else if (transfer.ToAddress == info.ContractAddress)
+                        // If tokens were received by the contract, add the value of those tokens to PNL
+                        pnl += transfer.Amount * tokenPrice;
+
+                    // Subtract fee from PNL if necessary
+                    if (info.FromAddress != info.ToAddress && transfer.FromAddress == info.FromAddress)
+                        pnl -= info.Fee * info.EthPrice;
+
+                    // Update PNL for the address in the dictionary
+                    if (!pnlDictionary.ContainsKey(transfer.FromAddress))
+                        pnlDictionary[transfer.FromAddress] = pnl;
+                    else
+                        pnlDictionary[transfer.FromAddress] += pnl;
+                }
+            }
+
+            // Convert dictionary to IEnumerable<KeyValuePair<string, BigDecimal>> and return as CalculationResult
+            var result = pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value));
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

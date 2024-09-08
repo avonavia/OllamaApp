@@ -1,0 +1,32 @@
+```csharp
+[assembly: FormulaAssembly("sync")] // This must match the exact function name in Solidity contract
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Calculate PNL for each user address involved in the transaction
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                if (transfer.ToAddress == info.ContractAddress) // If the tokens are being transferred to the contract address
+                {
+                    var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value ?? 0;
+                    var amountInEth = (transfer.Amount * new BigDecimal((decimal)tokenPrice));
+
+                    // If the user sent tokens to the contract, subtract the value from their PNL
+                    if (transfer.FromAddress != info.ContractAddress)
+                        pnlResults.AddOrUpdate(transfer.FromAddress, -amountInEth);
+                }
+            }
+
+            // Return the calculation results
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults);
+        }
+    }
+}
+```

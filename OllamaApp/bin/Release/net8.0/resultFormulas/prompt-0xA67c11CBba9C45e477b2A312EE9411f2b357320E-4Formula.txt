@@ -1,0 +1,34 @@
+//Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("Approve")]
+
+namespace Sauron.Formula.Approve
+{
+    public class ApproveFormula : IFormulaPlugin
+    {
+        //Calculation method for 'Approve' Solidity contract function
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            //Iterate through all transfers in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                //Check if user address is present in both From and To addresses of any transfer
+                if (info.FromAddress == transfer.From || info.FromAddress == transfer.To)
+                {
+                    //Subtract fee from PNL only when the sender is not approving for themselves
+                    var pnl = transfer.From != transfer.To ? BigDecimal.Zero - transfer.Fee : BigDecimal.Zero;
+
+                    //Update or add user address to result dictionary with calculated PNL
+                    if (result.ContainsKey(info.FromAddress))
+                        result[info.FromAddress] += pnl;
+                    else
+                        result[info.FromAddress] = pnl;
+                }
+            }
+
+            //Return the final result as CalculationResult object with user addresses and their calculated PNL
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}

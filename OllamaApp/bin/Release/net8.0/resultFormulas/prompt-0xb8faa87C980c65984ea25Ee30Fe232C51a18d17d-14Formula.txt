@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("transferFrom")]
+namespace Sauron.Formula.TransferFrom
+{
+    public class TransferFromFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var fromAddress = info.From;
+            var toAddress = info.To;
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TransferInfo>())
+            {
+                // If the user is transferring tokens from themselves, subtract the amount from their PNL
+                if (transfer.From == fromAddress)
+                    SubtractAmount(pnlDictionary, fromAddress, transfer.Amount);
+
+                // If the user is receiving tokens to themselves, add the amount to their PNL
+                if (transfer.To == fromAddress)
+                    AddAmount(pnlDictionary, fromAddress, transfer.Amount);
+
+                // If the user is sending tokens to someone else, subtract the fee and amount from their PNL
+                if (transfer.From == fromAddress && transfer.To != fromAddress)
+                    SubtractAmount(pnlDictionary, fromAddress, transfer.Fee + transfer.Amount);
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+
+        private void SubtractAmount(Dictionary<string, BigDecimal> dictionary, string address, BigDecimal amount)
+        {
+            if (dictionary.ContainsKey(address))
+                dictionary[address] -= amount;
+            else
+                dictionary[address] = -amount;
+        }
+
+        private void AddAmount(Dictionary<string, BigDecimal> dictionary, string address, BigDecimal amount)
+        {
+            if (dictionary.ContainsKey(address))
+                dictionary[address] += amount;
+            else
+                dictionary[address] = amount;
+        }
+    }
+}
+```

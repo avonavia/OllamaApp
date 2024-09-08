@@ -1,0 +1,36 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        // Calculate the PNL for the mint method in the Uniswap V2 contract
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the balance of both tokens before and after the mint operation
+            BigDecimal balance0BeforeMint = info.GetTokenBalanceBefore(info.FromAddress, info.ContractToken0);
+            BigDecimal balance1BeforeMint = info.GetTokenBalanceBefore(info.FromAddress, info.ContractToken1);
+            BigDecimal balance0AfterMint = info.GetTokenBalanceAfter(info.FromAddress, info.ContractToken0);
+            BigDecimal balance1AfterMint = info.GetTokenBalanceAfter(info.FromAddress, info.ContractToken1);
+
+            // Calculate the amount of tokens that were minted
+            BigDecimal amount0Minted = balance0BeforeMint - balance0AfterMint;
+            BigDecimal amount1Minted = balance1BeforeMint - balance1AfterMint;
+
+            // Subtract fees from the minted amounts (assuming fee is a constant)
+            BigDecimal feeRate = 0.05m; // Assume a 5% fee for simplicity, replace with actual fee calculation if needed
+            amount0Minted -= amount0Minted * feeRate;
+            amount1Minted -= amount1Minted * feeRate;
+
+            // Calculate the PNL in Eth using token prices (assuming tokenPrices contains price in Eth for each token)
+            BigDecimal pnlInEth = (amount0Minted * tokenPrices.First(p => p.Key == info.ContractToken0).Value) +
+                                   (amount1Minted * tokenPrices.First(p => p.Key == info.ContractToken1).Value);
+
+            // Return the calculated PNL in Eth
+            return new CalculationResult<BigDecimal>(pnlInEth, null);
+        }
+    }
+}
+```

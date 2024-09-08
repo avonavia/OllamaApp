@@ -1,0 +1,38 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var feeTo = info.DecodedData["feeTo"].ToString();
+            if (feeTo == "0x0") return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var reserve0 = (BigDecimal)info.DecodedData["_reserve0"];
+            var reserve1 = (BigDecimal)info.DecodedData["_reserve1"];
+            var kLast = (BigDecimal)(info.DecodedData["kLast"] ?? 0);
+
+            if (kLast != 0)
+            {
+                var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                var rootKLast = BigDecimal.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    var totalSupply = (BigDecimal)info.DecodedData["totalSupply"];
+                    var numerator = totalSupply * (rootK - rootKLast);
+                    var denominator = rootK * 5 + rootKLast;
+                    var liquidity = numerator / denominator;
+
+                    if (liquidity > 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(feeTo, liquidity) });
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

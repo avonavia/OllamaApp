@@ -1,0 +1,12 @@
+//Method to check if an address is excluded from maximum transaction allowed
+    public bool IsAddressExcludedFromMaximumTransaction(string address)
+    {
+        return ExcludemaximumTransactionAllowed.ContainsKey(address);
+    }
+
+    //Method to exclude or include an address from maximum transaction allowed
+    public void SetAddressExclusionFromMaximumTransaction(string address, bool value)
+    {
+        if (IsOwner())
+            ExcludemaximumTransactionAllowed[address] = value;
+    }

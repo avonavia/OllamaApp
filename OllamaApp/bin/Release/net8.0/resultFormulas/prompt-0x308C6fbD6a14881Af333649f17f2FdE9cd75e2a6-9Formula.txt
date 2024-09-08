@@ -1,0 +1,41 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info == null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                    { Result = null };
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (!pnl.ContainsKey(transfer.FromAddress))
+                    pnl[transfer.FromAddress] = 0;
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value ?? 1M;
+                pnl[transfer.FromAddress] -= transfer.Amount * new BigDecimal(tokenPrice);
+            }
+
+            if (info.Fee > 0)
+            {
+                var ethPrice = tokenPrices?.FirstOrDefault(p => p.Key == "ETH").Value ?? 1M;
+                pnl[info.FromAddress] -= info.Fee * new BigDecimal(ethPrice);
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value))
+            };
+        }
+    }
+}
+```
+
+This C# code calculates the PNL for each unique address involved in a transaction to determine the profit or loss. It subtracts the amount of tokens sent by the contract and the fee (if any) from the total balance of the sending addresses. The resulting value is expressed in Ethereum.

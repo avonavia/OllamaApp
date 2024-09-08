@@ -1,0 +1,18 @@
+//Assembly Info for PNL calculation without messages for user
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // PNL is not directly calculated from the reserves, so we return null as per rules.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = null
+            };
+        }
+    }
+}

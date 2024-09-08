@@ -1,0 +1,33 @@
+Sure! Here is a simple C# method for calculating PNL based on the provided Solidity contract method:
+
+```csharp
+using System;
+using System.Numerics;
+
+public class PnlCalculator
+{
+    public decimal CalculatePnl(decimal reserve0, decimal reserve1, decimal amount0Out, decimal amount1Out, bool isSameAddress)
+    {
+        // Calculate input amounts
+        decimal amount0In = amount0Out < reserve0 ? amount0Out : 0;
+        decimal amount1In = amount1Out < reserve1 ? amount1Out : 0;
+
+        // If the transaction does not involve any actual token transfer, PNL is zero
+        if (amount0In == 0 && amount1In == 0) return 0m;
+
+        // Calculate adjusted balances
+        decimal balance0Adjusted = (reserve0 - amount0Out).Multiply(1000);
+        decimal balance1Adjusted = (reserve1 - amount1Out).Multiply(1000);
+
+        // Calculate PNL based on the formula: PNL = (amountIn * price) - amountOut, where price = reserve1 / reserve0
+        decimal pnl = ((amount0In.Multiply((decimal)reserve1)) / (decimal)reserve0) - amount0Out;
+        pnl += ((amount1In.Multiply((decimal)reserve0)) / (decimal)reserve1) - amount1Out;
+
+        // If the receiving address is the same as the sender's, PNL should be zero
+        if (isSameAddress) return 0m;
+
+        return pnl;
+    }
+}
+```
+This method calculates the Profit and Loss (PNL) for a given swap operation in a Uniswap V2-like contract. It takes into account the reserves of two tokens, the amounts of tokens being swapped out, and whether the recipient address is the same as the sender's address. The PNL is calculated based on the formula: `PNL = (amountIn * price) - amountOut`, where `price` is the ratio of the reserve of one token to the reserve of the other token. If the recipient address is the same as the sender's, the method returns 0 as the PNL, since no profit or loss is incurred when a user swaps tokens to their own address.

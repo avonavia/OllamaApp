@@ -1,0 +1,36 @@
+//Method to get PNL for a transaction with token transfers
+   public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+   {
+       //Firstly check if there are any transfers in the transaction
+       if (info.Transfers == null || !info.Transfers.Any()) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Ok(null);
+
+       //Initialize a dictionary to store PNL for each address
+       var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+       foreach (var transfer in info.Transfers)
+       {
+           //If the transfer was from user's address
+           if (transfer.From == info.SenderAddress)
+           {
+               //Subtract the transferred amount from the sender's PNL
+               if (!pnlDictionary.ContainsKey(info.SenderAddress)) pnlDictionary[info.SenderAddress] = BigDecimal.Zero;
+               pnlDictionary[info.SenderAddress] -= transfer.Amount;
+           }
+
+           //If the transfer was to user's address
+           if (transfer.To == info.SenderAddress)
+           {
+               //Add the transferred amount to the recipient's PNL
+               if (!pnlDictionary.ContainsKey(info.SenderAddress)) pnlDictionary[info.SenderAddress] = BigDecimal.Zero;
+               pnlDictionary[info.SenderAddress] += transfer.Amount;
+           }
+       }
+
+       //Subtract fee from sender's PNL
+       if (pnlDictionary.ContainsKey(info.SenderAddress)) pnlDictionary[info.SenderAddress] -= info.Fee;
+
+       //Convert token amounts to Eth and return the result
+       var result = ConvertTokenAmountsToEth(pnlDictionary, tokenPrices);
+       return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Ok(result);
+   }

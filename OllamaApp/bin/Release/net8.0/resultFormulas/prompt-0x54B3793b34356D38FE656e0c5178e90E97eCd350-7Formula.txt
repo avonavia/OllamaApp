@@ -1,0 +1,49 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Sauron")]
+namespace Sauron.Formula.Burn
+{
+    using Nethereum.Hex.HexTypes;
+    using Nethereum.RPC.Eth.DTOs;
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+
+    public class BurnFormula : IFormulaPlugin
+    {
+        // The main calculation method for burn operation PNL
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the balances of token0 and token1 from TransactionInfo object
+            var balance0 = BigDecimal.Parse(info.ReadLogs<HexBigInteger>("Balance0").SingleOrDefault()?.Value.ToString());
+            var balance1 = BigDecimal.Parse(info.ReadLogs<HexBigInteger>("Balance1").SingleOrDefault()?.Value.ToString());
+
+            // Get the total supply from TransactionInfo object
+            var totalSupply = BigDecimal.Parse(info.ReadLogs<HexBigInteger>("TotalSupply").SingleOrDefault()?.Value.ToString());
+
+            // Calculate the amount of tokens that are burned
+            var amount0 = balance0 * info.Balance / totalSupply;
+            var amount1 = balance1 * info.Balance / totalSupply;
+
+            // Get the price of token0 and token1 from tokenPrices dictionary
+            var priceToken0 = new BigDecimal(tokenPrices.Single(t => t.Key == info.ReadLogs<string>("Token0").FirstOrDefault()).Value);
+            var priceToken1 = new BigDecimal(tokenPrices.Single(t => t.Key == info.ReadLogs<string>("Token1").FirstOrDefault()).Value);
+
+            // Calculate the PNL in Eth
+            var pnl = amount0 * priceToken0 + amount1 * priceToken1;
+
+            // Subtract Fee if it exists
+            if (info.Fee > 0)
+            {
+                pnl -= info.Fee;
+            }
+
+            return new CalculationResult<BigDecimal?>
+            {
+                Result = pnl,
+                Message = null // Return no message for user as per the rules
+            };
+        }
+    }
+}
+```

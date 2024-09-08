@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlList = new List<KeyValuePair<string, BigDecimal>>();
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                var token0Balance = info.Transfers.FirstOrDefault(t => t.TokenInfo?.Symbol == "token0")?.Amount ?? BigDecimal.Zero;
+                var token1Balance = info.Transfers.FirstOrDefault(t => t.TokenInfo?.Symbol == "token1")?.Amount ?? BigDecimal.Zero;
+
+                // Calculate PNL using the given formula
+                var pnl = (token0Balance * tokenPrices.FirstOrDefault(p => p.Key == "token0").Value) + (token1Balance * tokenPrices.FirstOrDefault(p => p.Key == "token1").Value);
+                pnl -= info.Fee; // Subtract the transaction fee from PNL
+
+                // Add PNL to the list for all addresses involved in the transaction
+                foreach (var address in info.GetDistinctAddresses())
+                    pnlList.Add(new KeyValuePair<string, BigDecimal>(address, pnl));
+            }
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlList);
+        }
+    }
+}
+```

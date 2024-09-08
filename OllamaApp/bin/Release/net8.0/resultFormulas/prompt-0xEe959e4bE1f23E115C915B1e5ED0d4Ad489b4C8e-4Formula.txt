@@ -1,0 +1,68 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    using System;
+    using System.Collections.Generic;
+    using Nethereum.Hex.BigEndian;
+    using Nethereum.RPC.Eth.DTOs;
+    using Sauron.Engine.Models;
+    using Sauron.Shared.Services;
+    using BigDecimal = System.Numerics.BigInteger;
+
+    public class _updateFormula : IFormulaPlugin
+    {
+        private readonly ITransactionService _transactionService;
+        private BigDecimal reserve0, reserve1, price0CumulativeLast, price1CumulativeLast;
+        private uint blockTimestampLast;
+
+        // Assuming a dependency injection pattern for transaction service
+        public _updateFormula(ITransactionService transactionService)
+        {
+            _transactionService = transactionService;
+        }
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            // Get the input parameters from TransactionInfo object. Assuming they are already decoded and available as properties.
+            uint balance0 = info.Balance0;
+            uint balance1 = info.Balance1;
+            uint _reserve0 = info._Reserve0;
+            uint _reserve1 = info._Reserve1;
+
+            // Convert to BigDecimal for calculations
+            reserve0 = new BigDecimal(balance0);
+            reserve1 = new BigInteger(balance1);
+
+            if (_reserve0 != 0 && _reserve1 != 0)
+            {
+                uint blockTimestamp = (uint)(DateTimeOffset.Now.ToUnixTimeSeconds() % Math.Pow(2, 32)); // get current timestamp modulo 2^32
+                uint timeElapsed = unchecked(blockTimestamp - blockTimestampLast); // overflow is desired
+
+                if (timeElapsed > 0)
+                {
+                    price0CumulativeLast += BigDecimal.Multiply((BigInteger)_reserve1, new BigInteger(_reserve0)) * timeElapsed;
+                    price1CumulativeLast += BigDecimal.Multiply((BigInteger)_reserve0, new BigInteger(_reserve1)) * timeElapsed;
+                }
+            }
+
+            // Update reserves
+            reserve0 = new BigDecimal(balance0);
+            reserve1 = new BigDecimal(balance1);
+            blockTimestampLast = (uint)(DateTimeOffset.Now.ToUnixTimeSeconds() % Math.Pow(2, 32)); // update last timestamp
+
+            // Calculate PNL by subtracting fees from the change in token amounts
+            var pnl = BigDecimal.Subtract(BigDecimal.Multiply(reserve0, info.TokenPrice0), BigDecimal.Multiply(info.InitialReserve0, info.TokenPrice0)) +
+                      BigDecimal.Subtract(BigDecimal.Multiply(reserve1, info.TokenPrice1), BigDecimal.Multiply(info.InitialReserve1, info.TokenPrice1));
+            pnl = BigDecimal.Subtract(pnl, info.Fee); // subtract fees
+
+            result.Add(info.FromAddress, pnl); // add PNL for the user address
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = result };
+        }
+    }
+}
+```

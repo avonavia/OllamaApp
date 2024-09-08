@@ -1,0 +1,33 @@
+```csharp
+// This formula checks if the sender of the transaction is the tax wallet and updates the final buy/sell tax to the new fee if it meets the conditions.
+// As this method doesn't perform any operations that could result in a profit or loss for an address, it always returns null.
+
+using System;
+using System.Collections.Generic;
+using Nethereum.Hex.HexConvertors.Extensions;
+using Sauron.Core.Cryptography;
+using BigDecimal = System.Numerics.BigInteger;
+using KeyValuePair = System.Collections.Generic.KeyValuePair<string, BigDecimal>;
+
+namespace Sauron.Formula.ReduceFee
+{
+    public class ReduceFeeFormula : IFormulaPlugin
+    {
+        private readonly Address _taxWallet; // This should be initialized with the actual tax wallet address
+
+        public CalculationResult<IEnumerable<KeyValuePair>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var sender = new Address(info.From);
+            var newFee = info.GetInputParameter<BigDecimal>("_newFee"); // Assuming the input parameter is a BigDecimal named "_newFee"
+
+            if (sender == _taxWallet && newFee <= info._finalBuyTax && newFee <= info._finalSellTax)
+            {
+                info._finalBuyTax = newFee;
+                info._finalSellTax = newFee;
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair>?>.Success(null); // As this method doesn't calculate PNL, it returns null
+        }
+    }
+}
+```

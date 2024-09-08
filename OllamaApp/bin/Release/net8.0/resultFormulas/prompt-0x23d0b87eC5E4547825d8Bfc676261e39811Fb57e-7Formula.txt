@@ -1,0 +1,66 @@
+Here is a C# formula method for this Solidity contract method:
+
+```csharp
+using Sauron.Formula;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // IMPORTANT: This formula calculates the profit and loss for a burn transaction on UniswapV2-like protocols
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract data from TransactionInfo object
+            BigInteger totalSupply = (BigInteger)info.ReturnValues[0];
+            BigInteger reserve0 = (BigInteger)info.ReturnValues[1];
+            BigInteger reserve1 = (BigInteger)info.ReturnValues[2];
+            BigInteger balance0 = (BigInteger)info.TokenBalancesBefore[info.FromAddress][token0];
+            BigInteger balance1 = (BigInteger)info.TokenBalancesBefore[info.FromAddress][token1];
+            BigInteger liquidity = info.TokenBalancesBefore[info.FromAddress][LP_TOKEN];
+
+            // Calculate amount of tokens burned
+            decimal amount0 = (decimal)(liquidity * balance0) / totalSupply;
+            decimal amount1 = (decimal)(liquidity * balance1) / totalSupply;
+
+            // Check if fee is on, it is assumed that this is checked in the Solidity contract
+            bool feeOn = _mintFee(reserve0, reserve1);
+
+            // Calculate PNL
+            decimal pnl = 0;
+
+            // If fee is on, calculate the value of tokens burned before fee and update reserves
+            if (feeOn)
+            {
+                BigInteger kLast = reserve0 * reserve1;
+                BigInteger newReserve0 = Math.Sqrt((decimal)(reserve0 * reserve1 - amount0 * amount1));
+                BigInteger newReserve1 = (reserve0 * reserve1) / newReserve0;
+                decimal valueBurnedBeforeFee = (decimal)((kLast - newReserve0 * newReserve1) / totalSupply);
+
+                // Calculate the fee taken, assume it's a constant 0.3% of the total burned
+                decimal feeTaken = 0.003m * (amount0 + amount1);
+
+                // Update PNL with the value of tokens burned before fee and subtract the fee taken
+                pnl -= (valueBurnedBeforeFee - feeTaken) * tokenPrices[token0] + (amount1 * tokenPrices[token1]);
+            }
+            else
+            {
+                // If no fee, calculate the value of tokens burned and update PNL
+                pnl -= amount0 * tokenPrices[token0] + amount1 * tokenPrices[token1];
+            }
+
+            // Check if toAddress is the same as fromAddress, if not, subtract gas cost from PNL
+            if (info.ToAddress != info.FromAddress)
+            {
+                pnl -= GAS_COST;
+            }
+
+            return new CalculationResult<decimal?>(pnl);
+        }
+    }
+}
+```
+
+This formula calculates the profit and loss for a burn transaction on UniswapV2-like protocols. It assumes that all safety checks and calculations have already been performed in the Solidity contract, as specified. The PNL is calculated based on the value of tokens burned and any fees taken during the transaction. If the toAddress is different from the fromAddress, a gas cost is subtracted from the PNL.

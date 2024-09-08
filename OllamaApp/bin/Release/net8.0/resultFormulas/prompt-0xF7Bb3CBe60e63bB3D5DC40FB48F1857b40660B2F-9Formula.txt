@@ -1,0 +1,47 @@
+```csharp
+[assembly: FormulaAssembly("skim")] // this should be exactly as function name in Solidity contract
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlCalculations = new Dictionary<string, BigDecimal>();
+
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Find the price of the transferred token
+                    var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == transfer.TokenInfo.Symbol);
+                    if (!tokenPrice.Equals(default))
+                    {
+                        // Calculate the PNL in ETH for this transfer
+                        var pnlInEth = transfer.Amount * (BigDecimal)tokenPrice.Value;
+
+                        // If this is a transfer to the sender, subtract the fee, otherwise add it
+                        if (info.FromAddress == info.ToAddress)
+                            pnlInEth -= info.Fee;
+                        else
+                            pnlInEth += info.Fee; // considering that fees are paid in ETH
+
+                        // If the sender is not already in the dictionary, add them
+                        if (!pnlCalculations.ContainsKey(info.FromAddress))
+                            pnlCalculations[info.FromAddress] = 0;
+
+                        // Add or subtract the PNL from the sender's total
+                        pnlCalculations[info.FromAddress] += pnlInEth;
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = pnlCalculations.Any() ? pnlCalculations : null // return NULL if no PNL calculations were made
+            };
+        }
+    }
+}
+```

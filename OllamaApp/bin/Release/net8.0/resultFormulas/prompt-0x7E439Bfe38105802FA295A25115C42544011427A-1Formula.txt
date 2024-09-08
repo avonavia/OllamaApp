@@ -1,0 +1,30 @@
+```csharp
+//Assembly name should be exactly as function name in Solidity contract
+[assembly: FormulaAssembly("Add")]
+
+namespace Sauron.Formula.Add
+{
+    public class AddFormula : IFormulaPlugin
+    {
+        //Follow the same formula signature for all formulas
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, BigDecimal? x = null, BigDecimal? y = null)
+        {
+            if (x == null || y == null)
+                return new CalculationResult<BigDecimal?>("Input parameters are missing");
+
+            try
+            {
+                var z = x + y;
+                //Check for overflow
+                if (z < x)
+                    throw new OverflowException("ds-math-add-overflow");
+                return new CalculationResult<BigDecimal?>(z);
+            }
+            catch (OverflowException ex)
+            {
+                return new CalculationResult<BigDecimal?>($"Error: {ex.Message}");
+            }
+        }
+    }
+}
+```

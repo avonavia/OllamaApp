@@ -1,0 +1,26 @@
+// Assembly info for PNL calculation formula
+   [assembly: FormulaAssembly("GetReserves")]
+
+   namespace Sauron.Formula.GetReserves
+   {
+       public class GetReservesFormula : IFormulaPlugin
+       {
+           /// <summary>
+           /// Returns the reserve amounts of two tokens and the last block timestamp in which the pool was updated.
+           /// </summary>
+           /// <param name="info">Transaction info containing reserve information.</param>
+           /// <returns>Reserve amounts of token0, token1, and the last update block timestamp.</returns>
+           public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info)
+           {
+               var result = new List<KeyValuePair<string, BigDecimal>>()
+               {
+                   // Assuming reserve information is already decoded in the TransactionInfo object.
+                   new KeyValuePair<string, BigDecimal>("Token0", info.Reserve0),
+                   new KeyValuePair<string, BigDecimal>("Token1", info.Reserve1),
+                   new KeyValuePair<string, BigDecimal>("BlockTimestampLast", new BigDecimal(info.BlockTimestampLast)) // Convert to BigDecimal for consistency with other values.
+               };
+
+               return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+           }
+       }
+   }

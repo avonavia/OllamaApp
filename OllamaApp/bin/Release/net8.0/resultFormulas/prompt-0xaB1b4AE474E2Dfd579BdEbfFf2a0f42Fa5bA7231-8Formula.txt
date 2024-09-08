@@ -1,0 +1,37 @@
+// Make sure to use System; using BigInteger; for BigInteger operations in C#
+
+   /// <summary>
+   /// Calculates PNL for the swap operation in UniswapV2 contract. Assumes that input amounts are correct (validated by the contract).
+   /// </summary>
+   /// <param name="amount0Out">Amount of token0 sent to recipient</param>
+   /// <param name="amount1Out">Amount of token1 sent to recipient</param>
+   /// <param name="reserve0">Current reserve of token0 in the contract</param>
+   /// <param name="reserve1">Current reserve of token1 in the contract</param>
+   /// <param name="userBalance0">User's balance of token0 before swap</param>
+   /// <param name="userBalance1">User's balance of token1 before swap</param>
+   /// <param name="feePercentage">Fee percentage (3 in UniswapV2)</param>
+   /// <returns>PNL as BigInteger representing the amount of Eth gained or lost by user.</returns>
+   public static BigInteger CalculateSwapPnl(BigInteger amount0Out, BigInteger amount1Out, BigInteger reserve0, BigInteger reserve1, BigInteger userBalance0, BigInteger userBalance1, int feePercentage)
+   {
+       // Calculating the actual amounts sent to contract after fees
+       var amount0In = (userBalance0 > reserve0 - amount0Out) ? userBalance0 - (reserve0 - amount0Out) : 0;
+       var amount1In = (userBalance1 > reserve1 - amount1Out) ? userBalance1 - (reserve1 - amount1Out) : 0;
+
+       // Calculating the new reserves after swap (ignoring _update function for simplicity)
+       var newReserve0 = reserve0 + amount0In - amount0Out;
+       var newReserve1 = reserve1 + amount1In - amount1Out;
+
+       // Calculating user's share in the pool before and after swap, considering fees (3% is default)
+       var userShareBefore = ((userBalance0 * 1000 - amount0In * feePercentage) * (userBalance1 * 1000 - amount1In * feePercentage)) / BigInteger.Pow(1000, 2);
+       var userShareAfter = (newReserve0 * newReserve1) / BigInteger.Pow(1000, 2);
+
+       // Calculating PNL
+       var pnl = userShareAfter - userShareBefore;
+
+       // If sent tokens to recipient, subtract their value from PNL (assuming price is equal in both directions)
+       var totalOutValue = amount0Out * (reserve1 / reserve0) + amount1Out;
+       if (totalOutValue > 0)
+           pnl -= totalOutValue;
+
+       return pnl;
+   }

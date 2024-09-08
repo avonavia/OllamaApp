@@ -1,0 +1,57 @@
+//Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Check if the transaction has transfers
+            if (info.Transfers != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Get the token symbol and address
+                    var tokenSymbol = transfer.TokenInfo.Symbol;
+                    var tokenAddress = transfer.TokenInfo.Address;
+
+                    // Check if the transfer is to the user's address
+                    if (transfer.ToAddress == info.FromAddress)
+                    {
+                        // Calculate PNL for the token, considering the price if provided
+                        var amount = transfer.Amount;
+                        var price = GetTokenPrice(tokenPrices, tokenSymbol);
+                        var value = amount * price;
+
+                        // Update the total PNL for the user's address
+                        if (pnl.ContainsKey(info.FromAddress))
+                            pnl[info.FromAddress] += value;
+                        else
+                            pnl[info.FromAddress] = value;
+                    }
+                    // If the transfer is not to the user's address, it might be a loss for them if they hold tokens in this pool
+                }
+            }
+
+            // Subtract Fee from PNL
+            if (pnl.ContainsKey(info.FromAddress))
+                pnl[info.FromAddress] -= info.Fee;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Successful(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+
+        private static BigDecimal GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>>? tokenPrices, string tokenSymbol)
+        {
+            // Try to find the price of the token from the provided prices
+            if (tokenPrices != null && tokenPrices.Any(kvp => kvp.Key == tokenSymbol))
+                return new BigDecimal((decimal)tokenPrices.First(kvp => kvp.Key == tokenSymbol).Value);
+
+            // If the price is not provided, assume it's 0 (loss for the user if they hold tokens in this pool)
+            return BigDecimal.Zero;
+        }
+    }
+}

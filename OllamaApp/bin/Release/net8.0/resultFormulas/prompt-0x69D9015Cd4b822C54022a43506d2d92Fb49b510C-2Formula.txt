@@ -1,0 +1,32 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Find the transfer to 'to' address and calculate PNL
+            foreach (var transfer in info.Transfers.Where(t => t.ToAddress == info.To))
+            {
+                var tokenInfo = transfer.TokenInfo;
+                var amount = transfer.Amount;
+
+                // Find the price of the token if available
+                var tokenPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == tokenInfo.Symbol).Value ?? 0m;
+
+                // Calculate PNL in Eth
+                var pnlInEth = amount * (decimal)tokenPrice / info.Fee;
+
+                result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, new BigDecimal(pnlInEth)));
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}
+```

@@ -1,0 +1,40 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        // Calculate PNL for the given transaction using token balances and reserves
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get the contract address
+            var contractAddress = info.To;
+
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                // Get distinct tokens in the transaction
+                var tokens = info.GetDistinctTokens();
+
+                foreach (var token in tokens)
+                {
+                    // Calculate PNL for each token
+                    var balance = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol).Sum(t => t.Amount);
+                    var price = tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value;
+                    var reserve = token.Symbol == "token0" ? info.Reserve0 : info.Reserve1;
+
+                    // Check if the contract balance is not equal to reserve, then calculate PNL
+                    if (balance != reserve)
+                    {
+                        var pnl = (balance - reserve) * price;
+                        pnlResults.Add(new KeyValuePair<string, BigDecimal>(contractAddress, new BigDecimal(pnl)));
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnlResults);
+        }
+    }
+}
+```

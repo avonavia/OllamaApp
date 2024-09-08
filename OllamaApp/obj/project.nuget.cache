@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "iztRqSyF5qjG7zbN+nadGpUawizJRx+UAw13n93jfsLKmZakrNEZt0HbBZihvqn1rLu0XxSLr2vNT1ydAGH4+A==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\DragoNyan\\RiderProjects\\OllamaApp\\OllamaApp\\OllamaApp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\DragoNyan\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
+    "C:\\Users\\DragoNyan\\.nuget\\packages\\ollamasharp\\3.0.0\\ollamasharp.3.0.0.nupkg.sha512",
+    "C:\\Users\\DragoNyan\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
+    "C:\\Users\\DragoNyan\\.nuget\\packages\\system.text.json\\8.0.4\\system.text.json.8.0.4.nupkg.sha512"
+  ],
+  "logs": []
+}

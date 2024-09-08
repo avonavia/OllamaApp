@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Getting distinct tokens in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>($"No token transfers found.");
+
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Iterating through each distinct token in the transaction
+            foreach (var tokenInfo in tokens)
+            {
+                var userAddress = info.FromAddress;
+                var toAddress = info.ToAddress;
+
+                // Getting transfers of the current token
+                var tokenTransfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol);
+
+                if (tokenTransfers == null)
+                    continue;
+
+                // Calculating total amount transferred to the user and skimmed address
+                var transferToUser = tokenTransfers.Where(t => t.Amount > BigDecimal.Zero).Sum(t => t.Amount);
+                var transferToSkim = tokenTransfers.Where(t => t.Amount < BigDecimal.Zero).Sum(t => -t.Amount);
+
+                // Calculating PNL: amount skimmed minus amount transferred to the user
+                var pnl = transferToSkim - transferToUser;
+
+                // Subtracting fee if the transaction sender is not the same as the recipient
+                if (userAddress != toAddress)
+                    pnl -= info.Fee;
+
+                // Adding result for the current token
+                pnlResults.Add(new KeyValuePair<string, BigDecimal>(userAddress, pnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults);
+        }
+    }
+}
+```

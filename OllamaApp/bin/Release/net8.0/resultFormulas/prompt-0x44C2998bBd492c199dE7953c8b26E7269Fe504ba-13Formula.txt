@@ -1,0 +1,19 @@
+//Method to check if the transaction is related to updating transfer tax
+    public bool IsTransferTaxUpdate(TransactionInfo info)
+    {
+        return info.DecodedInput.FunctionName == "removeTransferTax";
+    }
+
+    //CalculationResult is always CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> for this formula
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Check if the transaction is related to updating transfer tax
+        if (IsTransferTaxUpdate(info))
+        {
+            //If it is, then return a message that the transfer tax has been removed
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null, $"The transfer tax has been updated to 0.");
+        }
+
+        //If not, no PNL change occurs
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(new List<KeyValuePair<string, BigDecimal>>(), null);
+    }

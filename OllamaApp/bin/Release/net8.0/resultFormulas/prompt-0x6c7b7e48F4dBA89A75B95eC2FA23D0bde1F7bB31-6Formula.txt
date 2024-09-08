@@ -1,0 +1,34 @@
+```csharp
+// assembly: FormulaAssembly("MINT")
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        // Note that TransactionInfo object fields are already decoded and validated
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            BigDecimal balance0 = info.TokenBalances[info.InputTokenAddress];
+            BigDecimal balance1 = info.TokenBalances[info.OutputTokenAddress];
+            BigDecimal reserve0 = (BigDecimal)(ulong)info.Reserve0;
+            BigDecimal reserve1 = (BigDecimal)(ulong)info.Reserve1;
+            BigDecimal totalSupply = (BigDecimal)(ulong)info.TotalSupply;
+
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            // PNL calculation
+            if (totalSupply == 0)
+                return CalculationResult<BigDecimal?>.Success(-info.Fee); // PNL is the negative of the fee in this case as no tokens are minted yet
+            else
+            {
+                BigDecimal liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+                if (info.ToAddress != info.FromAddress) // PNL calculation for sending tokens to a different address
+                    return CalculationResult<BigDecimal?>.Success(-liquidity - info.Fee);
+            }
+
+            return CalculationResult<BigDecimal?>.Success(0); // No PNL change if user sends tokens to themself
+        }
+    }
+}
+```

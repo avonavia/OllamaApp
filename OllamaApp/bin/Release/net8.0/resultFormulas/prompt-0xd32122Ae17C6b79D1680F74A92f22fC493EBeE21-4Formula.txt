@@ -1,0 +1,47 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2Formula : IFormulaPlugin
+    {
+        // Calculate the PNL for a UniswapV2 swap transaction
+        // PNL is calculated as the difference between the initial and final token balances, converted to Eth using provided token prices.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            if (info == null || tokenPrices == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.FromError("Invalid input");
+
+            // Assume that the info object contains decoded 'from', 'to' addresses and 'balance0', 'balance1', '_reserve0', '_reserve1' values.
+            var fromAddress = info.From;
+            var toAddress = info.To;
+            var balance0Initial = new BigDecimal((ulong)info.Balance0);
+            var balance1Initial = new BigDecimal((ulong)info.Balance1);
+            var reserve0 = new BigDecimal((ulong)info._reserve0);
+            var reserve1 = new BigDecimal((ulong)info._reserve1);
+
+            // Calculate the final balances based on the swap operation
+            var balance0Final = new BigDecimal(info.Balance0 <= uint112(-1) ? (ulong)info.Balance0 : 0);
+            var balance1Final = new BigDecimal(info.Balance1 <= uint112(-1) ? (ulong)info.Balance1 : 0);
+
+            // Calculate the PNL in Eth for each address
+            var tokenPrice0 = tokenPrices.FirstOrDefault(t => t.Key == info.TokenAddress0).Value;
+            var tokenPrice1 = tokenPrices.FirstOrDefault(t => t.Key == info.TokenAddress1).Value;
+            if (tokenPrice0 > 0 && tokenPrice1 > 0)
+            {
+                var pnlFromEth = (balance0Final - balance0Initial) * new BigDecimal((decimal)tokenPrice0);
+                result.Add(new KeyValuePair<string, BigDecimal>(fromAddress, pnlFromEth));
+
+                if (toAddress != fromAddress) // If the user is sending tokens to another address
+                {
+                    var pnlToEth = -(balance1Final - balance1Initial) * new BigDecimal((decimal)tokenPrice1); // PNL is negative as the user is spending tokens
+                    result.Add(new KeyValuePair<string, BigDecimal>(toAddress, pnlToEth));
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.FromSuccess(result);
+        }
+    }
+}
+```
+In this C# code, the `UniswapV2Formula` class contains a method that calculates the profit and loss (PNL) for a UniswapV2 swap transaction. The PNL is calculated as the difference between the initial and final token balances, converted to Eth using provided token prices. The method assumes that the `info` object contains decoded 'from', 'to' addresses and 'balance0', 'balance1', '_reserve0', '_reserve1' values. The method returns a dictionary containing the PNL for each address involved in the transaction, or an error message if the input is invalid.

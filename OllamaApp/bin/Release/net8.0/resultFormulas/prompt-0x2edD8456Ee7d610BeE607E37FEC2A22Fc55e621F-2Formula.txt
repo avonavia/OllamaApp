@@ -1,0 +1,35 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlCalculator = new PnLCalculator();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.FromAddress == info.UserAddress && transfer.ToAddress != info.UserAddress)
+                    pnlCalculator.Subtract(transfer.TokenInfo, transfer.Amount);
+                else if (transfer.ToAddress == info.UserAddress && transfer.FromAddress != info.UserAddress)
+                    pnlCalculator.Add(transfer.TokenInfo, transfer.Amount);
+            }
+
+            // Subtract fee from the total
+            var fee = CalculateFee(info);
+            if (fee != null && tokenPrices != null)
+                pnlCalculator.SubtractFee(fee.Value, tokenPrices);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = pnlCalculator.GetTokensWithAmounts(),
+            };
+        }
+    }
+}
+```
+In this C# code, we have a formula to calculate PNL for token transfers made in a transaction. This method is part of the `SafeTransferFormula` class and implements the `IFormulaPlugin` interface. The `Formula` method calculates the profit or loss (PNL) for each unique token transferred by the user in the transaction, taking into account the transfer amount and any transaction fee.
+
+The PNL is calculated by iterating over all transfers in the transaction and checking if the user was the sender or receiver of the tokens. If the user sent tokens to someone else, we subtract the value from their total PNL, and if they received tokens, we add the value. Finally, we subtract any transaction fee from the total PNL and return it as a list of key-value pairs representing each token's symbol and its corresponding profit or loss.

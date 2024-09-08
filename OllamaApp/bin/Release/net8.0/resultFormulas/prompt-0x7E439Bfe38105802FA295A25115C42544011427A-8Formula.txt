@@ -1,0 +1,18 @@
+// This formula does not calculate PNL because approving tokens does not result in profit or loss for the user.
+
+[assembly: FormulaAssembly("approve")]
+namespace Sauron.Formula.Approve
+{
+    public class ApproveFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // As per the rules, no PNL is calculated for this formula.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Data = Enumerable.Empty<KeyValuePair<string, BigDecimal>>()
+            };
+        }
+    }
+}

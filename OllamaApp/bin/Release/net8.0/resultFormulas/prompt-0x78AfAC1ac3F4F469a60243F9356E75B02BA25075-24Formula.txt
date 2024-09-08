@@ -1,0 +1,37 @@
+//Method for skim functionality of the Solidity contract
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Create a dictionary to store PNL for each address
+        var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+        foreach (var transfer in info.Transfers)
+        {
+            if (transfer.FromAddress == info.ToAddress && transfer.Amount > 0)
+            {
+                //Subtract the skimmed amount from the PNL of the receiving address
+                if (!pnlDictionary.ContainsKey(info.FromAddress))
+                    pnlDictionary[info.FromAddress] = BigDecimal.Zero;
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == transfer.TokenInfo.Symbol).Value ?? 1M;
+                pnlDictionary[info.FromAddress] -= transfer.Amount * (decimal)tokenPrice;
+            }
+            else if (transfer.ToAddress == info.ToAddress && transfer.Amount > 0)
+            {
+                //Add the skimmed amount to the PNL of the contract address
+                if (!pnlDictionary.ContainsKey(info.ToAddress))
+                    pnlDictionary[info.ToAddress] = BigDecimal.Zero;
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == transfer.TokenInfo.Symbol).Value ?? 1M;
+                pnlDictionary[info.ToAddress] += transfer.Amount * (decimal)tokenPrice;
+            }
+        }
+
+        //Subtract the fee from the PNL of the contract address
+        if (!pnlDictionary.ContainsKey(info.ToAddress))
+            pnlDictionary[info.ToAddress] = BigDecimal.Zero;
+
+        var ethPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == "ETH").Value ?? 1M;
+        pnlDictionary[info.ToAddress] -= info.Fee * ethPrice;
+
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+    }

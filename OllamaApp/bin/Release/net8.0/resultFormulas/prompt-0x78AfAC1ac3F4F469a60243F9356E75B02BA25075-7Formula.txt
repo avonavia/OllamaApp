@@ -1,0 +1,31 @@
+//Method to calculate PNL for Token Transfers
+   public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+   {
+       var pnlDictionary = new Dictionary<string, BigDecimal>(); // Creating a dictionary to store PNL for each address
+
+       foreach (var transfer in info.Transfers)
+       {
+           string fromAddress = transfer.FromAddress;
+           string toAddress = transfer.ToAddress;
+           TokenInfo token = transfer.TokenInfo;
+           BigDecimal amount = transfer.Amount;
+
+           // If the transaction is not a fee calculation
+           if (fromAddress != info.TxSender)
+           {
+               // Subtracting the amount from sender's balance
+               if(pnlDictionary.ContainsKey(fromAddress))
+                   pnlDictionary[fromAddress] -= amount;
+               else
+                   pnlDictionary[fromAddress] = -amount;
+
+               // Adding the amount to receiver's balance
+               if (pnlDictionary.ContainsKey(toAddress))
+                   pnlDictionary[toAddress] += amount;
+               else
+                   pnlDictionary[toAddress] = amount;
+           }
+       }
+
+       return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+   }

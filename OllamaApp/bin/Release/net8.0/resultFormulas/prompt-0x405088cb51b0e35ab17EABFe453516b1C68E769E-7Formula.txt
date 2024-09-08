@@ -1,0 +1,46 @@
+```csharp
+// Required assemblies for BigDecimal operations
+using System;
+using System.Collections.Generic;
+using Nethereum.Util;
+
+namespace Sauron.Formula.BurnUniswapV2
+{
+    public class BurnUniswapV2Formula : IFormulaPlugin
+    {
+        // Formula method for Burn operation in UniswapV2 contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decode necessary parameters from TransactionInfo object
+            var reserve0 = new BigDecimal((ulong)info.Parameters["_reserve0"]);
+            var reserve1 = new BigDecimal((ulong)info.Parameters["_reserve1"]);
+            var balance0 = new BigDecimal((ulong)info.BalanceChanges[info.FromAddress][info.TokenAddresses["token0"]]);
+            var balance1 = new BigDecimal((ulong)info.BalanceChanges[info.FromAddress][info.TokenAddresses["token1"]]);
+            var liquidity = new BigDecimal(info.UserBalances[info.ContractAddress]);
+            var totalSupply = new BigDecimal((ulong)info.AdditionalData["totalSupply"]);
+
+            // Calculate amounts burned
+            var amount0 = (liquidity * balance0) / totalSupply;
+            var amount1 = (liquidity * balance1) / totalSupply;
+
+            // Initialize PNL as zero
+            var pnl = BigDecimal.Zero;
+
+            // Check if token prices are provided and the burn is not to self
+            if (tokenPrices != null && info.ToAddress != info.FromAddress)
+            {
+                // Find price of tokens in given pairs
+                var priceToken0 = tokenPrices.FirstOrDefault(p => p.Key == info.TokenAddresses["token0"]).Value;
+                var priceToken1 = tokenPrices.FirstOrDefault(p => p.Key == info.TokenAddresses["token1"]).Value;
+
+                // Calculate PNL in ETH
+                pnl -= (amount0 * new BigDecimal((decimal)priceToken0)) + (amount1 * new BigDecimal((decimal)priceToken1));
+            }
+
+            // Return calculation result without messages
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>() { Result = pnl };
+        }
+    }
+}
+```

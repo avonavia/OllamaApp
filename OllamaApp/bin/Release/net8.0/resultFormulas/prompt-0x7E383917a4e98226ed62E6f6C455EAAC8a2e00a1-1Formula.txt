@@ -1,0 +1,22 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Since this is a view function and doesn't modify the state of the contract, we only return the reserves and last block timestamp.
+            // PNL calculation is not applicable for this method as it doesn't involve any transfers or changes in balances.
+
+            var reserve0 = info.Reserve0; // Assuming Reserve0 property exists in TransactionInfo object
+            var reserve1 = info.Reserve1; // Assuming Reserve1 property exists in TransactionInfo object
+            var blockTimestampLast = info.BlockTimestampLast; // Assuming BlockTimestampLast property exists in TransactionInfo object
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

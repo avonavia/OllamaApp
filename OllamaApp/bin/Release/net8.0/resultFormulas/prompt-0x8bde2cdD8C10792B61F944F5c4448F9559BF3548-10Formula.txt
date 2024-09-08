@@ -1,0 +1,32 @@
+//Make sure to add necessary using statements at the top of the file
+
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var token0Balance = GetTokenBalance(info.Transfers, info.FromAddress, "token0");
+            var token1Balance = GetTokenBalance(info.Transfers, info.FromAddress, "token1");
+
+            // Calculate PNL assuming reserve values and token prices are available
+            // This is a simplified example, the actual calculation might be more complex based on the specific contract logic
+            var pnl = (token0Balance * GetTokenPrice(tokenPrices, "token0")) + (token1Balance * GetTokenPrice(tokenPrices, "token1"));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+
+        private static BigDecimal GetTokenBalance(List<TokenTransferInfo> transfers, string address, string tokenSymbol)
+        {
+            return transfers?.Where(t => t.ToAddress == address && t.TokenInfo.Symbol == tokenSymbol).Sum(t => t.Amount) ?? 0;
+        }
+
+        private static BigDecimal GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>>? tokenPrices, string tokenSymbol)
+        {
+            return new BigDecimal((tokenPrices?.FirstOrDefault(p => p.Key == tokenSymbol).Value ?? 0));
+        }
+    }
+}

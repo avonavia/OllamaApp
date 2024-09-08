@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("GetReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Check if Transfers object exists and has at least one transfer
+            if (info.Transfers != null && info.Transfers.Any())
+            {
+                // Assuming the first token in the transfers list is reserve0 and the second is reserve1
+                var reserve0 = info.Transfers[0].Amount;
+                var reserve1 = info.Transfers[1].Amount;
+
+                // Block timestamp last could be extracted from some other property or method, as it's not explicitly provided in the transfers list
+
+                result.Add(new KeyValuePair<string, BigDecimal>("Reserve0", reserve0));
+                result.Add(new KeyValuePair<string, BigDecimal>("Reserve1", reserve1));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

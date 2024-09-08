@@ -1,0 +1,42 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer;
+
+public class _safeTransferFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        if (info.Transfers == null || !info.Transfers.Any() || string.IsNullOrEmpty(info.ToAddress))
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = null };
+
+        var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+        foreach (var transfer in info.Transfers)
+        {
+            if (transfer.ToAddress != info.ToAddress || transfer.FromAddress == info.ToAddress)
+                continue;
+
+            var amountInEth = ConvertTokenAmountToEth(transfer.Amount, tokenPrices);
+
+            if (pnlDictionary.ContainsKey(transfer.FromAddress))
+                pnlDictionary[transfer.FromAddress] -= amountInEth;
+            else
+                pnlDictionary[transfer.FromAddress] = -amountInEth;
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnlDictionary };
+    }
+
+    private BigDecimal ConvertTokenAmountToEth(BigDecimal tokenAmount, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+    {
+        if (tokenPrices == null || !tokenPrices.Any()) return 0;
+
+        var price = tokenPrices.FirstOrDefault(p => p.Key == "TOKEN_SYMBOL").Value; // Replace TOKEN_SYMBOL with actual token symbol
+        if (price == 0) return 0;
+
+        return tokenAmount * new BigDecimal((decimal)price);
+    }
+}
+```

@@ -1,0 +1,22 @@
+```csharp
+[assembly: FormulaAssembly("GetReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming reserve0, reserve1 and blockTimestampLast are properties of TransactionInfo object
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            result.Add(new KeyValuePair<string, BigDecimal>("reserve0", info.Reserve0));
+            result.Add(new KeyValuePair<string, BigDecimal>("reserve1", info.Reserve1));
+            result.Add(new KeyValuePair<string, BigDecimal>("blockTimestampLast", new BigDecimal(info.BlockTimestampLast)));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(result);
+        }
+    }
+}
+```

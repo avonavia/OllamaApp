@@ -1,0 +1,1 @@
+// No need to implement this method in C# as it's not related to PNL calculation, but rather it's a contract management function that changes a state variable of the contract.

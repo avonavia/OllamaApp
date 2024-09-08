@@ -1,0 +1,22 @@
+Here's a C# formula method for the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("UniswapV2Initialize")]
+
+namespace Sauron.Formula.UniswapV2Initialize
+{
+    public class UniswapV2InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // We don't calculate PNL for initialize method as it doesn't involve any transactions.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = null,
+                Messages = new List<string>()
+            };
+        }
+    }
+}
+```

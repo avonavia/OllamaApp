@@ -1,0 +1,19 @@
+// This method replicates the functionality of the Solidity contract's 'uqdiv' method.
+   // Note that the exact conversion may not be possible due to differences in data types between Solidity and C#.
+   // However, this method should provide a close approximation of the division operation.
+
+   private BigDecimal UQDiv(BigInteger x, BigInteger y)
+   {
+       // Check for division by zero
+       if (y == 0)
+           throw new DivideByZeroException();
+
+       // Convert to decimal and perform division
+       decimal decimalX = x / (decimal)(1 << 112);
+       decimal decimalY = y / (decimal)(1 << 112);
+
+       decimal result = decimalX / decimalY;
+
+       // Convert back to BigInteger with the same precision as uint224 in Solidity
+       return new BigDecimal(result * (BigDecimal)Math.Pow(2, 224));
+   }

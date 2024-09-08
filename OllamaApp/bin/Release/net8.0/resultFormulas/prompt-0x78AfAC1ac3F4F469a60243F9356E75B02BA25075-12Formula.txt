@@ -1,0 +1,5 @@
+//Method to calculate minimum of two numbers
+    public BigDecimal Min(BigDecimal x, BigDecimal y)
+    {
+        return (x < y) ? x : y;
+    }

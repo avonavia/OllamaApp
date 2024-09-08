@@ -1,0 +1,36 @@
+```csharp
+[assembly: FormulaAssembly("Sync")]
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        // This method calculates profit and loss for the transaction based on Uniswap V2 pool synchronization
+        // It gets token balances in the contract, reserves of tokens in the pool and calculates PNL
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+            // Getting tokens and their amounts in the contract
+            var tokensWithAmounts = info.GetTokensWithAmounts(info.Transfers);
+
+            if (tokensWithAmounts != null && tokenPrices != null)
+            {
+                foreach (var pair in tokensWithAmounts)
+                {
+                    // Getting price of the token
+                    var tokenPrice = tokenPrices.FirstOrDefault(t => t.Key == pair.Key.Symbol).Value;
+                    if (tokenPrice > 0)
+                    {
+                        BigDecimal amountInEth = pair.Value * new BigDecimal((decimal)tokenPrice);
+                        // Subtracting fee from total amount if the sender is not the contract itself
+                        if (pair.Key.Address != info.ToAddress && info.Fee > 0)
+                            amountInEth -= info.Fee;
+                        result[info.FromAddress] = amountInEth - result.GetValueOrDefault(info.FromAddress);
+                    }
+                }
+            }
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```
+This C# code creates a `SyncFormula` class that implements the `IFormulaPlugin` interface. The `Formula` method calculates profit and loss for the transaction based on Uniswap V2 pool synchronization. It gets token balances in the contract, reserves of tokens in the pool, and calculates PNL by comparing the value of tokens with their market price.

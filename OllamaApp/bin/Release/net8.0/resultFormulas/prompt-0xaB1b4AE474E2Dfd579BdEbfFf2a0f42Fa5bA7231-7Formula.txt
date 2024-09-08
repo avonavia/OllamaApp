@@ -1,0 +1,44 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Interfaces.Formulas;
+using Sauron.Core.Models;
+
+namespace Sauron.Formula.BurnUniswapV2
+{
+    public class BurnUniswapV2Formula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            BigDecimal reserve0 = new BigDecimal((decimal)info.DecodedData["_reserve0"]);
+            BigDecimal reserve1 = new BigDecimal((decimal)info.DecodedData["_reserve1"]);
+            BigDecimal totalSupply = new BigDecimal((decimal)info.DecodedData["_totalSupply"]);
+            BigDecimal balance0 = new BigDecimal((decimal)info.DecodedData["balance0"]);
+            BigDecimal balance1 = new BigDecimal((decimal)info.DecodedData["balance1"]);
+            BigDecimal liquidity = new BigDecimal((decimal)info.DecodedData["liquidity"]);
+            string toAddress = (string)info.DecodedData["to"];
+
+            // Check if the function is called from a contract which performs important safety checks
+            // Assuming that the safety checks have been performed and the data is valid
+
+            BigDecimal amount0 = liquidity * balance0 / totalSupply;
+            BigDecimal amount1 = liquidity * balance1 / totalSupply;
+
+            // Calculate PNL
+            BigDecimal pnl = 0;
+            if (info.FromAddress != toAddress)
+                pnl -= FeeCalculator(amount0, tokenPrices) + FeeCalculator(amount1, tokenPrices);
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+
+        private BigDecimal FeeCalculator(BigDecimal amount, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            // Assuming that the fee is a certain percentage of the transaction value
+            const decimal feePercentage = 0.003M; // Example value
+            return amount * (feePercentage / tokenPrices?.FirstOrDefault(x => x.Key == "ETH").Value ?? 1);
+        }
+    }
+}
+```

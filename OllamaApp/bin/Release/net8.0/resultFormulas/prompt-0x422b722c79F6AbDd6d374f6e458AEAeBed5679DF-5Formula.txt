@@ -1,0 +1,44 @@
+```csharp
+// Assembly info for _mintFee PNL calculation formula
+[assembly: FormulaAssembly("_MINTFEE")]
+
+namespace Sauron.Formula._MINTFEE
+{
+    public class _MINTFEEFormula : IFormulaPlugin
+    {
+        // Calculate PNL for _mintFee function
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = (BigDecimal)info.DecodedParams["_reserve0"];
+            var reserve1 = (BigDecimal)info.DecodedParams["_reserve1"];
+            var feeTo = info.DecodedParams["feeTo"] as string; // Assuming feeTo is a hexadecimal address
+            var totalSupply = new BigDecimal(info.TokenInfo.TotalSupply); // Assuming TotalSupply is available in TokenInfo
+            var kLast = new BigDecimal(info.DecodedParams["_kLast"]); // Assuming _kLast is provided as a parameter
+
+            if (feeTo != "0x0") // feeOn is true
+            {
+                var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                var rootKLast = BigDecimal.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    var numerator = totalSupply * (rootK - rootKLast);
+                    var denominator = rootK * 5 + rootKLast;
+                    var liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                    {
+                        // Subtracting Fee from PNL as user has received some tokens in feeTo address
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                            (new[] { new KeyValuePair<string, BigDecimal>(feeTo, -info.Fee) });
+                    }
+                }
+            }
+
+            // If feeOn is false or liquidity is not greater than 0, return no PNL changes
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

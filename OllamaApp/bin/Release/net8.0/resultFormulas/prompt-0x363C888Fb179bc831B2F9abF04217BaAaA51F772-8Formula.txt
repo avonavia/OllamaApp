@@ -1,0 +1,46 @@
+```csharp
+using System;
+// Assembly information
+[assembly: System.Reflection.AssemblyTitle("PNL Calculation for UniswapV2 Swap")]
+[assembly: System.Reflection.AssemblyDescription("Calculate Profit and Loss (PNL) after a swap in UniswapV2")]
+[assembly: System.Reflection.AssemblyCompany("Your Company Name")]
+[assembly: System.Reflection.AssemblyProduct("PNL Calculation for UniswapV2 Swap")]
+[assembly: System.Reflection.AssemblyCopyright("Copyright © Your Company Name 2023")]
+[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+namespace PNLCalculation
+{
+    public static class UniswapV2PNL
+    {
+        // Calculate Profit and Loss (PNL) after a swap in UniswapV2
+        // All conversion operations were done beforehand, so we directly use decimal values here
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0Before, decimal reserve1Before, decimal feePercentage, decimal senderBalance0, decimal senderBalance1, bool isSameAddress)
+        {
+            // Calculate the amount of tokens sent to the recipient
+            var received0 = Math.Max(amount0Out * (1 - feePercentage), 0);
+            var received1 = Math.Max(amount1Out * (1 - feePercentage), 0);
+
+            // Calculate the new reserves after the swap
+            var reserve0After = reserve0Before - amount0Out;
+            var reserve1After = reserve1Before - amount1Out;
+
+            // If recipient address is same as sender, no PNL calculation needed
+            if (isSameAddress)
+                return 0m;
+
+            // Calculate the change in token balances after the swap
+            var balanceChange0 = senderBalance0 - received0;
+            var balanceChange1 = senderBalance1 - received1;
+
+            // Calculate the value of tokens sent to recipient in Eth (assuming price of 1 ETH)
+            var receivedValueInEth = received0 + (received1 * reserve1After / reserve1Before);
+
+            // Calculate the value of tokens remaining with sender in Eth
+            var remainingValueInEth = balanceChange0 + (balanceChange1 * reserve1After / reserve1Before);
+
+            // Calculate Profit and Loss (PNL)
+            return remainingValueInEth - receivedValueInEth;
+        }
+    }
+}
+```

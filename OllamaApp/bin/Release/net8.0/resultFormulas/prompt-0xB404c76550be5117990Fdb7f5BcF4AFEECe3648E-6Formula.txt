@@ -1,0 +1,46 @@
+Using the provided information and following the specified guidelines, here's an example of how you might implement the mint function from a Solidity contract into a C# formula method:
+
+```csharp
+// Assembly info for the formula
+[assembly: FormulaAssembly("MintFormula")]
+
+namespace Sauron.Formula.MintFormula
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        // The main formula method for calculating PNL
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract necessary information from TransactionInfo object
+            var reserve0 = BigDecimal.Parse(info.GetValue("_reserve0"));
+            var reserve1 = BigDecimal.Parse(info.GetValue("_reserve1"));
+            var balance0 = BigDecimal.Parse(info.GetValue("balance0"));
+            var balance1 = BigDecimal.Parse(info.GetValue("balance1"));
+            var totalSupply = BigDecimal.Parse(info.GetValue("totalSupply"));
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Calculate liquidity based on the Solidity contract logic
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - BigDecimal.Parse("1e3");
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            // Check for sufficient liquidity and calculate PNL
+            if (liquidity > 0)
+            {
+                // If to address is not the same as from address, user sent money to someone else, so PNL is negative
+                var pnl = info.ToAddress != info.FromAddress ? -liquidity : liquidity;
+                return new CalculationResult<BigDecimal?>(pnl);
+            }
+            else
+            {
+                // Insufficient liquidity, no PNL change
+                return new CalculationResult<BigDecimal?>(null);
+            }
+        }
+    }
+}
+```

@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var addressThis = info.Address;
+            var token0Balance = GetTokenBalance(info.Transfers, info.TokenIn);
+            var token1Balance = GetTokenBalance(info.Transfers, info.TokenOut);
+
+            // Assume reserve0 and reserve1 are properties or methods that provide the correct values
+            var pnl = CalculatePNL(token0Balance, token1Balance, reserve0, reserve1, tokenPrices);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>>
+                {
+                    new KeyValuePair<string, BigDecimal>(addressThis.ToLower(), pnl)
+                }
+            };
+        }
+
+        private BigDecimal GetTokenBalance(IEnumerable<TokenTransferInfo> transfers, string tokenAddress)
+        {
+            return transfers
+                .Where(t => t.TokenInfo.Symbol == tokenAddress)
+                .Sum(t => t.Amount);
+        }
+
+        private BigDecimal CalculatePNL(BigDecimal balance0, BigDecimal balance1, BigDecimal reserve0, BigDecimal reserve1, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Implement the actual PNL calculation logic based on the Solidity contract method
+            // This could be a complex calculation involving token prices and reserves
+            // For simplicity, let's assume a basic calculation for demonstration purposes
+            return (balance0 * reserve1 + balance1 * reserve0) - (reserve0 * reserve1);
+        }
+    }
+}
+```

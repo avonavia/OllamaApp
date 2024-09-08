@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Check if fee is on and if kLast is not 0
+            string feeTo = info.FeeTo;
+            bool feeOn = !string.IsNullOrEmpty(feeTo) && feeTo != "0x0";
+
+            if (feeOn && info.KLast != 0M)
+            {
+                BigDecimal reserve0 = new BigDecimal(info.Reserve0);
+                BigDecimal reserve1 = new BigDecimal(info.Reserve1);
+
+                // Calculate rootK and rootKLast
+                BigDecimal rootK = (reserve0 * reserve1).Sqrt();
+                BigDecimal rootKLast = info.KLast.Sqrt();
+
+                if (rootK > rootKLast)
+                {
+                    // Calculate liquidity
+                    BigDecimal numerator = info.TotalSupply * (rootK - rootKLast);
+                    BigDecimal denominator = rootK * 5 + rootKLast;
+                    BigDecimal liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                        result.Add(new KeyValuePair<string, BigDecimal>(feeTo, -liquidity)); // PNL is negative for feeTo address
+                }
+            }
+            else if (info.KLast != 0M)
+            {
+                info.KLast = 0;
+            }
+
+            return result;
+        }
+    }
+}
+```

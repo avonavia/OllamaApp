@@ -1,0 +1,57 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2UpdatePNL")]
+
+namespace Sauron.Formula.UniswapV2UpdatePNL
+{
+    public class UniswapV2UpdatePNLFormula : IFormulaPlugin
+    {
+        // Please note that this is a simple representation of the formula and may not cover all edge cases or errors.
+        // You should thoroughly test it in your own environment to ensure its correctness and robustness.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Retrieve relevant information from the transaction
+            var balance0 = (BigDecimal)info.DecodedInput["balance0"];
+            var balance1 = (BigDecimal)info.DecodedInput["balance1"];
+            var reserve0 = (BigDecimal)info.ContractStateBefore["reserve0"];
+            var reserve1 = (BigDecimal)info.ContractStateBefore["reserve1"];
+
+            // Calculate the price changes
+            BigDecimal priceChange0 = 0;
+            BigDecimal priceChange1 = 0;
+            if (reserve0 != 0 && reserve1 != 0)
+            {
+                priceChange0 = UQ112x112.Encode(reserve1).Divide(UQ112x112.Encode(reserve0));
+                priceChange1 = UQ112x112.Encode(reserve0).Divide(UQ112x112.Encode(reserve1));
+            }
+
+            // Calculate the PNL changes for each address
+            var pnlChanges = new Dictionary<string, BigDecimal>();
+            if (info.FromAddress != info.ToAddress)
+            {
+                // If the sender and receiver are different, calculate the PNL change based on the price change
+                if ((BigDecimal)info.DecodedInput["amount0In"] > 0)
+                {
+                    pnlChanges[info.FromAddress] = -(priceChange1 * (BigDecimal)info.DecodedInput["amount0In"]);
+                    pnlChanges[info.ToAddress] = (BigDecimal)info.DecodedInput["amount1Out"];
+                }
+                else if ((BigDecimal)info.DecodedInput["amount1In"] > 0)
+                {
+                    pnlChanges[info.FromAddress] = -(priceChange0 * (BigDecimal)info.DecodedInput["amount1In"]);
+                    pnlChanges[info.ToAddress] = (BigDecimal)info.DecodedInput["amount0Out"];
+                }
+            }
+            else
+            {
+                // If the sender and receiver are the same, calculate the PNL change based on the difference in balance after and before the transaction
+                pnlChanges[info.FromAddress] = (priceChange1 * reserve1 - priceChange1 * balance1) + (priceChange0 * balance0 - priceChange0 * reserve0);
+            }
+
+            // Subtract the fee from the sender's PNL change
+            if (pnlChanges.ContainsKey(info.FromAddress))
+                pnlChanges[info.FromAddress] -= info.Fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlChanges);
+        }
+    }
+}
+```

@@ -1,0 +1,38 @@
+```csharp
+// assembly: FormulaAssembly("Mint")
+namespace Sauron.Formula.MINT
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = (BigDecimal)info.DecodedInput[0];
+            var reserve1 = (BigDecimal)info.DecodedInput[1];
+            var balance0 = info.TokenInfo[0].Balance;
+            var balance1 = info.TokenInfo[1].Balance;
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Assuming that _mintFee, totalSupply and MINIMUM_LIQUIDITY are constants or functions defined in the contract
+            bool feeOn = MintFee(reserve0, reserve1);
+            var totalSupply = TotalSupply();
+
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = (BigDecimal.Sqrt(amount0 * amount1)) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+
+            if (liquidity <= 0)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Error("INSUFFICIENT_LIQUIDITY_MINTED");
+
+            var toAddress = info.DecodedInput[2];
+            if (info.FromAddress == toAddress) // Subtract Fee as it's sent to the contract not user
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(info.FromAddress, -liquidity) });
+            else // If tokens are sent to another address, user loses amount0 and amount1 in terms of ETH as they were spent
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(info.FromAddress, -amount0 * tokenPrices.FirstOrDefault(x => x.Key == info.TokenInfo[0].Address).Value), new KeyValuePair<string, BigDecimal>(info.FromAddress, -amount1 * tokenPrices.FirstOrDefault(x => x.Key == info.TokenInfo[1].Address).Value) });
+        }
+    }
+}
+```
+Please note that the `MintFee`, `TotalSupply`, and `MINIMUM_LIQUIDITY` are assumed to be constants or functions defined in the contract. This code also assumes that token prices are provided as input parameters for conversion from tokens to ETH.

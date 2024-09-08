@@ -1,0 +1,45 @@
+//Assembly info for PNL calculation without messages for user
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        //Calculate PNL based on the getReserves method from Solidity contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Get unique tokens involved in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            //Initialize PNL dictionary with user addresses and their corresponding PNL values
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                //Calculate total amount of the current token held by the user
+                var tokenAmounts = info.GetTokensWithAmounts(info.Transfers.Where(t => t.TokenInfo == token).ToList());
+                BigDecimal userTokenBalance = tokenAmounts.Sum(a => a.Value);
+
+                //Fetch reserve amounts for the current token from Solidity contract
+                var reserve0 = info.Reserve0; //Assuming these values are already decoded and available in TransactionInfo object
+                var reserve1 = info.Reserve1;
+
+                //Calculate PNL based on the formula: (reserve0 * userTokenBalance) - (initialUserTokenBalance * reserve1) / (initialReserve1 * initialUserTokenBalance)
+                BigDecimal initialUserTokenBalance = userTokenBalance + tokenAmounts.Where(t => t.Key == info.FromAddress).Sum(a => a.Value);
+                BigDecimal initialReserve1 = reserve1; //Assuming the initial reserve value is available or can be calculated
+
+                BigDecimal pnl = (reserve0 * userTokenBalance) - (initialUserTokenBalance * reserve1) / (initialReserve1 * initialUserTokenBalance);
+
+                //Update PNL dictionary with the new PNL value for the user address
+                if (!pnlDictionary.ContainsKey(info.FromAddress))
+                    pnlDictionary[info.FromAddress] = pnl;
+                else
+                    pnlDictionary[info.FromAddress] += pnl;
+            }
+
+            //Return PNL dictionary with user addresses and their corresponding PNL values
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+        }
+    }
+}

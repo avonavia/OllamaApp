@@ -1,0 +1,16 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2Initialize")]
+namespace Sauron.Formula.UniswapV2Initialize
+{
+    public class UniswapV2InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // UniswapV2 initialize function does not change the balance of user addresses directly.
+            // Therefore, PNL calculation is not applicable for this method and we return NULL.
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+        }
+    }
+}
+```

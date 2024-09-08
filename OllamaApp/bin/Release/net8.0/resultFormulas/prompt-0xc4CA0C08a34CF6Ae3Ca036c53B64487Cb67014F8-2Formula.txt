@@ -1,0 +1,44 @@
+Here is the C# Formula method for this Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                // Ignore transfers from the contract itself
+                if (transfer.FromAddress == info.ToAddress) continue;
+
+                var tokenSymbol = transfer.TokenInfo?.Symbol;
+                if (string.IsNullOrWhiteSpace(tokenSymbol)) continue;
+
+                var tokenPrice = GetTokenPrice(tokenPrices, tokenSymbol);
+                var pnlAmount = BigDecimal.Multiply(BigDecimal.FromDecimal(-1), BigDecimal.Multiply(transfer.Amount, new BigDecimal(tokenPrice)));
+
+                if (pnlResult.ContainsKey(transfer.FromAddress))
+                    pnlResult[transfer.FromAddress] += pnlAmount;
+                else
+                    pnlResult.Add(transfer.FromAddress, pnlAmount);
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)), null);
+        }
+
+        private decimal GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>>? tokenPrices, string tokenSymbol)
+        {
+            var price = tokenPrices?.FirstOrDefault(tp => tp.Key == tokenSymbol).Value ?? 0;
+            return price > 0 ? price : 1; // Fallback to 1 if no price is found or price is zero
+        }
+    }
+}
+```
+
+This code calculates the PNL for each address that sends tokens in a transaction. It subtracts the total value of sent tokens from each sender's balance, taking into account the token prices provided. The PNL is returned as a list of key-value pairs, where the keys are the addresses and the values are the corresponding PNL amounts in ETH.

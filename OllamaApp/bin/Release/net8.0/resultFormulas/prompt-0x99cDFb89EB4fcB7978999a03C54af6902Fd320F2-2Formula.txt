@@ -1,0 +1,48 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        // This formula calculates the PNL for a token transfer using UniswapV2's _safeTransfer method
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize the PNL dictionary
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Iterate through all distinct tokens in the transaction
+            foreach (var tokenInfo in info.GetDistinctTokens())
+            {
+                // Get all transfers for the current token
+                var tokenTransfers = info.Transfers.Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol).ToList();
+
+                // Calculate total amount transferred to and from each address for the current token
+                var transferAmounts = tokenTransfers.GroupBy(t => t.FromAddress)
+                    .Select(g => new { Address = g.Key, Amount = g.Sum(t => t.Amount) })
+                    .ToDictionary(k => k.Address, v => v.Amount);
+                foreach (var transfer in tokenTransfers.Where(t => t.FromAddress != t.ToAddress)) // Exclude self-transfers
+                {
+                    if (transferAmounts.ContainsKey(transfer.ToAddress))
+                        transferAmounts[transfer.ToAddress] -= transfer.Amount;
+                    else
+                        transferAmounts[transfer.ToAddress] = -transfer.Amount;
+                }
+
+                // Calculate PNL for each address in Eth
+                foreach (var kvp in transferAmounts)
+                {
+                    if (!pnlDictionary.ContainsKey(kvp.Key))
+                        pnlDictionary[kvp.Key] = BigDecimal.Zero;
+
+                    var tokenPrice = tokenPrices?.FirstOrDefault(t => t.Key == tokenInfo.Symbol).Value ?? 0;
+                    pnlDictionary[kvp.Key] += kvp.Value * (BigDecimal)tokenPrice - info.Fee; // Subtract fee from total amount
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary);
+        }
+    }
+}
+```

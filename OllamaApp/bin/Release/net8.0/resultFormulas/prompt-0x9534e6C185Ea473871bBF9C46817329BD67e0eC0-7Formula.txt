@@ -1,0 +1,49 @@
+```csharp
+// Assembly info is omitted for brevity
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // TransactionInfo's DecodedData should contain the following:
+        // - "Token0": Address of token0 (IERC20)
+        // - "Token1": Address of token1 (IERC20)
+        // - "Reserve0": uint112 representing reserve of token0 in the pool
+        // - "Reserve1": uint112 representing reserve of token1 in the pool
+        // - "TotalSupply": Total supply of the UniswapV2 pool
+        // - "Liquidity": Liquidity of the sender's address in the UniswapV2 pool
+        // - "ToAddress": Address to which tokens are transferred
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal((ulong)info.DecodedData["Reserve0"]);
+            var reserve1 = new BigDecimal((ulong)info.DecodedData["Reserve1"]);
+            var totalSupply = new BigDecimal((ulong)info.DecodedData["TotalSupply"]);
+            var liquidity = new BigDecimal((ulong)info.DecodedData["Liquidity"]);
+            var toAddress = (string)info.DecodedData["ToAddress"];
+
+            // Assuming token balances are obtained from the blockchain state or previous calculations
+            var balance0 = GetTokenBalance((string)info.DecodedData["Token0"], info.FromAddress);
+            var balance1 = GetTokenBalance((string)info.DecodedData["Token1"], info.FromAddress);
+
+            // Calculate the amount of tokens burned
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            if (amount0 <= 0 || amount1 <= 0)
+                throw new Exception("UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED");
+
+            // Calculate the price of tokens in Eth based on token prices provided
+            var priceOfToken0InEth = GetPriceOfToken((string)info.DecodedData["Token0"], tokenPrices);
+            var priceOfToken1InEth = GetPriceOfToken((string)info.DecodedData["Token1"], tokenPrices);
+
+            // Calculate the value of burned tokens in Eth
+            var valueOfBurnedTokensInEth = amount0 * priceOfToken0InEth + amount1 * priceOfToken1InEth;
+
+            // If recipient is not sender, PNL should be negative as tokens were sent out
+            if (toAddress != info.FromAddress)
+                valueOfBurnedTokensInEth = -valueOfBurnedTokensInEth;
+
+            return new CalculationResult<BigDecimal>(valueOfBurnedTokensInEth);
+        }
+    }
+}
+```

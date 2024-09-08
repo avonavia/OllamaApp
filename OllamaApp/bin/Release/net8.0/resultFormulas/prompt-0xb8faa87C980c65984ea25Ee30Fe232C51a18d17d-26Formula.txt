@@ -1,0 +1,5 @@
+Using the provided Solidity function, it seems that this method is used to remove all limits for the contract's owner. However, since there's no context or relevant data related to PNL (Profit and Loss) calculation, I can't provide a C# formula method that corresponds directly to this Solidity function.
+
+Given the situation, it's important to note that the Solidity function `removeAllLimits` doesn't seem to have any direct impact on PNL calculation as it simply sets a boolean flag `limitsInEffect` to false and returns true. In a C# context without additional information or methods related to PNL calculation, there isn't enough data available to create an equivalent formula method.
+
+Therefore, I'm unable to provide the requested C# code for this scenario based on the provided Solidity contract method alone. If you have more specific requirements or a different context that can help clarify the situation, please provide additional details so I can assist you better.

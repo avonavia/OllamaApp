@@ -1,0 +1,12 @@
+//Method to calculate subtraction result
+    public BigDecimal Subtract(BigDecimal a, BigDecimal b, out string errorMessage)
+    {
+        if (b > a)
+        {
+            errorMessage = "Subtraction is not possible. Second number is greater than the first.";
+            return 0;
+        }
+
+        errorMessage = ""; // No error message
+        return a - b;
+    }

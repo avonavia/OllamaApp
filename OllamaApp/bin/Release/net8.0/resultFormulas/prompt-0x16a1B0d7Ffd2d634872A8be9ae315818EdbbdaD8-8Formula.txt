@@ -1,0 +1,54 @@
+// The C# method for PNL calculation based on UniswapV2 swap contract
+   // Author: [Your Name]
+
+   using System;
+   using System.Numerics;
+
+   public class PnlCalculator
+   {
+       /// <summary>
+       /// Calculate Profit and Loss for the provided parameters
+       /// </summary>
+       /// <param name="amount0Out">Amount of Token 0 sent</param>
+       /// <param name="amount1Out">Amount of Token 1 sent</param>
+       /// <param name="reserve0">Reserved amount of Token 0 in the pool</param>
+       /// <param name="reserve1">Reserved amount of Token 1 in the pool</param>
+       /// <param name="balance0">Balance of Token 0 in the contract after swap</param>
+       /// <param name="balance1">Balance of Token 1 in the contract after swap</param>
+       /// <returns>Profit and Loss value in Eth</returns>
+       public static decimal CalculatePnl(BigInteger amount0Out, BigInteger amount1Out, BigInteger reserve0, BigInteger reserve1, BigInteger balance0, BigInteger balance1)
+       {
+           // Convert to BigInteger for accuracy as it can handle large numbers without precision loss
+           var bReserve0 = (BigInteger)reserve0;
+           var bReserve1 = (BigInteger)reserve1;
+           var bBalance0 = (BigInteger)balance0;
+           var bBalance1 = (BigInteger)balance1;
+
+           // Calculate input amounts based on balance and reserve differences
+           BigInteger amount0In = bBalance0 > bReserve0 - amount0Out ? bBalance0 - (bReserve0 - amount0Out) : 0;
+           BigInteger amount1In = bBalance1 > bReserve1 - amount1Out ? bBalance1 - (bReserve1 - amount1Out) : 0;
+
+           // Calculate adjusted balances
+           BigInteger balance0Adjusted = bBalance0 * 1000 - amount0In * 3;
+           BigInteger balance1Adjusted = bBalance1 * 1000 - amount1In * 3;
+
+           // Calculate input and output ratios
+           decimal ratioInput = (decimal)amount0In / amount1In;
+           decimal ratioOutput = (decimal)amount0Out / amount1Out;
+
+           // Check if swap was profitable
+           if (ratioInput > ratioOutput)
+           {
+               // Calculate PNL for each token and sum them up, convert to Eth (assuming 1 Eth = 1e18 Wei)
+               decimal pnl0 = (decimal)(amount0In - amount0Out) / (decimal)(1e18);
+               decimal pnl1 = (decimal)(amount1In - amount1Out) / (decimal)(1e18);
+
+               return pnl0 + pnl1; // Positive value indicates profit, negative indicates loss
+           }
+           else
+           {
+               // If swap was not profitable, return 0 PNL as we are only calculating for profitable swaps in this context
+               return 0;
+           }
+       }
+   }

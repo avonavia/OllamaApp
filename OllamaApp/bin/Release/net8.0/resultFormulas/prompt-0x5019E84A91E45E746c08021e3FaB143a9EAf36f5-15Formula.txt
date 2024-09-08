@@ -1,0 +1,24 @@
+[assembly: FormulaAssembly("AddBots")]
+
+namespace Sauron.Formula.AddBots
+{
+    public class AddBotsFormula : IFormulaPlugin
+    {
+        // Method to calculate the number of bots added to a transaction
+        // In this case, we're only adding the count of unique addresses to the calculation result
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Filter unique bot addresses added in the transaction
+            var newBots = info.ToAddresses?.Distinct();
+
+            if (newBots == null || !newBots.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Empty;
+
+            // Convert count to BigDecimal for calculation result
+            var botCount = new[] { new KeyValuePair<string, BigDecimal>("NewBots", new BigDecimal(newBots.Count())) };
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Create(botCount);
+        }
+    }
+}

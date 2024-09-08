@@ -1,0 +1,39 @@
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if feeTo is set
+            string feeTo = info.FeeTo;
+            bool feeOn = !string.IsNullOrEmpty(feeTo);
+
+            // Calculate liquidity to be minted if feeOn is true and kLast is not 0
+            BigDecimal liquidity = BigDecimal.Zero;
+            if (feeOn && info.KLast != BigDecimal.Zero)
+            {
+                BigDecimal rootK = (info._reserve0 * info._reserve1).Sqrt();
+                BigDecimal rootKLast = info.KLast.Sqrt();
+
+                if (rootK > rootKLast)
+                {
+                    BigDecimal numerator = info.TotalSupply * (rootK - rootKLast);
+                    BigDecimal denominator = (rootK * 5) + rootKLast;
+                    liquidity = numerator / denominator;
+                }
+            }
+
+            // Calculate PNL for feeTo address if liquidity is greater than 0
+            var result = new Dictionary<string, BigDecimal>();
+            if (liquidity > BigDecimal.Zero)
+            {
+                result[feeTo] = -info.Fee; // Subtract Fee as it's a cost for the feeTo address
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}

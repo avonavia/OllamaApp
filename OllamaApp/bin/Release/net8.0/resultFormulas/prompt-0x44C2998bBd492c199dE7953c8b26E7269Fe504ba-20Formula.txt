@@ -1,0 +1,60 @@
+Here's a possible solution that follows all the provided rules:
+
+```csharp
+[assembly: FormulaAssembly("manualSwap")]
+
+namespace Sauron.Formula.ManualSwap
+{
+    public class ManualSwapFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.MsgSender != info.TaxWallet)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(null); // Return null if msgSender is not taxWallet
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.TokenInfo != null && transfer.FromAddress == info.ContractAddress && transfer.ToAddress == info.MsgSender)
+                {
+                    // User received tokens from the contract, calculate loss
+                    if (!pnl.ContainsKey(transfer.FromAddress))
+                        pnl[transfer.FromAddress] = BigDecimal.Zero;
+                    pnl[transfer.FromAddress] -= transfer.Amount;
+                }
+                else if (transfer.TokenInfo != null && transfer.ToAddress == info.ContractAddress && transfer.FromAddress == info.MsgSender)
+                {
+                    // User sent tokens to the contract, calculate gain/loss based on swap
+                    var tokenPrice = GetTokenPrice(tokenPrices, transfer.TokenInfo);
+                    if (tokenPrice != null && tokenPrice > BigDecimal.Zero && info.SwapEnabled)
+                    {
+                        var ethReceived = transfer.Amount * tokenPrice;
+                        if (!pnl.ContainsKey(transfer.FromAddress))
+                            pnl[transfer.FromAddress] = BigDecimal.Zero;
+                        pnl[transfer.FromAddress] += ethReceived - info.Fee; // Subtract fee from gain
+                    }
+                }
+                else if (transfer.TokenInfo == null && transfer.ToAddress == info.ContractAddress && transfer.FromAddress == info.MsgSender)
+                {
+                    // User sent ETH to the contract, calculate loss (assuming swap occurs immediately)
+                    if (!pnl.ContainsKey(transfer.FromAddress))
+                        pnl[transfer.FromAddress] = BigDecimal.Zero;
+                    pnl[transfer.FromAddress] -= transfer.Amount - info.Fee; // Subtract fee from loss
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+
+        private BigDecimal? GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>>? tokenPrices, TokenInfo token)
+        {
+            if (tokenPrices == null || !tokenPrices.Any()) return null; // No prices provided or empty list
+            var price = tokenPrices.FirstOrDefault(kvp => kvp.Key == token.Symbol);
+            if (price.Equals(default(KeyValuePair<string, decimal>))) return null; // Token price not found
+            return new BigDecimal(price.Value);
+        }
+    }
+}
+```

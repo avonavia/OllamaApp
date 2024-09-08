@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransferPNL")]
+
+namespace Sauron.Formula.SafeTransferPNL
+{
+    public class SafeTransferPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlMap = new Dictionary<string, BigDecimal>();
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Calculate PNL for each address in the transaction
+                    string fromAddress = info.FromAddress;
+                    string toAddress = transfer.ToAddress;
+                    BigDecimal amount = transfer.Amount;
+                    var tokenPrice = tokenPrices.FirstOrDefault(x => x.Key == transfer.TokenInfo.Symbol).Value;
+
+                    // If the transaction is sending tokens
+                    if (!pnlMap.ContainsKey(fromAddress))
+                        pnlMap[fromAddress] = BigDecimal.Zero;
+                    pnlMap[fromAddress] -= amount * (BigDecimal)tokenPrice - info.Fee;
+
+                    // If the transaction is receiving tokens
+                    if (!pnlMap.ContainsKey(toAddress))
+                        pnlMap[toAddress] = BigDecimal.Zero;
+                    pnlMap[toAddress] += amount * (BigDecimal)tokenPrice;
+                }
+            }
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlMap.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

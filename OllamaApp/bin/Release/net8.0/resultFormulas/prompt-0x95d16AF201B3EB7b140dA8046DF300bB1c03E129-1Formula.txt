@@ -1,0 +1,30 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        // The Formula method signature must always be the same as defined in the Code Rules
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // The method returns a list of key-value pairs representing reserve0, reserve1 and blockTimestampLast.
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Reserve values are extracted from TransactionInfo object as they are already decoded
+            if (info.Reserve0 != null)
+                results.Add(new KeyValuePair<string, BigDecimal>("reserve0", info.Reserve0));
+
+            if (info.Reserve1 != null)
+                results.Add(new KeyValuePair<string, BigDecimal>("reserve1", info.Reserve1));
+
+            // blockTimestampLast is a uint32 value, so it doesn't need any conversion
+            if (info.BlockTimestampLast != null)
+                results.Add(new KeyValuePair<string, BigDecimal>("blockTimestampLast", new BigDecimal((decimal)info.BlockTimestampLast)));
+
+            // Return the calculated results as a CalculationResult object without including any message
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+        }
+    }
+}
+```

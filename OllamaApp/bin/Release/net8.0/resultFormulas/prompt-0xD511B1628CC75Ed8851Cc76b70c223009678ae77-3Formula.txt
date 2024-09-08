@@ -1,0 +1,23 @@
+The given Solidity function is used to multiply two unsigned integers together and checks for overflow by ensuring that the division of the result by the second number equals the first number. Below is a simple equivalent method written in C#.
+
+This formula does not require any transaction information, so I will assume it's used as a utility function within your application. The formula signature matches the Solidity function by taking two uint arguments and returning a BigInteger result:
+
+```csharp
+using System;
+using System.Numerics;
+
+namespace Sauron.Formula.MulFunction
+{
+    public class MulFunction : IMulFunctionPlugin
+    {
+        // This method multiplies two unsigned integers together and checks for overflow.
+        public BigInteger Mul(BigInteger x, BigInteger y)
+        {
+            if (y == 0 || x * y / y == x)
+                return x * y;
+            else
+                throw new OverflowException("ds-math-mul-overflow");
+        }
+    }
+}
+```

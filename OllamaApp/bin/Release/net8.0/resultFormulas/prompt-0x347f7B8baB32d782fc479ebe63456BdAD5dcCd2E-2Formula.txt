@@ -1,0 +1,56 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransferPNL")]
+
+namespace Sauron.Formula.SafeTransferPNL
+{
+    public class SafeTransferPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                // Calculate PNL only for the user addresses involved in the transaction
+                if (!results.ContainsKey(transfer.FromAddress))
+                    results[transfer.FromAddress] = BigDecimal.Zero;
+
+                if (!results.ContainsKey(transfer.ToAddress))
+                    results[transfer.ToAddress] = BigDecimal.Zero;
+
+                // Subtract the transferred amount from the sender's balance
+                results[transfer.FromAddress] -= transfer.Amount;
+
+                // Add the received amount to the recipient's balance
+                results[transfer.ToAddress] += transfer.Amount;
+            }
+
+            // Subtract fee from the sender's balance if it exists
+            if (info.Fee != null && info.From != null)
+            {
+                if (!results.ContainsKey(info.From))
+                    results[info.From] = BigDecimal.Zero;
+
+                results[info.From] -= info.Fee;
+            }
+
+            // Convert token balances to ETH and return the result
+            var ethPrices = tokenPrices?.ToDictionary(kvp => kvp.Key, kvp => new BigDecimal((decimal)kvp.Value));
+            var pnlResults = results.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, CalculatePnlInEth(kvp.Value, ethPrices)));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnlResults };
+        }
+
+        private BigDecimal CalculatePnlInEth(BigDecimal tokenBalance, Dictionary<string, BigDecimal>? ethPrices)
+        {
+            // If no price information is available, return the token balance as PNL
+            if (ethPrices == null || !ethPrices.TryGetValue(tokenBalance.Symbol, out var ethPrice))
+                return tokenBalance;
+
+            // Convert the token balance to ETH and return the result
+            return tokenBalance * ethPrice;
+        }
+    }
+}
+```

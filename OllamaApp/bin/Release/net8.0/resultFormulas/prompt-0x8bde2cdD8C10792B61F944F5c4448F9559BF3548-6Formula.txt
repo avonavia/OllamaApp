@@ -1,0 +1,44 @@
+```csharp
+// Assembly Information
+[assembly: FormulaAssembly("MINT")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extracting necessary values from TransactionInfo object
+            var balance0 = Convert.ToDecimal(info.Token0Balance);
+            var balance1 = Convert.ToDecimal(info.Token1Balance);
+            var _reserve0 = Convert.ToDecimal(info.Reserve0);
+            var _reserve1 = Convert.ToDecimal(info.Reserve1);
+            var totalSupply = Convert.ToDecimal(info.TotalSupply);
+            var feeOn = info.MintFee;
+            var toAddress = info.ToAddress;
+            var fromAddress = info.FromAddress;
+
+            // Calculating amount0 and amount1
+            var amount0 = balance0 - _reserve0;
+            var amount1 = balance1 - _reserve1;
+
+            decimal liquidity, feeAmount = 0m;
+            if (totalSupply == 0)
+                liquidity = Math.Sqrt(amount0 * amount1) - info.MinimumLiquidity;
+            else
+                liquidity = Math.Min((amount0 * totalSupply / _reserve0), (amount1 * totalSupply / _reserve1));
+
+            // Calculating fee if applicable
+            if (feeOn)
+                feeAmount = liquidity * info.FeePercent;
+
+            // If the recipient is not the sender, we consider the transaction as a swap and subtract fees
+            // Otherwise, we assume that tokens are being added to the pool without any swapping operation
+            decimal pnl = (toAddress != fromAddress) ? liquidity - feeAmount : -feeAmount;
+
+            return new CalculationResult<decimal?>(pnl);
+        }
+    }
+}
+```
+This C# code defines a method for calculating the PNL of a mint operation in a UniswapV2-like decentralized exchange. It takes as input a `TransactionInfo` object containing relevant information about the transaction, such as token balances, reserves, and total supply. The method then calculates the amount of liquidity tokens that would be minted based on these values, and applies any applicable fees. Finally, it computes the PNL for the user by comparing the amount of liquidity tokens received with any fees paid, taking into account whether or not the transaction involved a swap operation (i.e., if the recipient was different from the sender).

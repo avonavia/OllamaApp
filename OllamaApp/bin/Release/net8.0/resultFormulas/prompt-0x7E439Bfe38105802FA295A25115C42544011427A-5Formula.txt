@@ -1,0 +1,16 @@
+```csharp
+[assembly: FormulaAssembly("BurnFormula")]
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+            if (info.Transfers != null && info.FromAddress != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // If the recipient is the zero address and amount is greater than 0, we consider it a burn
+                    if (transfer.ToAddress == "0x0000000000000000000000000000000

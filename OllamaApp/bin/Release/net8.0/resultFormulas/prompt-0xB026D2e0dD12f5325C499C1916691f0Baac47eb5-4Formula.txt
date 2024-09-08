@@ -1,0 +1,44 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using System.Linq;
+using Sauron.Core.FormulaEngine;
+
+[assembly: FormulaAssembly("_update")] // This should match the function name in Solidity contract
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // BigDecimal is assumed to be a custom type representing high-precision decimal numbers
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Make sure we have token prices and user's address is available
+            if (tokenPrices == null || string.IsNullOrEmpty(info.FromAddress)) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            var tokenPricesDict = tokenPrices.ToDictionary(kvp => kvp.Key, kvp => new BigDecimal((decimal)kvp.Value));
+            if (!tokenPricesDict.ContainsKey("Token0") || !tokenPricesDict.ContainsKey("Token1")) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Assume that balance0 and balance1 are available in the info object as BigDecimals
+            // Similarly, assume that _reserve0, _reserve1, blockTimestampLast, price0CumulativeLast, price1CumulativeLast are available in the info object as BigDecimals
+
+            var timeElapsed = (BigDecimal)info.BlockTimestamp % BigDecimal.Pow(2, 32) - info.BlockTimestampLast; // overflow is desired
+            if (timeElapsed > 0 && info._reserve0 != 0 && info._reserve1 != 0)
+            {
+                var priceChangeToken0 = (BigDecimal.EncodeAsUQ112x112(info._reserve1).UDiv(info._reserve0)) * timeElapsed;
+                var priceChangeToken1 = (BigDecimal.EncodeAsUQ112x112(info._reserve0).UDiv(info._reserve1)) * timeElapsed;
+
+                pnl[info.FromAddress] -= info.Balance0 * tokenPricesDict["Token0"] * priceChangeToken0 / (BigDecimal)(Math.Pow(2, 112)); // PNL calculation for Token0
+                pnl[info.FromAddress] += info.Balance1 * tokenPricesDict["Token1"] * priceChangeToken1 / (BigDecimal)(Math.Pow(2, 112)); // PNL calculation for Token1
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

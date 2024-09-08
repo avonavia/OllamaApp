@@ -1,0 +1,51 @@
+Here is how you can create a C# Formula method for this Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get unique tokens in transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null || !tokens.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null);
+
+            // Initialize PNL dictionary
+            var pnlDict = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                // Get transfers for current token
+                var transfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+                if (transfers != null)
+                {
+                    foreach (var transfer in transfers)
+                    {
+                        // Subtract fee from amount if user is sending tokens to another address
+                        var netAmount = transfer.ToAddress != info.FromAddress ? transfer.Amount - info.Fee : transfer.Amount;
+
+                        // Convert token price to BigDecimal
+                        var tokenPrice = new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == token.Symbol).Value ?? 0);
+
+                        // Calculate PNL in Eth
+                        if (!pnlDict.ContainsKey(info.FromAddress))
+                            pnlDict[info.FromAddress] = BigDecimal.Zero;
+
+                        pnlDict[info.FromAddress] += netAmount * tokenPrice;
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(pnlDict);
+        }
+    }
+}
+```
+This code calculates the PNL for each user address in Eth by considering all token transfers and their prices. It subtracts the fee from the amount if the user is sending tokens to another address. The final PNL is returned as a dictionary with user addresses as keys and PNL values as values.

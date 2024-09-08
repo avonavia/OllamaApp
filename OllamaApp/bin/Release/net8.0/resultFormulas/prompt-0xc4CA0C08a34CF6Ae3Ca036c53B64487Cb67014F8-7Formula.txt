@@ -1,0 +1,45 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: System.Reflection.AssemblyMetadata("Description", "PNL calculation for burn method in UniswapV2 contract")]
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> is a custom object that should contain calculated PNL and additional data if necessary
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get necessary values from TransactionInfo object. Note that all decoding operations were done beforehand and everything is already readable
+            var reserve0 = (BigDecimal)info["_reserve0"];
+            var reserve1 = (BigDecimal)info["_reserve1"];
+            var balance0 = (BigDecimal)info["balance0"];
+            var balance1 = (BigDecimal)info["balance1"];
+            var totalSupply = (BigDecimal)info["_totalSupply"];
+            var liquidity = (BigDecimal)info["liquidity"];
+            var toAddress = (string)info["to"];
+
+            // Calculate amounts of tokens burned
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // If user sends tokens to themselves, fee is not subtracted
+            var feeSubtraction = info["msg.sender"] != toAddress ? CalculateFee(amount0, amount1) : 0M;
+
+            // PNL is calculated in Eth, so we don't need to convert it. We assume that token prices are provided and they are correct
+            var pnl = (amount0 * tokenPrices?.FirstOrDefault(x => x.Key == info["_token0"]).Value ?? 1M) +
+                      (amount1 * tokenPrices?.FirstOrDefault(x => x.Key == info["_token1"]).Value ?? 1M) - feeSubtraction;
+
+            // Create and return CalculationResult object with calculated PNL
+            var result = new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = pnl };
+            return result;
+        }
+
+        private decimal CalculateFee(BigDecimal amount0, BigDecimal amount1)
+        {
+            // Fee calculation logic goes here. I assume that fee is a constant for simplicity
+            const decimal feePercentage = 0.03M;
+            return (decimal)(amount0 + amount1) * feePercentage;
+        }
+    }
+}
+```

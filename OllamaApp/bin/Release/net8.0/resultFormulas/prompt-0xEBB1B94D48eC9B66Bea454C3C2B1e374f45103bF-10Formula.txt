@@ -1,0 +1,58 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the balance of token0 and token1 for the contract address
+            var token0Balance = GetTokenBalance(info.Transfers, info.TokenInfoList.FirstOrDefault(t => t.Symbol == "token0"));
+            var token1Balance = GetTokenBalance(info.Transfers, info.TokenInfoList.FirstOrDefault(t => t.Symbol == "token1"));
+
+            // Assuming reserve0 and reserve1 are stored in the contract's storage (not provided in TransactionInfo)
+            // You need to retrieve them from blockchain data or another source
+            BigDecimal reserve0 = 0; // Retrieve reserve0 from blockchain data
+            BigDecimal reserve1 = 0; // Retrieve reserve1 from blockchain data
+
+            // Calculate the updated reserves and quantities for token0 and token1
+            var (newReserve0, newQuantity0) = Update(token0Balance, reserve0, reserve1);
+            var (newReserve1, newQuantity1) = Update(token1Balance, reserve1, reserve0);
+
+            // Calculate the PNL for each user address involved in the transaction
+            var pnlResults = info.Transfers.GroupBy(t => t.FromAddress).Select(g => new KeyValuePair<string, BigDecimal>(g.Key, CalculatePnL(g, tokenPrices)));
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+        }
+
+        private BigDecimal GetTokenBalance(List<TokenTransferInfo> transfers, TokenInfo token)
+        {
+            if (token == null) return 0;
+            return transfers.Where(t => t.TokenInfo.Symbol == token.Symbol).Sum(t => t.Amount);
+        }
+
+        private (BigDecimal newReserve, BigDecimal quantity) Update(BigDecimal inputBalance, BigDecimal reserveIn, BigDecimal reserveOut)
+        {
+            var numerator = inputBalance * reserveOut;
+            var denominator = inputBalance + reserveIn;
+            return (numerator / denominator, inputBalance - denominator);
+        }
+
+        private BigDecimal CalculatePnL(IEnumerable<TokenTransferInfo> transfers, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            var pnl = BigDecimal.Zero;
+
+            foreach (var transfer in transfers)
+            {
+                // Assuming fee is subtracted from the amount transferred
+                var price = tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value ?? 0m;
+                pnl -= transfer.Amount * (BigDecimal)price;
+            }
+
+            return pnl;
+        }
+    }
+}
+```

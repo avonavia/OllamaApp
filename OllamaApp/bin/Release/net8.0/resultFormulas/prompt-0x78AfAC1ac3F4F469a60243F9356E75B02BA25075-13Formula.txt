@@ -1,0 +1,38 @@
+The Solidity function provided is an implementation of the Newton-Raphson method to compute the integer square root of a number. However, since you're asking for a C# equivalent, I will provide a simple implementation using the System.Math library which provides a Sqrt() method that returns a double:
+
+```csharp
+// Assembly Info
+[assembly: FormulaAssembly("Sqrt")]
+
+namespace Sauron.Formula.Sqrt
+{
+    public class SqrtFormula : IFormulaPlugin
+    {
+        // Method to calculate the integer square root of a number
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Check if Transfers is not null and has at least one element
+            if (info.Transfers != null && info.Transfers.Any())
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // The amount to calculate the square root of must be a positive number, so check that
+                    if (transfer.Amount > 0)
+                    {
+                        var sqrt = Math.Sqrt((double)transfer.Amount);
+                        // Since we're working with integers, take the floor of the square root and convert it to a BigDecimal
+                        result.Add(new KeyValuePair<string, BigDecimal>(transfer.TokenInfo.Symbol, (BigDecimal)Math.Floor(sqrt)));
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```
+
+This formula takes the square root of each token amount in a transaction and adds it to a list as a pair with its symbol. Please note that the method only handles positive amounts, as you cannot take the square root of a negative number. Also, since we're working with integers, the result is floored before conversion to a BigDecimal.

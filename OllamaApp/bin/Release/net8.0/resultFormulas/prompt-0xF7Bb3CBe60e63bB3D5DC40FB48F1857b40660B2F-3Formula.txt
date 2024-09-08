@@ -1,0 +1,27 @@
+Here's a possible implementation of the `initialize` method for UniswapV2 in C#, following all the provided code and answer rules:
+
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if msg.sender is the factory address
+            if (info.FromAddress != FactoryAddress)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>($"UniswapV2: FORBIDDEN");
+
+            // Assign token0 and token1 with provided addresses
+            Token0 = info.Transfers?.FirstOrDefault(t => t.TransferIndex == 0)?.TokenInfo.Symbol;
+            Token1 = info.Transfers?.FirstOrDefault(t => t.TransferIndex == 1)?.TokenInfo.Symbol;
+
+            // Return a successful calculation result with no PNL (since this is an initialization method)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```
+This implementation checks if the `FromAddress` in the transaction matches the `FactoryAddress`. If it does not, it returns an error message. Otherwise, it assigns `Token0` and `Token1` to the symbols of the tokens that were transferred in the first and second transfers, respectively. Since this is an initialization method, there is no PNL calculation to perform, so it returns a successful result with no value.

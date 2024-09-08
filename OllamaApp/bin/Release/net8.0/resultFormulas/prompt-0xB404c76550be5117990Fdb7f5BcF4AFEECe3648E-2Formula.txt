@@ -1,0 +1,55 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        // Define a constant for the selector used to encode the transfer function in the token contract
+        private const string SELECTOR = "0xa9059cbb";
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Filter the transfers that match the _safeTransfer function signature (selector and to address)
+            var relevantTransfers = info.Transfers?.Where(t => t.Input.StartsWith(SELECTOR) && t.ToAddress == info.CallData);
+
+            if (relevantTransfers != null)
+            {
+                // Calculate the total token amount transferred by subtracting fees and grouping by address
+                var pnlByAddress = relevantTransfers
+                    .GroupBy(t => t.FromAddress)
+                    .Select(g => new KeyValuePair<string, BigDecimal>(g.Key, g.Sum(t => t.Amount - t.Fee)));
+
+                // Convert PNL to Eth if token prices are provided
+                if (tokenPrices != null)
+                {
+                    pnlByAddress = pnlByAddress.Select(p => new KeyValuePair<string, BigDecimal>(p.Key, ConvertToEth(p.Value, tokenPrices)));
+                }
+
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlByAddress);
+            }
+            else
+            {
+                // If no relevant transfers are found, return null PNL
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+            }
+        }
+
+        private BigDecimal ConvertToEth(BigDecimal tokenAmount, IEnumerable<KeyValuePair<string, decimal>> tokenPrices)
+        {
+            // Find the price for the token in the list of provided prices
+            var tokenPrice = tokenPrices.FirstOrDefault(p => p.Key == tokenAmount.Symbol).Value;
+
+            if (tokenPrice != 0)
+            {
+                // Convert the token amount to Eth by dividing it by the token price
+                return tokenAmount / new BigDecimal(tokenPrice);
+            }
+            else
+            {
+                throw new ArgumentException("Token price not found");
+            }
+        }
+    }
+}
+```

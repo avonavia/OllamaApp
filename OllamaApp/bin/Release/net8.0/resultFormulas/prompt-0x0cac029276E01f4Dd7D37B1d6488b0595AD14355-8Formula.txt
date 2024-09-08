@@ -1,0 +1,27 @@
+```csharp
+// This is a simple C# formula method for calculating PNL based on the given Solidity contract method
+// The calculation assumes that the user sends or receives Ether (ETH) and does not include any token transfers
+// All inputs are provided in Eth, and the output will be in Eth
+// Remember to subtract the fee from the calculated PNL if the transaction involves sending ETH
+using System;
+
+public class UniswapV2PNLCalculator
+{
+    public static decimal CalculatePNL(decimal initialBalance, decimal finalBalance, decimal gasPrice, decimal gasUsed)
+    {
+        // Calculate the cost of gas for the transaction
+        decimal gasCost = gasPrice * gasUsed;
+
+        // Check if user sent or received ETH in the transaction
+        if (initialBalance > finalBalance)
+            // User sent ETH to another address, calculate PNL as negative value
+            return -(finalBalance + gasCost) + initialBalance;
+        else if (initialBalance < finalBalance)
+            // User received ETH from another address, calculate PNL as positive value
+            return finalBalance - (initialBalance + gasCost);
+        else
+            // User did not send or receive any ETH, return 0 for PNL
+            return 0;
+    }
+}
+```

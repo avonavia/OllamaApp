@@ -1,0 +1,48 @@
+```csharp
+// Assembly information
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        // The formula for calculating PNL for the mint function in UniswapV2 contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decoded input parameters from TransactionInfo object
+            var toAddress = info.DecodedInputParameters[0].ToLower();
+
+            // Get the balances and reserves for tokens 0 and 1
+            var balance0 = new BigDecimal(info.TokenBalances[info.DecodedInputParameters[1].ToLower()]);
+            var balance1 = new BigDecimal(info.TokenBalances[info.DecodedInputParameters[2].ToLower()]);
+            var reserve0 = new BigDecimal(info.ContractData["_reserve0"]);
+            var reserve1 = new BigDecimal(info.ContractData["_reserve1"]);
+
+            // Calculate the amounts for tokens 0 and 1
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Get the total supply of liquidity tokens
+            var _totalSupply = new BigDecimal(info.ContractData["_totalSupply"]);
+
+            // Calculate the liquidity minted
+            BigDecimal liquidity;
+            if (_totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - new BigDecimal("1e3"); // MINIMUM_LIQUIDITY is assumed to be 1000
+            else
+                liquidity = BigDecimal.Min(amount0 * _totalSupply / reserve0, amount1 * _totalSupply / reserve1);
+
+            // Calculate the PNL for user
+            // In this case, it's assumed that the user does not lose money from minting, so we return 0 as PNL.
+            var pnl = BigDecimal.Zero;
+
+            // If toAddress is the same as sender address, no fees are applied. Otherwise, subtract fees.
+            if (toAddress != info.FromAddress.ToLower())
+                pnl -= new BigDecimal(info.Fee);
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+    }
+}
+```

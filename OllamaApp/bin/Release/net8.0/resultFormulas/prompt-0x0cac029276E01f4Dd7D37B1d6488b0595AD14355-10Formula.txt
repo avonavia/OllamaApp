@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("SyncPNL")]
+
+namespace Sauron.Formula.SyncPNL
+{
+    public class SyncPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info?.Transfers == null || !tokenPrices.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Message = "Invalid transaction info or token prices." };
+
+            var userAddresses = info.ToAddresses;
+            if (!userAddresses.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Message = "No user addresses found in the transaction." };
+
+            // Initialize PNL dictionary for each user address
+            var pnlDict = userAddresses.ToDictionary(addr => addr, _ => 0M);
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.From == info.Contract || transfer.To == info.Contract) // If the contract is involved in the transfer
+                {
+                    var tokenSymbol = transfer.TokenInfo.Symbol;
+                    var price = tokenPrices.FirstOrDefault(p => p.Key == tokenSymbol).Value;
+                    if (price > 0M) // Token price is known
+                    {
+                        var valueInEth = transfer.Amount * (decimal)price;
+                        if (transfer.From == info.Contract) // Contract sent tokens to a user
+                            pnlDict[transfer.To] -= (BigDecimal)valueInEth;
+                        else if (transfer.To == info.Contract) // User sent tokens to the contract
+                            pnlDict[transfer.From] += (BigDecimal)valueInEth;
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnlDict };
+        }
+    }
+}
+```
+This C# code calculates the PNL for each user address in a transaction that involves a Uniswap-like contract. The contract's `sync()` method updates its balances of two tokens, and this formula calculates the change in value of these tokens for each user involved in the transaction.

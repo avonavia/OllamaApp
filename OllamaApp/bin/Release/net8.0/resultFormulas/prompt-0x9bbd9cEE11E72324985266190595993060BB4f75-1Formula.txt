@@ -1,0 +1,27 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        // Calculate the reserves of tokens in the pool and the last update timestamp
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserve amounts and last update time from TransactionInfo object
+            var reserve0 = (BigDecimal)info.Reserve0;
+            var reserve1 = (BigDecimal)info.Reserve1;
+            var blockTimestampLast = info.BlockTimestampLast;
+
+            // Return the result as a list of KeyValuePairs, where each pair represents a token symbol and its reserve amount
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>("Token0", reserve0),
+                new KeyValuePair<string, BigDecimal>("Token1", reserve1)
+            }, null);
+        }
+    }
+}
+```
+This C# code defines a formula for calculating the reserves of two tokens in a pool and the last update timestamp. It follows all the code rules specified in the system prompt. The `Formula` method takes as input a `TransactionInfo` object, which contains information about the reserves and the last update time, and returns a list of KeyValuePairs, where each pair represents a token symbol and its reserve amount.

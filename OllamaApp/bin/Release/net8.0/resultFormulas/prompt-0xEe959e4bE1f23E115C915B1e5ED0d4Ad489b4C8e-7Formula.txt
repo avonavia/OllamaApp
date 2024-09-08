@@ -1,0 +1,52 @@
+```csharp
+// Assembly information is required for Sauron PNL calculation
+[assembly: AssemblyTitle("Sauron.Formula.BurnFormula")]
+[assembly: AssemblyDescription("PNL Calculation for Burn method in UniswapV2 contract")]
+
+namespace Sauron.Formula.BurnFormula
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+    using Sauron.Core.Models; // Assuming TransactionInfo and CalculationResult are defined in this namespace
+
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigInteger?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming TransactionInfo object already has decoded data for reserve0, reserve1, fromAddress and toAddress
+            var reserve0 = BigInteger.Parse(info.DecodedData["_reserve0"].ToString());
+            var reserve1 = BigInteger.Parse(info.DecodedData["_reserve1"].ToString());
+            var totalSupply = BigInteger.Parse(info.DecodedData["_totalSupply"].ToString());
+            var liquidity = BigInteger.Parse(info.DecodedData["liquidity"].ToString());
+            var balance0 = BigInteger.Parse(info.DecodedData["balance0"].ToString());
+            var balance1 = BigInteger.Parse(info.DecodedData["balance1"].ToString());
+
+            // Calculate burned amounts
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // Check if transaction sender is the recipient, and apply fee logic if necessary
+            bool sentToSelf = info.FromAddress == info.ToAddress;
+            BigInteger fee = 0;
+            if (!sentToSelf)
+            {
+                var kLast = reserve0 * reserve1; // Assuming kLast is calculated before the burn operation
+                var newReserve0 = reserve0 - amount0;
+                var newReserve1 = reserve1 - amount1;
+                var newK = newReserve0 * newReserve1;
+
+                if (newK < kLast * 997 / 1000) // Simplified fee calculation, may need to be adjusted based on exact contract logic
+                    fee = (amount0 + amount1) * 3 / 1000; // Assuming 0.3% fee
+            }
+
+            // Calculate PNL: negative since user is burning their liquidity tokens and losing both token amounts
+            var pnl = -(amount0 * BigInteger.Parse((tokenPrices?.FirstOrDefault(x => x.Key == info.DecodedData["_token0"]).Value ?? 1m).ToString()) + amount1 * BigInteger.Parse((tokenPrices?.FirstOrDefault(x => x.Key == info.DecodedData["_token1"]).Value ?? 1m).ToString()));
+            pnl -= fee; // Subtracting fee from PNL
+
+            return new CalculationResult<BigInteger?>(pnl);
+        }
+    }
+}
+```

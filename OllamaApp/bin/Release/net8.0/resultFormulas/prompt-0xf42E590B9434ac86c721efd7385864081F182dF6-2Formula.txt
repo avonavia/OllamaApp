@@ -1,0 +1,59 @@
+Here is a possible solution for calculating PNL from a given Solidity contract method. This method assumes that the transfer of tokens happens through an ERC20 token contract, which has a `transfer(address _to, uint256 _value)` function to perform the actual token transfer. Please note that this is a simplified solution and does not take into account any gas costs or other potential losses:
+
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        // This formula calculates the PNL for a given transaction that uses the _safeTransfer function from the Solidity contract
+        // Returns a CalculationResult with an IEnumerable of KeyValuePair<string, BigDecimal> where the key is the user address and the value is their PNL in Ether
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction is a token transfer and if there are any transfers in the transaction
+            if (info.Transfers != null && info.Transfers.Count > 0)
+            {
+                var results = new Dictionary<string, BigDecimal>();
+
+                // Iterate through each transfer in the transaction
+                foreach(var transfer in info.Transfers)
+                {
+                    // If the from address is not null and it's different from the to address
+                    if (transfer.FromAddress != null && !transfer.FromAddress.Equals(transfer.ToAddress, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Subtract the transfer amount from the sender's balance
+                        results.TryGetValue(transfer.FromAddress, out BigDecimal pnl);
+                        results[transfer.FromAddress] = pnl - transfer.Amount;
+                    }
+
+                    // If the to address is not null and it's different from the from address
+                    if (transfer.ToAddress != null && !transfer.ToAddress.Equals(transfer.FromAddress, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Add the transfer amount to the recipient's balance
+                        results.TryGetValue(transfer.ToAddress, out BigDecimal pnl);
+                        results[transfer.ToAddress] = pnl + transfer.Amount;
+                    }
+                }
+
+                // If token prices are provided, convert PNL to Ether
+                if (tokenPrices != null)
+                {
+                    foreach(var item in results)
+                    {
+                        var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == info.Transfers[0].TokenInfo.Symbol).Value;
+                        results[item.Key] = (BigDecimal)(tokenPrice * (decimal)item.Value);
+                    }
+                }
+
+                // Return the results as a CalculationResult
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results.Select(r => new KeyValuePair<string, BigDecimal>(r.Key, r.Value)));
+            }
+
+            // If no PNL is calculated, return null
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

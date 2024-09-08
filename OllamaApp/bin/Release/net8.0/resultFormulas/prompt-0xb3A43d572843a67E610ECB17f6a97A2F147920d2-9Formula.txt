@@ -1,0 +1,30 @@
+```csharp
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (!pnlDictionary.ContainsKey(transfer.FromAddress))
+                    pnlDictionary[transfer.FromAddress] = 0;
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(t => t.Key == transfer.TokenInfo.Symbol).Value ?? 1m;
+                pnlDictionary[transfer.FromAddress] -= BigDecimal.Multiply(transfer.Amount, new BigDecimal(tokenPrice));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+        }
+    }
+}
+```
+This C# code implements a formula for calculating the profit and loss (PNL) of a user in a transaction where tokens are skimmed from a smart contract. The formula subtracts the value of the transferred tokens from the user's PNL. It uses the `TransactionInfo` object to get the necessary data, such as the list of transfers and their amounts, and it also takes into account the prices of the tokens using the `tokenPrices` parameter.

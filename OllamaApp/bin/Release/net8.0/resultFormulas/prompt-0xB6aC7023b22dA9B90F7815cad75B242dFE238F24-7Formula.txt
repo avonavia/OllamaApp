@@ -1,0 +1,42 @@
+Here's a sample formula method for calculating PNL based on your provided Solidity contract function:
+
+```csharp
+// This assembly attribute is required for DLL registration
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Sauron")]
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Calculate the PNL for a burn transaction
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var fromAddress = info.From;
+            var toAddress = info.To;
+            var fee = new BigDecimal(info.GasUsed * info.GasPrice);
+
+            // Assuming the transaction is a burn operation, and amount0 and amount1 are stored in logs (indexes 0 and 1)
+            var amount0 = (BigDecimal)info.Logs[0].Data;
+            var amount1 = (BigDecimal)info.Logs[1].Data;
+
+            // If the burn is done to the user's own address, then they technically didn't gain or lose any value
+            if (fromAddress == toAddress)
+                return new CalculationResult<BigDecimal?>(0);
+
+            // If token prices are provided, calculate the value of the burned tokens in Eth
+            BigDecimal? pnl = null;
+            if (tokenPrices != null && tokenPrices.Any())
+            {
+                var token0Price = tokenPrices.FirstOrDefault(t => t.Key == info.Logs[0].Address).Value;
+                var token1Price = tokenPrices.FirstOrDefault(t => t.Key == info.Logs[1].Address).Value;
+
+                if (token0Price > 0 && token1Price > 0)
+                    pnl = -((amount0 * new BigDecimal(token0Price)) + (amount1 * new BigDecimal(token1Price))) + fee;
+            }
+
+            // Subtract the transaction fee from PNL as it's an expense to the user, not a gain
+            return new CalculationResult<BigDecimal?>(pnl - fee);
+        }
+    }
+}
+```

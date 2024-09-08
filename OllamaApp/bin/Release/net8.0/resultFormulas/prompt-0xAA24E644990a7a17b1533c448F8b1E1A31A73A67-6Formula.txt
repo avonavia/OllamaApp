@@ -1,0 +1,30 @@
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("approve")]
+
+namespace Sauron.Formula.Approve
+{
+    public class ApproveFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get unique addresses involved in the transaction
+            var addresses = info.Transfers?.Select(t => t.FromAddress).Distinct();
+
+            if (addresses == null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Initialize PNL dictionary for each address
+            var pnl = addresses.ToDictionary(a => a, _ => new BigDecimal(0));
+
+            foreach (var transfer in info.Transfers)
+            {
+                // Approve does not result in any transaction value change, so no need to calculate PNL
+            }
+
+            // Return the PNL for each address
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl.Select(kvp =>
+                new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value - info.Fee)));
+        }
+    }
+}

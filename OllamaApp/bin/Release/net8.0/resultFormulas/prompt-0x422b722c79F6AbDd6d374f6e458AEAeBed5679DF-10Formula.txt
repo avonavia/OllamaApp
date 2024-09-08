@@ -1,0 +1,41 @@
+```csharp
+[assembly: FormulaAssembly("Sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Get user addresses from transaction
+            var userAddresses = info.Transfers.Select(t => t.From).Distinct();
+
+            foreach (var address in userAddresses)
+            {
+                // Get transfers related to the current user address
+                var addressTransfers = info.Transfers.Where(t => t.From == address);
+
+                // Calculate PNL for each token held by the user in this contract
+                foreach (var token in addressTransfers.Select(t => t.TokenInfo).Distinct())
+                {
+                    var tokenTransfers = addressTransfers.Where(t => t.TokenInfo == token);
+
+                    // Calculate total amount of the token transferred to and from this contract by the user
+                    var totalIn = tokenTransfers.Where(t => t.To == info.ContractAddress).Sum(t => t.Amount);
+                    var totalOut = tokenTransfers.Where(t => t.From == info.ContractAddress).Sum(t => t.Amount);
+
+                    // Calculate PNL for the token (total out - total in) and add it to the dictionary
+                    pnl[token.Symbol] = totalOut - totalIn;
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Data = pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value))
+            };
+        }
+    }
+}
+```

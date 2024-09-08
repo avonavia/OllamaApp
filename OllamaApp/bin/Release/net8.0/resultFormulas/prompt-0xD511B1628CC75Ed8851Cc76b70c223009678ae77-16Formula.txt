@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("GetReserves")]
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        // This formula assumes that the reserves are already present in the TransactionInfo object
+        // It returns a tuple containing the reserve amounts and block timestamp last updated
+        public CalculationResult<Tuple<BigDecimal, BigDecimal, uint>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal(info.Reserve0); // Assuming Reserve0 is present in TransactionInfo object
+            var reserve1 = new BigDecimal(info.Reserve1); // Assuming Reserve1 is present in TransactionInfo object
+            var blockTimestampLast = info.BlockTimestampLast; // Assuming BlockTimestampLast is present in TransactionInfo object
+
+            return CalculationResult<Tuple<BigDecimal, BigDecimal, uint>>.Successful(new Tuple<BigDecimal, BigDecimal, uint>(reserve0, reserve1, blockTimestampLast));
+        }
+    }
+}
+```

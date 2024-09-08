@@ -1,0 +1,51 @@
+```csharp
+[assembly: FormulaAssembly("UNISWAPV2_PNL")]
+
+namespace Sauron.Formula.UNISWAPV2_PNL
+{
+    public class UNISWAPV2_PNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            if (info?.Transfers == null || !tokenPrices.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Fail("Invalid transaction info or token prices.");
+
+            // Get distinct tokens in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            foreach (var address in info.FromAddresses)
+            {
+                pnlDictionary[address] = new BigDecimal(0);
+
+                // Calculate PNL for each token
+                foreach (var token in tokens)
+                {
+                    var transfersForToken = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol).ToList();
+                    if (!transfersForToken.Any())
+                        continue;
+
+                    // Calculate total amount of tokens sent and received by the address
+                    var amountSent = transfersForToken.Where(t => t.FromAddress == address).Sum(t => t.Amount);
+                    var amountReceived = transfersForToken.Where(t => t.ToAddress == address).Sum(t => t.Amount);
+
+                    // Calculate PNL for the token
+                    var price = new BigDecimal(tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value);
+                    var pnlForToken = (amountReceived - amountSent) * price;
+
+                    // Add to total PNL
+                    pnlDictionary[address] += pnlForToken;
+                }
+
+                // Subtract fee from total PNL
+                if (info.Fee > BigDecimal.Zero && info.FromAddresses.Contains(address))
+                    pnlDictionary[address] -= info.Fee;
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary);
+        }
+    }
+}
+```

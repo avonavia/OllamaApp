@@ -1,0 +1,57 @@
+Here is a basic example of how you could calculate PNL (Profit and Loss) for a user in the provided Solidity smart contract using C#. This assumes that the user is either sending or receiving tokens, and does not account for gas fees.
+
+```csharp
+using System;
+using Nethereum.Hex.HexConvertors.Extensions;
+
+// Note: All conversion operations have been done beforehand.
+public class PNLCalculator
+{
+    // Assembly Info
+    [assembly: CLSCompliant(true)]
+
+    /// <summary>
+    /// Calculate Profit and Loss for a user in UniswapV2 swap operation.
+    /// </summary>
+    /// <param name="userAddress">User's Ethereum address.</param>
+    /// <param name="token0Amount">Current amount of token 0 in contract.</param>
+    /// <param name="token1Amount">Current amount of token 1 in contract.</param>
+    /// <param name="initialToken0Amount">User's initial amount of token 0.</param>
+    /// <param name="initialToken1Amount">User's initial amount of token 1.</param>
+    /// <param name="amount0Out">Amount of token 0 sent or received by the user in swap operation.</param>
+    /// <param name="amount1Out">Amount of token 1 sent or received by the user in swap operation.</param>
+    /// <returns>Profit and Loss (PNL) for the user in Ethereum.</returns>
+    public static decimal CalculatePNL(string userAddress, string toAddress, ulong token0Amount, ulong token1Amount, ulong initialToken0Amount, ulong initialToken1Amount, ulong amount0Out, ulong amount1Out)
+    {
+        // Convert amounts from uint256 to decimal for accurate calculations.
+        decimal decToken0Amount = (decimal)token0Amount;
+        decimal decToken1Amount = (decimal)token1Amount;
+        decimal decInitialToken0Amount = (decimal)initialToken0Amount;
+        decimal decInitialToken1Amount = (decimal)initialToken1Amount;
+        decimal decAmount0Out = (decimal)amount0Out;
+        decimal decAmount1Out = (decimal)amount1Out;
+
+        // Calculate the price of 1 token 0 in terms of token 1 before and after the swap operation.
+        decimal initialPrice = decInitialToken1Amount / decInitialToken0Amount;
+        decimal finalPrice = (decToken1Amount + decAmount1Out) / (decToken0Amount - decAmount0Out);
+
+        // Calculate PNL if user is sending or receiving tokens.
+        decimal pnl = 0;
+
+        // If the user is sending token 0, calculate PNL.
+        if (userAddress == toAddress && amount0Out > 0)
+            pnl = -(decAmount0Out * initialPrice) + decAmount0Out * finalPrice;
+        // If the user is receiving token 0, calculate PNL.
+        else if (userAddress != toAddress && amount0Out < decInitialToken0Amount)
+            pnl = decAmount0Out * finalPrice - decAmount0Out * initialPrice;
+
+        // Similar calculations for token 1.
+        if (userAddress == toAddress && amount1Out > 0)
+            pnl = -(decAmount1Out / initialPrice) + decAmount1Out / finalPrice;
+        else if (userAddress != toAddress && amount1Out < decInitialToken1Amount)
+            pnl = decAmount1Out / finalPrice - decAmount1Out / initialPrice;
+
+        return pnl;
+    }
+}
+```

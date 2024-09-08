@@ -1,0 +1,50 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using Nethereum.Hex.BigEndian;
+using Sauron.FormulaUtils;
+using BigDecimal = Nethereum.Util.BigDecimal;
+
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // CalculationResult represents PNL for each address in the transaction.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            // Decode input data to get balance0, balance1, _reserve0 and _reserve1.
+            (uint balance0, uint balance1, uint _reserve0, uint _reserve1) = DecodeInputData(info.Input);
+
+            var blockTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() % uint.MaxValue; // Simulate block.timestamp mod 2^32.
+            var timeElapsed = (uint)(blockTimestamp - info.BlockTimestampLast); // Overflow is desired.
+
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                BigDecimal price0CumulativeLastChange = new BigDecimal(UQ112x112.Encode(_reserve1)).Divide(new BigDecimal(_reserve0)) * timeElapsed;
+                BigDecimal price1CumulativeLastChange = new BigDecimal(UQ112x112.Encode(_reserve0)).Divide(new BigDecimal(_reserve1)) * timeElapsed;
+
+                // Update PNL for user addresses based on the price changes.
+                // This is a simplified example and might need to be adjusted based on the actual usage of this method in the contract.
+                if (info.FromAddress != info.ToAddress)
+                {
+                    result[info.FromAddress] = result.GetValueOrDefault(info.FromAddress) - new BigDecimal(balance0); // Subtract sent amount from PNL.
+                    result[info.ToAddress] = result.GetValueOrDefault(info.ToAddress) + new BigDecimal(balance1) * price0CumulativeLastChange; // Add received amount to PNL.
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+
+        private (uint balance0, uint balance1, uint reserve0, uint reserve1) DecodeInputData(string input)
+        {
+            // Implement this method to decode input data based on the _update method's ABI.
+            throw new NotImplementedException();
+        }
+    }
+}
+```

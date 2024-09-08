@@ -1,0 +1,50 @@
+```csharp
+[assembly: FormulaAssembly("skim")] // This should be EXACTLY as function name in Solidity contract
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !tokenPrices?.Any() ?? false)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(null);
+
+            // Get distinct tokens in transaction
+            var distinctTokens = info.GetDistinctTokens();
+
+            if (distinctTokens == null || !distinctTokens.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(null);
+
+            // Initialize PNL dictionary with user addresses and zero balances
+            var pnlDictionary = info.FromAddresses.Union(info.ToAddresses)
+                                    .Distinct()
+                                    .ToDictionary(addr => addr, _ => BigDecimal.Zero);
+
+            foreach (var tokenInfo in distinctTokens)
+            {
+                // Filter transfers for current token
+                var tokenTransfers = info.Transfers.Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol).ToList();
+
+                if (!tokenTransfers.Any())
+                    continue;
+
+                // Get token price
+                var tokenPrice = tokenPrices?.FirstOrDefault(tp => tp.Key == tokenInfo.Symbol).Value ?? 0M;
+
+                foreach (var transfer in tokenTransfers)
+                {
+                    if (transfer.FromAddress != info.ContractAddress && pnlDictionary.ContainsKey(transfer.FromAddress))
+                        pnlDictionary[transfer.FromAddress] -= transfer.Amount * tokenPrice - info.Fee; // Subtract sent amount plus fee from PNL
+
+                    if (transfer.ToAddress != info.ContractAddress && pnlDictionary.ContainsKey(transfer.ToAddress))
+                        pnlDictionary[transfer.ToAddress] += transfer.Amount * tokenPrice; // Add received amount to PNL
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnlDictionary);
+        }
+    }
+}
+```

@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("skim")] // this must be EXACTLY as function name in Solidity contract
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var toAddress = info.CallInputParameters[0].ToString(); // assuming 'to' is the first parameter in CallInputParameters list
+            if (info.Transfers == null || !info.Transfers.Any()) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Empty; // no transfers, so no PNL change
+
+            var pnl = new Dictionary<string, BigDecimal>(); // to store address-PNL pairs
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (!pnl.ContainsKey(toAddress))
+                    pnl[toAddress] = 0; // initialize PNL for 'to' address
+
+                var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value ?? 1M; // get price of the token, use 1 if price is not provided
+                var amountInEth = (transfer.Amount / new BigDecimal(10, transfer.TokenInfo.Decimals)) * new BigDecimal((decimal)tokenPrice); // convert amount to Eth
+
+                pnl[toAddress] += amountInEth; // add amount to 'to' address PNL
+            }
+
+            if (info.Fee != null && info.Fee > 0)
+            {
+                var feeInEth = (info.Fee / new BigDecimal(10, 18)) * new BigDecimal((decimal)(tokenPrices?.FirstOrDefault(p => p.Key == "ETH").Value ?? 1M)); // convert fee to Eth
+                if (pnl.ContainsKey(toAddress))
+                    pnl[toAddress] -= feeInEth; // subtract fee from 'to' address PNL
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value))); // return PNL change for each address
+        }
+    }
+}
+```

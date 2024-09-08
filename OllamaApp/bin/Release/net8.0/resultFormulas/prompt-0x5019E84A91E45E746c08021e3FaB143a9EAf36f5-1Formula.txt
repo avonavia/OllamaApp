@@ -1,0 +1,21 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("add")]
+
+namespace Sauron.Formula.Addition
+{
+    public class AdditionFormula : IFormulaPlugin
+    {
+        // Formula signature as per the rules
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // PNL is not calculated for this method as it's a pure addition operation without any financial impact. Hence, we return an empty result with no errors or messages.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = null,
+                ErrorMessage = "",
+            };
+        }
+    }
+}
+```

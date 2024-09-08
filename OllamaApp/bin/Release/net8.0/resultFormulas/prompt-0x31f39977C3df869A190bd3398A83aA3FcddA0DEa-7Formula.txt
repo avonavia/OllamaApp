@@ -1,0 +1,46 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DynamicProxyGenAssembly2")]
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+    using Nethereum.RPC.Eth.DTOs;
+
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // PNL calculation method for the burn function of the UniswapV2 contract
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.DecodedInput == null || !info.DecodedInput["method"].Equals("burn"))
+                return new CalculationResult<decimal?> { ErrorMessage = "Invalid method" };
+
+            var balance0 = info.TokenBalancesBefore[info.DecodedInput["token0"]] ?? BigDecimal.Zero;
+            var balance1 = info.TokenBalancesBefore[info.DecodedInput["token1"]] ?? BigDecimal.Zero;
+            var liquidity = info.SenderBalancesBefore["liquidity"];
+            var totalSupply = info.ContractData["totalSupply"];
+
+            if (liquidity == null || totalSupply == null)
+                return new CalculationResult<decimal?> { ErrorMessage = "Invalid contract data" };
+
+            // Calculate the amount of tokens burned for each token
+            var amount0 = liquidity.Value * balance0 / totalSupply;
+            var amount1 = liquidity.Value * balance1 / totalSupply;
+
+            // Calculate the PNL by subtracting the value of burned tokens from the initial value
+            decimal pnl = -(amount0 * tokenPrices[info.DecodedInput["token0"]].Value + amount1 * tokenPrices[info.DecodedInput["token1"]].Value);
+
+            // If the recipient is not the sender, add the fee to the PNL
+            if (info.ToAddress != info.FromAddress)
+            {
+                var fee = info.GasPrice * info.GasUsed;
+                pnl -= fee;
+            }
+
+            return new CalculationResult<decimal?> { Result = pnl };
+        }
+    }
+}
+```

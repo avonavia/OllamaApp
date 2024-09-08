@@ -1,0 +1,62 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer;
+
+using System.Collections.Generic;
+using System.Linq;
+using Nethereum.Hex.HexConvertors.Extensions;
+using Nethereum.Util;
+using Sauron.Core.Interfaces.Models;
+using Sauron.Core.Interfaces.Services;
+using Sauron.Core.Utils;
+
+public class SafeTransferFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Get the unique tokens in transaction
+        var distinctTokens = info.GetDistinctTokens();
+
+        if (distinctTokens == null)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> { Value = null };
+
+        // Iterate through each token and calculate PNL for user addresses
+        var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+        foreach (var token in distinctTokens)
+        {
+            var transfersToToken = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+            if (transfersToToken != null)
+            {
+                // Calculate total amount transferred for user addresses
+                var totalAmountTransferred = BigDecimal.Zero;
+
+                foreach (var transfer in transfersToToken)
+                {
+                    // Check if toAddress is the same as fromAddress
+                    if (transfer.FromAddress == transfer.ToAddress)
+                        continue;
+
+                    totalAmountTransferred += transfer.Amount;
+                }
+
+                // Subtract fee and convert amount transferred to Eth
+                var pnl = totalAmountTransferred - info.Fee;
+                if (tokenPrices != null)
+                {
+                    var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == token.Symbol).Value;
+                    if (tokenPrice > 0)
+                        pnl *= new BigDecimal((decimal)tokenPrice);
+                }
+
+                // Add to results
+                pnlResults.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl));
+            }
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> { Value = pnlResults };
+    }
+}
+```

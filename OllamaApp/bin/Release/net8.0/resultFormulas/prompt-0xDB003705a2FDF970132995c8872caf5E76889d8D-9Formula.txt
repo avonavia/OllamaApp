@@ -1,0 +1,44 @@
+Here is a possible implementation of a method for the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new Dictionary<string, BigDecimal>();
+            var token0Symbol = info.GetTokenSymbolFromAddress(info.Token0);
+            var token1Symbol = info.GetTokenSymbolFromAddress(info.Token1);
+
+            if (tokenPrices == null || !tokenPrices.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "No token prices provided");
+
+            var token0Price = tokenPrices.FirstOrDefault(p => p.Key == token0Symbol).Value;
+            var token1Price = tokenPrices.FirstOrDefault(p => p.Key == token1Symbol).Value;
+
+            if (token0Price <= 0 || token1Price <= 0)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Invalid token prices");
+
+            var balanceToken0 = info.GetTokenBalance(info.ToAddress, token0Symbol);
+            var balanceToken1 = info.GetTokenBalance(info.ToAddress, token1Symbol);
+
+            var reserve0 = new BigDecimal(info.Reserve0);
+            var reserve1 = new BigDecimal(info.Reserve1);
+
+            var skimmedToken0Amount = (balanceToken0 - reserve0) * token0Price;
+            var skimmedToken1Amount = (balanceToken1 - reserve1) * token1Price;
+
+            pnlResults[info.FromAddress] = -(skimmedToken0Amount + skimmedToken1Amount);
+            pnlResults[info.ToAddress] = skimmedToken0Amount + skimmedToken1Amount;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults.AsEnumerable(), null);
+        }
+    }
+}
+```
+In the given implementation, I assume that `info.GetTokenSymbolFromAddress(...)` and `info.GetTokenBalance(...)` are existing methods in TransactionInfo class to retrieve token symbol and balance for a given address. Also, it is assumed that `Reserve0` and `Reserve1` properties exist in TransactionInfo class.
+
+The method calculates the amount of each token skimmed from the contract by subtracting the reserve amounts from the balances of the recipient address. Then it calculates the value of the skimmed tokens in Eth by multiplying the amounts with their prices. The PNL is calculated for both sender and recipient addresses and returned as a Dictionary with address-PNL pairs. If no token prices are provided or invalid token prices are provided, an error message is returned instead of the results.

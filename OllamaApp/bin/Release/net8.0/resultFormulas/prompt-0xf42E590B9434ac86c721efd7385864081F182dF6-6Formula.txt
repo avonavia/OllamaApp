@@ -1,0 +1,55 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Blocks.Transactions;
+using Sauron.Core.Formulas;
+using Sauron.Core.Interfaces.Formulas;
+using Sauron.Core.Models.Decoded;
+
+[assembly: FormulaAssembly("Mint")] // Assembly name should be exactly the same as function name in Solidity contract
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Retrieve balance and reserve values for tokens 0 and 1
+            BigDecimal balance0 = GetTokenBalance(info.FromAddress, "token0");
+            BigDecimal balance1 = GetTokenBalance(info.FromAddress, "token1");
+            BigDecimal _reserve0 = GetReserve("_reserve0");
+            BigDecimal _reserve1 = GetReserve("_reserve1");
+
+            // Calculate the amounts for tokens 0 and 1
+            BigDecimal amount0 = balance0 - _reserve0;
+            BigDecimal amount1 = balance1 - _reserve1;
+
+            BigDecimal liquidity, pnl = 0m;
+            BigDecimal _totalSupply = GetTotalSupply();
+            if (_totalSupply == 0)
+            {
+                // Initial minting with minimum liquidity lock
+                liquidity = (BigDecimal)Math.Sqrt((double)(amount0 * amount1)) - MINIMUM_LIQUIDITY;
+                _totalSupply = MINIMUM_LIQUIDITY; // Update total supply after locking
+            }
+            else
+            {
+                // Calculate liquidity for subsequent mints
+                liquidity = BigDecimal.Min(amount0 * _totalSupply / _reserve0, amount1 * _totalSupply / _reserve1);
+            }
+
+            if (liquidity <= 0) throw new Exception("UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
+
+            // Calculate PNL by comparing liquidity minted with actual tokens spent
+            BigDecimal token0Value = amount0 * GetTokenPrice(info.FromAddress, "token0");
+            BigDecimal token1Value = amount1 * GetTokenPrice(info.FromAddress, "token1");
+            pnl = (liquidity / _totalSupply) * (token0Value + token1Value);
+
+            // Subtract any fees and return PNL in Eth
+            pnl -= CalculateFees(info);
+            return new CalculationResult<BigDecimal?>(pnl, null);
+        }
+    }
+}
+```

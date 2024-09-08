@@ -1,0 +1,50 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using Sauron.Core.Formulas;
+using Sauron.Core.Formulas.Data;
+using Sauron.Core.Models;
+using Nethereum.Hex.HexConvertors.Extensions;
+
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        private const decimal MINIMUM_LIQUIDITY = 1000;
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fetch necessary data from TransactionInfo object
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+            var balance0 = info.Balance0;
+            var balance1 = info.Balance1;
+            var totalSupply = info.TotalSupply;
+            var feeOn = info.FeeOn;
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Calculate liquidity and check for minimum liquidity
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            if (liquidity <= 0)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>("INSUFFICIENT_LIQUIDITY_MINTED", null);
+
+            // Since we are calculating PNL for user addresses and not tokens, there is no need to convert liquidity.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>("PNL", -liquidity) });
+        }
+
+        private BigDecimal Sqrt(BigDecimal value) => (BigDecimal)Math.Sqrt((double)value);
+        private BigDecimal Min(BigDecimal a, BigDecimal b) => a < b ? a : b;
+    }
+}
+```

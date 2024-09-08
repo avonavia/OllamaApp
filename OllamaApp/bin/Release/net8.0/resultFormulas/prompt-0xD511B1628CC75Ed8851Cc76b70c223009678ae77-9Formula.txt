@@ -1,0 +1,29 @@
+//Method to calculate PNL for transfer transaction
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Calculate PNL only if transaction has Ether (ETH) transfer and it was successful
+        if (!info.Success || !info.Transfers.Any())
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+
+        //Calculate PNL only for ETH transfers
+        var ethTransfer = info.Transfers.FirstOrDefault(t => t.TokenInfo?.Symbol == "ETH");
+        if (ethTransfer == null)
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+
+        //If sender and recipient are the same, no PNL change occurs
+        if (info.FromAddress?.ToLower() == info.ToAddress?.ToLower())
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+
+        //Calculate PNL: negative for sender and positive for recipient
+        var pnl = new Dictionary<string, BigDecimal>();
+        pnl[info.FromAddress?.ToLower() ?? ""] -= ethTransfer.Amount + info.Fee;
+        pnl[info.ToAddress?.ToLower() ?? ""] += ethTransfer.Amount;
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+    }

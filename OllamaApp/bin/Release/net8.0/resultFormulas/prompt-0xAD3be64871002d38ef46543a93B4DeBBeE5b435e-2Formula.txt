@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transfer is valid and successful
+            if (info.Success && info.Data.Length == 0 || (info.Data.Length > 0 && BitConverter.ToBoolean(info.Data)))
+            {
+                var pnlResult = new List<KeyValuePair<string, BigDecimal>>();
+
+                // Calculate PNL for each fromAddress in transaction
+                foreach (var address in info.FromAddresses)
+                {
+                    // Find the transfer associated with the current address
+                    var transfer = info.Transfers?.FirstOrDefault(t => t.FromAddress == address);
+
+                    if (transfer != null)
+                    {
+                        // If toAddress is not the same as fromAddress, user sent money and PNL is negative
+                        if (transfer.ToAddress != transfer.FromAddress)
+                        {
+                            var pnl = -transfer.Amount;
+                            pnlResult.Add(new KeyValuePair<string, BigDecimal>(address, new BigDecimal(pnl)));
+                        }
+                    }
+                }
+
+                // If toAddress is the same as fromAddress and transfer was successful, user transferred money to themselves and PNL is zero
+                if (info.FromAddresses.SequenceEqual(info.ToAddresses))
+                {
+                    foreach (var address in info.FromAddresses)
+                    {
+                        pnlResult.Add(new KeyValuePair<string, BigDecimal>(address, BigDecimal.Zero));
+                    }
+                }
+
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult);
+            }
+            else
+            {
+                // If transfer was not successful, no PNL change
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+        }
+    }
+}
+```

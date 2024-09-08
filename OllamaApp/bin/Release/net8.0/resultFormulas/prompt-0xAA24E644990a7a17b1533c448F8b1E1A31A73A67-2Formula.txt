@@ -1,0 +1,16 @@
+// This formula checks if the transaction is attempting to renounce ownership of the contract.
+   // Since this action doesn't have any direct financial impact on user addresses, it returns null for CalculationResult.
+
+namespace Sauron.Formula.RenounceOwnershipChecker
+{
+    public class RenounceOwnershipCheckerFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction is a contract creation (which would not involve renouncing ownership)
+            if (info.ContractCreation)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.WithNoMessage(null);
+
+            // Check if the transaction is attempting to transfer ownership to address(0), which indicates a renouncement of ownership
+            if (info.ToAddress == "0x0000000000000000000000000000000

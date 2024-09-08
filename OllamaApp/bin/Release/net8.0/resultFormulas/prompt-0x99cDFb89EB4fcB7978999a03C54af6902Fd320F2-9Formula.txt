@@ -1,0 +1,40 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Iterate through each transfer in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                string address = transfer.FromAddress;
+                BigDecimal amount = transfer.Amount;
+
+                // Check if the token is token0 or token1 and adjust PNL accordingly
+                if (transfer.TokenInfo.Symbol == info.Token0 || transfer.TokenInfo.Symbol == info.Token1)
+                {
+                    decimal price = tokenPrices?.FirstOrDefault(t => t.Key == transfer.TokenInfo.Symbol).Value ?? 0;
+                    BigDecimal ethAmount = amount * (BigDecimal)price;
+
+                    // If the address is not in the dictionary, add it with the ethAmount
+                    if (!pnl.ContainsKey(address))
+                        pnl[address] = ethAmount;
+                    else
+                        // If the address is already in the dictionary, subtract the ethAmount (PNL should be negative when skimming)
+                        pnl[address] -= ethAmount;
+                }
+            }
+
+            // Subtract the fee from the PNL
+            if (pnl.ContainsKey(info.FromAddress))
+                pnl[info.FromAddress] -= info.Fee;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Successful(pnl);
+        }
+    }
+}
+```

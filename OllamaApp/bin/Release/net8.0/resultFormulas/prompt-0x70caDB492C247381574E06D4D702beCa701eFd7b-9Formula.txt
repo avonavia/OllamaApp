@@ -1,0 +1,51 @@
+//Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Initialize PNL dictionary to store user's address and their corresponding profit/loss.
+            var pnlDict = new Dictionary<string, BigDecimal>();
+
+            //Get unique tokens in the transaction.
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens != null)
+            {
+                foreach (var tokenInfo in tokens)
+                {
+                    //Filter transfers for the current token and where toAddress is user's address.
+                    var userTransfers = info.Transfers.Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol && t.ToAddress == info.FromAddress).ToList();
+
+                    if (userTransfers.Any())
+                    {
+                        //Calculate total amount of tokens received by user from the current token transfer.
+                        var totalReceived = userTransfers.Sum(t => t.Amount);
+
+                        //Subtract transaction fee if any.
+                        var netReceived = totalReceived - info.Fee;
+
+                        //If token prices are provided, convert received tokens into Eth and add it to PNL dictionary.
+                        //Else, just add the amount of the current token as PNL for simplicity.
+                        if (tokenPrices != null)
+                        {
+                            var tokenPrice = tokenPrices.FirstOrDefault(t => t.Key == tokenInfo.Symbol).Value;
+                            pnlDict[info.FromAddress] += netReceived * new BigDecimal((decimal)tokenPrice);
+                        }
+                        else
+                        {
+                            //Assuming the token symbol is used as a unique identifier for each token in this context.
+                            pnlDict[tokenInfo.Symbol] += netReceived;
+                        }
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDict);
+        }
+    }
+}

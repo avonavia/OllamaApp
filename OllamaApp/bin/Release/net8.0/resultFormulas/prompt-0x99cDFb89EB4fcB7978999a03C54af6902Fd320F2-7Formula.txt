@@ -1,0 +1,32 @@
+Using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigInteger?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var token0 = info.DecodedData.Values["_token0"].ToString();
+            var token1 = info.DecodedData.Values["_token1"].ToString();
+            var balance0 = new BigInteger(info.TokenBalances[token0].From);
+            var balance1 = new BigInteger(info.TokenBalances[token1].From);
+            var liquidity = new BigInteger(info.DecodedData.Values["liquidity"].ToString());
+            var totalSupply = new BigInteger(info.DecodedData.Values["_totalSupply"].ToString());
+
+            var amount0 = BigInteger.Divide(BigInteger.Multiply(liquidity, balance0), totalSupply);
+            var amount1 = BigInteger.Divide(BigInteger.Multiply(liquidity, balance1), totalSupply);
+
+            if (info.FromAddress != info.ToAddress) // If user sent tokens to another address, they have lost money
+            {
+                var pnl = -(amount0 * (decimal)tokenPrices[token0].Value + amount1 * (decimal)tokenPrices[token1].Value);
+                return new CalculationResult<BigInteger?>((BigInteger?)pnl, null);
+            }
+
+            // If user sent tokens to their own address, they have not lost or gained money
+            return new CalculationResult<BigInteger?>(0, null);
+        }
+    }
+}

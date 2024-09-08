@@ -1,0 +1,30 @@
+```csharp
+// Define assembly information
+[assembly: AssemblyTitle("PNL Calculation")]
+[assembly: AssemblyDescription("Calculate PNL for UniswapV2 swap method")]
+[assembly: AssemblyVersion("1.0")]
+
+using System;
+
+public class PNLCalculator
+{
+    public decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal balance0, decimal balance1, decimal toAddressBalanceBeforeSwap)
+    {
+        // Calculate input amounts
+        decimal amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0;
+        decimal amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0;
+
+        // Calculate the user's new balance after swap
+        decimal toAddressBalanceAfterSwap = toAddressBalanceBeforeSwap + amount0Out + amount1Out;
+
+        // Calculate PNL. If user sent money, subtract fee. Otherwise, calculate profit from swapped tokens.
+        decimal pnl = 0M;
+        if (toAddressBalanceAfterSwap < toAddressBalanceBeforeSwap)
+            pnl -= amount0In + amount1In; // Subtract fees
+        else
+            pnl += amount0Out * (reserve1 / reserve0) - amount1In; // Calculate profit from swapped tokens
+
+        return pnl;
+    }
+}
+```

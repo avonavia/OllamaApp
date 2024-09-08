@@ -1,0 +1,49 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Nethereum.Hex.HexConvertors.Extensions;
+using Sauron.Core.Entities;
+using Sauron.Core.Formula;
+using Sauron.Shared.Types;
+
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0Hex = info.Data.HexToByteArray().Skip(4).Take(12).ToArray();
+            var reserve1Hex = info.Data.HexToByteArray().Skip(16).Take(12).ToArray();
+
+            BigDecimal _reserve0 = new BigDecimal(new BigInteger(reserve0Hex), 18); // Assuming reserve0 is uint112, which can be represented by BigDecimal with a precision of 18
+            BigDecimal _reserve1 = new BigDecimal(new BigInteger(reserve1Hex), 18);
+
+            BigDecimal balance0 = TokenBalance(info.TokenIn); // Assuming this function retrieves the token balance for address(this)
+            BigDecimal balance1 = TokenBalance(info.ToAddress); // Assuming this function retrieves the token balance for address(this)
+
+            BigDecimal amount0 = balance0 - _reserve0;
+            BigDecimal amount1 = balance1 - _reserve1;
+
+            bool feeOn = MintFee(_reserve0, _reserve1); // Assuming this function calculates the mint fee
+            BigDecimal _totalSupply = TotalSupply(); // Assuming this function retrieves the total supply
+
+            BigDecimal liquidity;
+            if (_totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MinimumLiquidity;
+            else
+                liquidity = BigDecimal.Min((amount0 * _totalSupply / _reserve0), (amount1 * _totalSupply / _reserve1));
+
+            if (liquidity <= 0) return new CalculationResult<BigDecimal?>(null, "INSUFFICIENT_LIQUIDITY_MINTED"); // Assuming error messages are returned as part of the result
+
+            Update(balance0, balance1, _reserve0, _reserve1); // Assuming this function updates reserves and total supply
+
+            BigDecimal pnl = (info.FromAddress == info.ToAddress) ? BigDecimal.Zero : liquidity * TokenPrice(info.TokenIn); // Calculating PNL
+            return new CalculationResult<BigDecimal?>(pnl, null);
+        }
+    }
+}
+```
+This code defines a C# formula for the UniswapV2 contract's mint method. The formula calculates the liquidity and checks if it is greater than 0. It also calculates the PNL for the user involved in the transaction, assuming that the token price can be retrieved using a `TokenPrice` function.

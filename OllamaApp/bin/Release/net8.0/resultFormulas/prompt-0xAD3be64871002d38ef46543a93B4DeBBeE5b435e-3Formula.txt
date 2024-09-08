@@ -1,0 +1,23 @@
+```csharp
+//Assembly info for PNL calculation
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        //CalculationResult is a custom type that holds the result and message
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Initialize PNL dictionary
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            //Since the Solidity contract method does not have any operations affecting user's balance or tokens, no PNL is calculated.
+            //However, we return an empty CalculationResult to comply with the requirements.
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary);
+        }
+    }
+}
+```

@@ -1,0 +1,43 @@
+```csharp
+// Assembly information for PNL calculation formula in C#
+[assembly: AssemblyTitle("PNL Calculation Formula")]
+[assembly: AssemblyDescription("A formula to calculate Profit & Loss (PNL) from a UniswapV2 swap transaction.")]
+[assembly: AssemblyVersion("1.0")]
+
+namespace PNLCalculator
+{
+    public static class Calculator
+    {
+        // Calculate PNL for a given transaction
+        // amount0Out, amount1Out - amounts of tokens received by the user
+        // reserve0, reserve1 - pool reserves at the time of the transaction
+        // balance0, balance1 - contract balances after the transaction
+        // feeRate - trading fee rate (e.g., 0.003 for 0.3%)
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal balance0, decimal balance1, decimal feeRate)
+        {
+            // Calculate the amount of tokens sent by the user to the contract
+            decimal amount0In = (balance0 > reserve0 - amount0Out) ? balance0 - (reserve0 - amount0Out) : 0;
+            decimal amount1In = (balance1 > reserve1 - amount1Out) ? balance1 - (reserve1 - amount1Out) : 0;
+
+            // Calculate the total value of tokens sent by the user
+            decimal totalInputValue = amount0In * GetTokenPrice(reserve0, reserve1) + amount1In * GetTokenPrice(reserve1, reserve0);
+
+            // Apply trading fee to the input value
+            decimal totalInputValueAfterFee = totalInputValue * (1 - feeRate);
+
+            // Calculate the total value of tokens received by the user
+            decimal totalOutputValue = amount0Out * GetTokenPrice(reserve0, reserve1) + amount1Out * GetTokenPrice(reserve1, reserve0);
+
+            // Calculate PNL
+            decimal pnl = totalOutputValue - totalInputValueAfterFee;
+
+            return pnl;
+        }
+
+        // Helper method to calculate token price
+        private static decimal GetTokenPrice(decimal reserveIn, decimal reserveOut) => reserveOut / reserveIn;
+    }
+}
+```
+
+This C# code defines a static class `Calculator` with a public method `CalculatePNL` that calculates the Profit & Loss (PNL) from a UniswapV2 swap transaction. The method takes in the amounts of tokens received by the user, pool reserves at the time of the transaction, contract balances after the transaction, and trading fee rate as parameters. It calculates the amount of tokens sent by the user to the contract, applies trading fees to the input value, and then compares it with the total value of tokens received by the user to calculate PNL.

@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Check if the transaction has any transfers
+            if (info.Transfers == null || !info.Transfers.Any()) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Iterate over each transfer in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                string tokenSymbol = transfer.TokenInfo.Symbol;
+                BigDecimal amount = transfer.Amount;
+
+                // Check if the toAddress is the same as fromAddress for the current transfer
+                bool isSelfTransfer = transfer.To == info.FromAddress;
+
+                // If it's a self-transfer, subtract the fee (if any) from the amount
+                if (isSelfTransfer && !string.IsNullOrEmpty(info.Fee))
+                    amount -= new BigDecimal(info.Fee);
+
+                // Calculate PNL in Eth by multiplying token amount with its price and subtracting fee
+                var pnl = isSelfTransfer ? -amount * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(t => t.Key == tokenSymbol).Value ?? 0m) :
+                    amount * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(t => t.Key == tokenSymbol).Value ?? 0m);
+
+                // Update or add the PNL for the user address in the dictionary
+                if (pnlDictionary.ContainsKey(info.FromAddress))
+                    pnlDictionary[info.FromAddress] += pnl;
+                else
+                    pnlDictionary[info.FromAddress] = pnl;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+        }
+    }
+}
+```

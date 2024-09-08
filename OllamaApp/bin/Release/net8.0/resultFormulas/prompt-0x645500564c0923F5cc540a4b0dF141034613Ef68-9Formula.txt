@@ -1,0 +1,40 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (tokenPrices == null || !info.Transfers.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Token prices or transfers not provided");
+
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            if (fromAddress == toAddress)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("From and To addresses are the same");
+
+            var pnl = new Dictionary<string, BigDecimal>();
+            foreach (var transfer in info.Transfers)
+            {
+                var tokenSymbol = transfer.TokenInfo.Symbol;
+                if (!pnl.ContainsKey(tokenSymbol))
+                    pnl[tokenSymbol] = BigDecimal.Zero;
+
+                // Calculate PNL for each token based on its price and the amount transferred to 'to' address
+                var price = tokenPrices.FirstOrDefault(p => p.Key == tokenSymbol).Value;
+                if (price > 0)
+                    pnl[tokenSymbol] += transfer.Amount * (decimal)price;
+            }
+
+            // Subtract the fee from PNL for each token
+            var fee = info.Fee;
+            foreach (var token in pnl.Keys.ToList())
+                pnl[token] -= fee;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(fromAddress, kvp.Value)));
+        }
+    }
+}
+```

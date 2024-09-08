@@ -1,0 +1,44 @@
+Here's how you can write this function in C# using the given Code Rules. I have assumed that `token` is a contract address, `to` is the recipient address, and `value` is the amount to transfer.
+
+```csharp
+// Assembly name should match exactly with Solidity contract method name
+[assembly: FormulaAssembly("_safeTransfer")]
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        // CalculationResult will always be an enumerable of KeyValuePair<string, BigDecimal>? or NULL
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize PNL as zero
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Find the transfer in transaction info with matching 'token' and 'to' addresses
+            var transfer = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Address == token && t.ToAddress == to);
+
+            if (transfer != null)
+            {
+                // Subtract the fee from the amount transferred since the user is sending tokens out of their wallet
+                var netAmount = transfer.Amount - info.Fee;
+
+                // Convert the token amount to Eth using the provided tokenPrices
+                if (tokenPrices != null)
+                {
+                    var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == token);
+                    if (!tokenPrice.Equals(default(KeyValuePair<string, decimal>)))
+                        netAmount *= new BigDecimal((decimal)tokenPrice.Value);
+                }
+
+                // Update the PNL for user addresses
+                if (pnl.ContainsKey(transfer.FromAddress))
+                    pnl[transfer.FromAddress] -= netAmount;
+                else
+                    pnl[transfer.FromAddress] = -netAmount;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnl };
+        }
+    }
+}
+```

@@ -1,0 +1,28 @@
+```csharp
+[assembly: FormulaAssembly("StartTrading")]
+namespace Sauron.Formula.StartTrading
+{
+    public class StartTradingFormula : IFormulaPlugin
+    {
+        // As per the Solidity contract, this function is called to start trading.
+        // In C#, we'll simulate its effects by checking if trading is already open and updating flags accordingly.
+        // Since the function doesn't have a direct financial impact on user addresses, PNL calculation isn't necessary.
+        // Therefore, this formula will always return null as per rule 12 in your system prompt.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if trading is already open
+            bool tradingAlreadyOpen = info.TradingOpen;
+
+            // If trading is not open, simulate the changes made by the startTrading function
+            if (!tradingAlreadyOpen)
+            {
+                info.SwapEnabled = true;
+                info.TradingOpen = true;
+            }
+
+            // Since this function doesn't have a direct financial impact on user addresses, return null as per rule 12 in your system prompt
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

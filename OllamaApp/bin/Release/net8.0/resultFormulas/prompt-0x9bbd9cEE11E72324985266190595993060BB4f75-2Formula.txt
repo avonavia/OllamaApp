@@ -1,0 +1,54 @@
+// C# Formula method for _safeTransfer from Solidity contract
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Nethereum.Util;
+using Sauron.Core.Types;
+using Sauron.Core.Utils;
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize a dictionary to store the PNL for each user address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // If no transfers in transaction, return empty result
+            if (info.Transfers == null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(new List<KeyValuePair<string, BigDecimal>>());
+
+            // Iterate through each transfer in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                // If toAddress is not null and token symbol is not empty
+                if (!string.IsNullOrEmpty(transfer.ToAddress) && !string.IsNullOrEmpty(transfer.TokenInfo?.Symbol))
+                {
+                    var fromAddress = transfer.FromAddress;
+                    var toAddress = transfer.ToAddress;
+                    BigDecimal amount = transfer.Amount;
+                    string symbol = transfer.TokenInfo.Symbol;
+
+                    // Get token price if provided, otherwise use 1
+                    decimal tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == symbol).Value ?? 1M;
+
+                    // Calculate PNL in Eth for toAddress and fromAddress
+                    BigDecimal toPnl = amount * (decimal)tokenPrice;
+                    BigDecimal fromPnl = -amount * (decimal)tokenPrice;
+
+                    // Subtract Fee if the transaction is not a self-transfer
+                    if (!string.Equals(fromAddress, toAddress, StringComparison.OrdinalIgnoreCase))
+                        fromPnl -= info.Fee.Value * info.GasPrice;
+
+                    // Add PNL to respective address in the dictionary
+                    pnlDictionary.AddOrUpdate(toAddress, toPnl);
+                    pnlDictionary.AddOrUpdate(fromAddress, fromPnl);
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(pnlDictionary);
+        }
+    }
+}

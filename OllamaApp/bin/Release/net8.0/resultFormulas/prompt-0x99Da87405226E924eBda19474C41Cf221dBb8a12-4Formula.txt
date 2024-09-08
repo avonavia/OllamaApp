@@ -1,0 +1,73 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using Nethereum.ABI.FunctionEncoding.Attributes;
+
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2_PNLFormula : IFormulaPlugin
+    {
+        // Keep track of previous reserves and timestamps for each address
+        private Dictionary<string, (uint balance0, uint balance1, uint reserve0, uint reserve1, uint blockTimestampLast)> previousStates = new();
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the from and to addresses
+            string fromAddress = info.From;
+            string toAddress = info.To;
+
+            // Decode input data to get new balances and reserves
+            var decodedInput = UniswapV2_UpdateFunctionABI.DecodeInput(info.Input);
+            uint balance0 = decodedInput[0].Value<uint>();
+            uint balance1 = decodedInput[1].Value<uint>();
+            uint reserve0 = decodedInput[2].Value<uint>();
+            uint reserve1 = decodedInput[3].Value<uint>();
+
+            // Calculate the PNL for each address
+            var pnlResults = new Dictionary<string, BigDecimal>();
+
+            if (previousStates.TryGetValue(fromAddress, out var fromState))
+                pnlResults[fromAddress] -= CalculatePNL(fromState.balance0, balance0, fromState.reserve0, reserve0, fromState.blockTimestampLast, info.Timestamp, tokenPrices);
+
+            if (previousStates.TryGetValue(toAddress, out var toState))
+                pnlResults[toAddress] += CalculatePNL(toState.balance1, balance1, toState.reserve1, reserve1, toState.blockTimestampLast, info.Timestamp, tokenPrices);
+
+            // Subtract the transaction fee from the sender's PNL
+            pnlResults[fromAddress] -= new BigDecimal(info.Fee);
+
+            // Update the previous states for each address
+            previousStates[fromAddress] = (balance0, toState.balance1, reserve0, toState.reserve1, info.Timestamp);
+            previousStates[toAddress] = (toState.balance0, balance1, toState.reserve0, reserve1, info.Timestamp);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults);
+        }
+
+        private static BigDecimal CalculatePNL(uint oldBalance, uint newBalance, uint oldReserve, uint newReserve, uint oldTimestamp, uint newTimestamp, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            if (oldReserve == 0 || newReserve == 0) return 0;
+
+            var timeElapsed = newTimestamp - oldTimestamp;
+            var priceCumulativeLast = new BigDecimal(UQ112x112.Encode(newReserve).UDiv(oldReserve)) * timeElapsed;
+
+            // Calculate the average price over the elapsed time
+            var avgPrice = priceCumulativeLast / timeElapsed;
+
+            // Calculate the PNL in Eth for the balance change
+            var ethBalanceChange = (new BigDecimal(newBalance) - oldBalance) * avgPrice;
+
+            if (tokenPrices != null)
+            {
+                // Convert the PNL from Eth to USD using the token prices
+                var ethToUsdRate = tokenPrices.FirstOrDefault(p => p.Key == "ETH").Value;
+                return ethBalanceChange * ethToUsdRate;
+            }
+
+            return ethBalanceChange;
+        }
+    }
+}
+```

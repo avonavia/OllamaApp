@@ -1,0 +1,34 @@
+```csharp
+// This formula checks if the message sender is the tax wallet and updates the final buy/sell tax to a new fee, as long as it's not greater than the existing fees.
+[assembly: FormulaAssembly("reduceFee")]
+namespace Sauron.Formula.reduceFee
+{
+    public class reduceFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var taxWallet = GetTaxWallet(); // Replace this with actual method to get the tax wallet address
+            if (info.FromAddress != taxWallet || info.ToAddress != info.ContractAddress)
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+
+            var finalBuyTax = GetFinalBuyTax(); // Replace this with actual method to get the final buy tax
+            var finalSellTax = GetFinalSellTax(); // Replace this with actual method to get the final sell tax
+            var newFee = info.DecodedInputParameters.FirstOrDefault(p => p.Name == "_newFee").Value; // Assuming "_newFee" is a named parameter in DecodedInputParameters
+
+            if (newFee > finalBuyTax || newFee > finalSellTax)
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+
+            // If all conditions are met, update the final buy/sell tax with the new fee.
+            SetFinalBuyTax(newFee); // Replace this with actual method to set the final buy tax
+            SetFinalSellTax(newFee); // Replace this with actual method to set the final sell tax
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

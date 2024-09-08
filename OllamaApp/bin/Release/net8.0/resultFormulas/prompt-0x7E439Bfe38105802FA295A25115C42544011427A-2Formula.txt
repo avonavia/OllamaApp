@@ -1,0 +1,31 @@
+```csharp
+[assembly: FormulaAssembly("Sub")]
+
+namespace Sauron.Formula.Sub
+{
+    public class SubFormula : IFormulaPlugin
+    {
+        // Calculate the result of subtracting y from x, with an underflow check
+        // If there's an underflow (i.e., if z > x), return null as the calculation result to indicate an error
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var transfers = info.Transfers;
+
+            if (transfers == null || transfers.Count < 2)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>("Not enough transfers to perform subtraction.");
+
+            // Assuming the first transfer's amount is x and the second transfer's amount is y for simplicity in this example
+            var x = transfers[0].Amount;
+            var y = transfers[1].Amount;
+
+            if (y > x)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>("Subtraction underflow.");
+
+            var z = x - y;
+
+            // No PNL calculation needed for this formula as per the rules in your system prompt
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

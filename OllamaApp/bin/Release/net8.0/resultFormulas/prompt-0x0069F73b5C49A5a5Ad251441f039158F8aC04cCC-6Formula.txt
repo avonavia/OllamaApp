@@ -1,0 +1,48 @@
+```csharp
+// Assembly information
+[assembly: System.Reflection.AssemblyTitle("PNL Calculation")]
+[assembly: System.Reflection.AssemblyDescription("Calculate PNL for Solidity contract")]
+[assembly: System.Reflection.AssemblyCompany("Your Company Name")]
+[assembly: System.Reflection.AssemblyProduct("PNL Calculator")]
+[assembly: System.Reflection.AssemblyCopyright("Copyright © Your Company Name 2023")]
+[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+using System;
+
+namespace PNLCalculation
+{
+    public class Calculator
+    {
+        // Initial values (to be replaced with actual contract values)
+        private decimal _initialBuyTax = 2m;
+        private decimal _finalBuyTax = 1m;
+        private decimal _initialSellTax = 5m;
+        private decimal _finalSellTax = 3m;
+        private decimal _reduceBuyTaxAt = 100m;
+        private decimal _reduceSellTaxAt = 200m;
+        private decimal _maxTxAmount = 10000m;
+        private decimal _maxWalletSize = 50000m;
+        private decimal _taxSwapThreshold = 20000m;
+        private decimal _maxTaxSwap = 10000m;
+        private decimal ethPrice = 3000m; // Current ETH price in USD
+
+        public decimal CalculatePNL(decimal fromAmount, decimal toAmount, bool isSell)
+        {
+            decimal taxAmount = 0m;
+            if (isSell)
+                taxAmount = _reduceSellTaxAt > 0 ? _finalSellTax : _initialSellTax;
+            else
+                taxAmount = _reduceBuyTaxAt > 0 ? _finalBuyTax : _initialBuyTax;
+
+            decimal userReceivedAmount = toAmount - (toAmount * taxAmount / 100);
+            decimal pnl = fromAmount - userReceivedAmount; // Assuming fromAmount is the original amount sent by the user
+
+            // Calculate PNL in Eth if user sold tokens
+            if (isSell)
+                return pnl / ethPrice;
+
+            return pnl;
+        }
+    }
+}
+```

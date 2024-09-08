@@ -1,0 +1,52 @@
+Here is a C# method that calculates PNL (Profit & Loss) for the given Solidity contract swap function:
+
+```csharp
+using System;
+using System.Numerics;
+
+public class ProfitAndLossCalculator
+{
+    // Assembly info for this code
+    [assembly: CLSCompliant(true)]
+
+    /// <summary>
+    /// Calculate the profit and loss for a swap transaction in Ethereum's UniswapV2 protocol.
+    /// </summary>
+    /// <param name="amount0Out">The amount of token0 sent to recipient</param>
+    /// <param name="amount1Out">The amount of token1 sent to recipient</param>
+    /// <param name="reserve0">The total balance of token0 in the pool</param>
+    /// <param name="reserve1">The total balance of token1 in the pool</param>
+    /// <param name="balance0BeforeSwap">The user's balance of token0 before swap</param>
+    /// <param name="balance1BeforeSwap">The user's balance of token1 before swap</param>
+    /// <param name="recipientAddress">The recipient address of the tokens</param>
+    /// <param name="userAddress">The user's address who initiated the swap</param>
+    /// <returns>Profit and Loss in Eth (can be negative if the user sent money to someone else)</returns>
+    public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1,
+        decimal balance0BeforeSwap, decimal balance1BeforeSwap, string recipientAddress, string userAddress)
+    {
+        // Calculating the fees (0.3% of each swap)
+        decimal fee0 = amount0Out * 0.003m;
+        decimal fee1 = amount1Out * 0.003m;
+
+        decimal balance0AfterSwap = balance0BeforeSwap - amount0Out - fee0;
+        decimal balance1AfterSwap = balance1BeforeSwap - amount1Out - fee1;
+
+        decimal value0InPoolAfterSwap = reserve0 - amount0Out + fee0;
+        decimal value1InPoolAfterSwap = reserve1 - amount1Out + fee1;
+
+        // Calculating user's new asset value after swap
+        decimal newBalanceValue = balance0AfterSwap * value1InPoolAfterSwap / reserve0 + balance1AfterSwap * value0InPoolAfterSwap / reserve1;
+
+        // Calculating the initial asset value of the user
+        decimal initialBalanceValue = balance0BeforeSwap * reserve1 / reserve0 + balance1BeforeSwap * reserve0 / reserve1;
+
+        // If recipient is not same as sender, consider it as a transaction fee to recipient
+        if (recipientAddress != userAddress)
+            newBalanceValue -= amount0Out * (reserve1 / reserve0);  // Assuming token0 price in Eth
+
+        return initialBalanceValue - newBalanceValue;
+    }
+}
+```
+
+This method calculates the PNL of a user after performing a swap transaction on UniswapV2. It takes into account the amount of tokens swapped, the total reserve of tokens in the pool, and the user's balance before the swap. It also subtracts the fees associated with the swap (0.3%). If the recipient address is not the same as the sender, it assumes that the entire output amount is a transaction fee to the recipient. The PNL is returned in Eth without any conversion, and no messages are included in the calculation result.

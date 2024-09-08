@@ -1,0 +1,53 @@
+```csharp
+using Sauron.Formula.Skim;
+using Sauron.Node.Models.Blocks.Transactions;
+using Sauron.Shared.Models;
+using System.Collections.Generic;
+using Nethereum.Util;
+using System.Linq;
+using BigDecimal = System.Numerics.BigInteger; // replace with actual type if different
+
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            var userAddresses = info.FromAddresses.Union(info.ToAddresses).Distinct().ToList();
+
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                foreach (var address in userAddresses)
+                {
+                    var skimmedTokens = info.Transfers
+                        .Where(t => t.FromAddress == info.ToAddress && !address.Equals(info.ToAddress))
+                        .GroupBy(t => t.TokenInfo.Symbol)
+                        .Select(g => new KeyValuePair<string, BigDecimal>(g.Key, g.Sum(x => x.Amount)));
+
+                    var pnl = CalculatePnl(skimmedTokens, tokenPrices);
+                    result.Add(new KeyValuePair<string, BigDecimal>(address, pnl));
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = result };
+        }
+
+        private BigDecimal CalculatePnl(IEnumerable<KeyValuePair<string, BigDecimal>> skimmedTokens, IEnumerable<KeyValuePair<string, decimal>> tokenPrices)
+        {
+            var totalPnl = new BigDecimal(0);
+
+            foreach (var token in skimmedTokens)
+            {
+                if (tokenPrices.TryGetValue(token.Key, out var price))
+                    totalPnl += token.Value * UnitConversion.Convert.ToWei((decimal)price);
+            }
+
+            return totalPnl - info.Fee; // subtract Fee from the total PNL
+        }
+    }
+}
+```

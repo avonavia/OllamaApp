@@ -1,0 +1,23 @@
+//Method to calculate PNL for transfer function
+   public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Check if fromAddress and toAddress are the same. If so, no PNL is calculated.
+        if (info.FromAddress == info.ToAddress)
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+        //Calculate token price in ETH based on given prices or using a default price of 1 ETH per token if no price is provided
+        var tokenPrice = tokenPrices?.FirstOrDefault(p => p.Key == info.TokenInfo.Symbol).Value ?? 1;
+
+        //Convert the transferred amount to BigDecimal and calculate its price in ETH
+        var valueInEth = (BigDecimal)info.Transfers[0].Amount * tokenPrice;
+
+        //Calculate PNL: if sender sent tokens, it's negative; if they received tokens, it's positive
+        var pnl = new KeyValuePair<string, BigDecimal>(info.FromAddress, -valueInEth);
+        var result = new List<KeyValuePair<string, BigDecimal>> { pnl };
+
+        //Add PNL for recipient if it's not the same as sender
+        if (info.ToAddress != info.FromAddress)
+            result.Add(new KeyValuePair<string, BigDecimal>(info.ToAddress, valueInEth));
+
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+    }

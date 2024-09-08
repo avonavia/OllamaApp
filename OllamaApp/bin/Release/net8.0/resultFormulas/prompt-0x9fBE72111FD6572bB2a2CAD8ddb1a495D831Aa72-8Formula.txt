@@ -1,0 +1,40 @@
+```csharp
+using System;
+// This is a C# formula method for PNL calculation based on the Solidity contract method 'swap' provided.
+namespace UniswapV2PNLCalculator
+{
+    public class PNLCalculator
+    {
+        // Assembly information
+        [assembly: AssemblyTitle("UniswapV2 PNL Calculator")]
+        [assembly: AssemblyDescription("A C# library for calculating PNL based on UniswapV2 swap transactions")]
+        [assembly: AssemblyVersion("1.0.0.0")]
+
+        // PNL calculation method
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal fee)
+        {
+            // Check if the output amounts are valid
+            if (amount0Out <= 0 && amount1Out <= 0)
+                throw new ArgumentException("INSUFFICIENT_OUTPUT_AMOUNT");
+
+            // Check if there is sufficient liquidity
+            if (amount0Out >= reserve0 || amount1Out >= reserve1)
+                throw new InvalidOperationException("INSUFFICIENT_LIQUIDITY");
+
+            // Calculate the input amounts
+            decimal amount0In = Math.Max(reserve0 - amount0Out, 0);
+            decimal amount1In = Math.Max(reserve1 - amount1Out, 0);
+
+            // Check if there is sufficient input amount
+            if (amount0In <= 0 && amount1In <= 0)
+                throw new InvalidOperationException("INSUFFICIENT_INPUT_AMOUNT");
+
+            // Calculate the PNL for user addresses, not tokens. Subtract fee even if the user sends something to themselves.
+            decimal pnl = -amount0In * (reserve1 / reserve0) + amount1Out;
+            pnl -= fee;
+
+            return pnl;
+        }
+    }
+}
+```

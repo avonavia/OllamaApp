@@ -1,0 +1,70 @@
+```csharp
+// This is a C# formula method for calculating PNL based on the provided Solidity contract method
+using System;
+
+public class Calculator
+{
+    private decimal _initialBuyTax;
+    private decimal _finalBuyTax;
+    private decimal _reduceBuyTaxAt;
+    private decimal _initialSellTax;
+    private decimal _finalSellTax;
+    private decimal _maxTxAmount;
+    private decimal _maxWalletSize;
+    private decimal _taxSwapThreshold;
+    private int _preventSwapBefore;
+    private decimal _maxTaxSwap;
+    private decimal ownerBalance;
+    private decimal uniswapV2PairBalance;
+    private bool inSwap;
+    private bool swapEnabled;
+    private decimal ethPrice;
+    private int sellCount;
+    private uint lastSellBlock;
+    private uint blockNumber;
+
+    // Constructor to initialize the values
+    public Calculator(decimal initialBuyTax, decimal finalBuyTax, decimal reduceBuyTaxAt, decimal initialSellTax, decimal finalSellTax, decimal maxTxAmount, decimal maxWalletSize, decimal taxSwapThreshold, int preventSwapBefore, decimal maxTaxSwap, decimal ownerBalance, decimal uniswapV2PairBalance, bool inSwap, bool swapEnabled, decimal ethPrice)
+    {
+        _initialBuyTax = initialBuyTax;
+        _finalBuyTax = finalBuyTax;
+        _reduceBuyTaxAt = reduceBuyTaxAt;
+        _initialSellTax = initialSellTax;
+        _finalSellTax = finalSellTax;
+        _maxTxAmount = maxTxAmount;
+        _maxWalletSize = maxWalletSize;
+        _taxSwapThreshold = taxSwapThreshold;
+        _preventSwapBefore = preventSwapBefore;
+        _maxTaxSwap = maxTaxSwap;
+        this.ownerBalance = ownerBalance;
+        this.uniswapV2PairBalance = uniswapV2PairBalance;
+        this.inSwap = inSwap;
+        this.swapEnabled = swapEnabled;
+        this.ethPrice = ethPrice;
+    }
+
+    // Method to calculate PNL
+    public decimal CalculatePNL(decimal fromBalance, decimal toBalance, decimal amount)
+    {
+        decimal taxAmount = 0m;
+
+        if (fromBalance != ownerBalance && toBalance != ownerBalance)
+        {
+            if (toBalance == uniswapV2PairBalance)
+                taxAmount = (_buyCount > _reduceBuyTaxAt) ? amount * _finalSellTax / 100 : amount * _initialSellTax / 100;
+            else if (fromBalance == uniswapV2PairBalance && !inSwap && swapEnabled && ownerBalance > _taxSwapThreshold && _buyCount > _preventSwapBefore && blockNumber > lastSellBlock && sellCount < 3)
+                taxAmount = amount * (_finalBuyTax / 100);
+            else if (amount <= _maxTxAmount && toBalance + amount <= _maxWalletSize)
+                taxAmount = amount * (_initialBuyTax / 100);
+        }
+
+        decimal finalFromBalance = fromBalance - amount;
+        decimal finalToBalance = toBalance + amount - taxAmount;
+
+        decimal fromValue = finalFromBalance * ethPrice;
+        decimal toValue = finalToBalance * ethPrice;
+
+        return toValue - fromValue;
+    }
+}
+```

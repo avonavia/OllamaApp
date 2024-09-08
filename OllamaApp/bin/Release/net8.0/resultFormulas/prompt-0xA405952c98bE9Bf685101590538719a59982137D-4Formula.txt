@@ -1,0 +1,18 @@
+```csharp
+[assembly: FormulaAssembly("_getRealToken")]
+namespace Sauron.Formula._getRealToken
+{
+    public class _getRealTokenFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var weth9 = info.SWAP_ROUTER_WETH9; // Assuming WETH9 address is already decoded and available in TransactionInfo object
+            if (info.TokenAddress == "0x0")
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>("RealToken", weth9) });
+            else
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>("RealToken", info.TokenAddress) });
+        }
+    }
+}
+```

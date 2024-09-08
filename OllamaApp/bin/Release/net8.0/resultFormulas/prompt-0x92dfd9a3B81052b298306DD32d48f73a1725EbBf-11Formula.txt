@@ -1,0 +1,3 @@
+// The C# Formula method for Solidity's decreaseAllowance function does not have any direct impact on PNL calculation
+// as it only decreases the allowance that an authorized address has to spend from another address.
+// Therefore, this method will not be included in the PNL calculation formula.

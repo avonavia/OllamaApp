@@ -1,0 +1,45 @@
+// Assembly info for PNL calculation formula
+[assembly: AssemblyTitle("PNL Calculation Formula")]
+[assembly: AssemblyDescription("This assembly contains a method that calculates the Profit & Loss (PNL) for a given swap transaction based on UniswapV2 contract logic.")]
+[assembly: AssemblyVersion("1.0.0.0")]
+
+namespace PNLCalculationFormula
+{
+    public class SwapCalculator
+    {
+        /// <summary>
+        /// Calculates the Profit & Loss (PNL) for a given swap transaction based on UniswapV2 contract logic.
+        /// </summary>
+        /// <param name="amount0Out">Amount of Token 0 output in the swap.</param>
+        /// <param name="amount1Out">Amount of Token 1 output in the swap.</param>
+        /// <param name="reserve0">Reserve amount of Token 0 before the swap.</param>
+        /// <param name="reserve1">Reserve amount of Token 1 before the swap.</param>
+        /// <param name="balance0">Balance amount of Token 0 in the contract after the swap.</param>
+        /// <param name="balance1">Balance amount of Token 1 in the contract after the swap.</param>
+        /// <param name="fee">Fee percentage taken by UniswapV2 for this transaction. Assuming it is a decimal value between 0 and 1.</param>
+        /// <param name="userAddress">Address of the user initiating the swap.</param>
+        /// <param name="toAddress">Address receiving the tokens in the swap.</param>
+        /// <returns>Profit & Loss (PNL) for the user in Eth. Positive value indicates profit, negative loss.</returns>
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal balance0, decimal balance1, decimal fee, string userAddress, string toAddress)
+        {
+            // Calculate input amounts for tokens based on the contract balances and reserves
+            var amount0In = (balance0 > reserve0 - amount0Out) ? balance0 - (reserve0 - amount0Out) : 0;
+            var amount1In = (balance1 > reserve1 - amount1Out) ? balance1 - (reserve1 - amount1Out) : 0;
+
+            // Calculate fee amounts for input tokens
+            var feeAmount0 = amount0In * fee;
+            var feeAmount1 = amount1In * fee;
+
+            // If user sends money to someone else, consider it as loss (negative PNL). Otherwise, calculate profit or loss based on the price impact.
+            if (userAddress != toAddress)
+                return -(amount0Out + feeAmount0 + amount1Out + feeAmount1);
+            else
+            {
+                // Calculate price impact for each token and subtract fees from input amounts to get net gain or loss
+                var priceImpactToken0 = (amount0Out / balance0) - (amount0In / reserve0);
+                var priceImpactToken1 = (amount1Out / balance1) - (amount1In / reserve1);
+                return (priceImpactToken0 * amount0In - feeAmount0 + priceImpactToken1 * amount1In - feeAmount1);
+            }
+        }
+    }
+}

@@ -1,0 +1,49 @@
+Here is a C# method for calculating PNL based on the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2_PNL
+{
+    public class UniswapV2_PNL : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            var userAddresses = info.Transfers.Select(t => t.From).Distinct();
+
+            foreach (var address in userAddresses)
+            {
+                BigDecimal pnl = 0;
+                var transfers = info.Transfers.Where(t => t.From == address);
+
+                foreach (var transfer in transfers)
+                {
+                    // Calculate PNL for each transfer
+                    if (transfer.To != address)
+                    {
+                        // If the recipient is different, subtract the amount from PNL
+                        pnl -= transfer.Amount;
+                    }
+                    else
+                    {
+                        // If the recipient is the same, add the amount to PNL
+                        pnl += transfer.Amount;
+                    }
+
+                    // Subtract fee
+                    if (transfer.Fee > 0)
+                    {
+                        pnl -= transfer.Fee;
+                    }
+                }
+
+                result.Add(new KeyValuePair<string, BigDecimal>(address, pnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = result };
+        }
+    }
+}
+```
+This code calculates the profit and loss (PNL) for each unique address in the transaction. It subtracts the amount of tokens sent to a different address and adds the amount received from a different address. Then, it subtracts the fee from the PNL. Finally, it returns a list of key-value pairs where the key is the user address and the value is the calculated PNL.

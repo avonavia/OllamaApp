@@ -1,0 +1,24 @@
+//Method to get approved token amounts for each owner-spender pair
+    public IEnumerable<KeyValuePair<string, BigDecimal>>? GetApprovedTokens(TransactionInfo info)
+    {
+        if (info == null || info.Transfers == null) return null;
+
+        var approvals = new Dictionary<string, BigDecimal>();
+
+        foreach (var transfer in info.Transfers)
+        {
+            if (transfer.Approval)
+            {
+                // Create a unique key for each owner-spender pair
+                var key = $"{transfer.FromAddress}-{transfer.ToAddress}";
+
+                // Update the approved amount in the dictionary
+                if (approvals.ContainsKey(key))
+                    approvals[key] = transfer.Amount;
+                else
+                    approvals.Add(key, transfer.Amount);
+            }
+        }
+
+        return approvals.Select(a => new KeyValuePair<string, BigDecimal>(a.Key, a.Value));
+    }

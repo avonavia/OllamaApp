@@ -1,0 +1,9 @@
+```csharp
+public BigDecimal Divide(BigDecimal a, BigDecimal b, string errorMessage)
+{
+    if (b == 0)
+        throw new ArgumentException(errorMessage);
+
+    return a / b;
+}
+```

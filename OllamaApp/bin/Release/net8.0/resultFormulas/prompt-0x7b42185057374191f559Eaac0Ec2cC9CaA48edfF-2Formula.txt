@@ -1,0 +1,49 @@
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize PNL dictionary for each unique address in the transaction
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Calculate PNL for each transfer in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                // Subtract transferred amount from sender's PNL
+                if (!pnlDictionary.ContainsKey(info.FromAddress))
+                    pnlDictionary[info.FromAddress] = BigDecimal.Zero;
+                pnlDictionary[info.FromAddress] -= transfer.Amount;
+
+                // Add transferred amount to recipient's PNL (if they are different addresses)
+                if (!pnlDictionary.ContainsKey(transfer.ToAddress))
+                    pnlDictionary[transfer.ToAddress] = BigDecimal.Zero;
+                if (transfer.ToAddress != info.FromAddress)
+                    pnlDictionary[transfer.ToAddress] += transfer.Amount;
+            }
+
+            // Subtract transaction fee from sender's PNL
+            if (!pnlDictionary.ContainsKey(info.FromAddress))
+                pnlDictionary[info.FromAddress] = BigDecimal.Zero;
+            pnlDictionary[info.FromAddress] -= info.Fee;
+
+            // Convert PNL to Eth (if token prices are provided) and return the result
+            if (tokenPrices != null)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary
+                    .Select(pair => new KeyValuePair<string, BigDecimal>(pair.Key, pair.Value * GetTokenPriceInEth(tokenPrices, info))));
+            else
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary);
+        }
+
+        // Helper method to get token price in Eth
+        private static decimal GetTokenPriceInEth(IEnumerable<KeyValuePair<string, decimal>> tokenPrices, TransactionInfo info)
+        {
+            var tokenSymbol = info.Transfers[0].TokenInfo.Symbol;
+            return tokenPrices.FirstOrDefault(pair => pair.Key == tokenSymbol).Value;
+        }
+    }
+}

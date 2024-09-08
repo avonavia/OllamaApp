@@ -1,0 +1,22 @@
+```csharp
+[assembly: FormulaAssembly("GetReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reservesData = new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>("Reserve0", (BigDecimal)info.ContractInfo.Reserve0),
+                new KeyValuePair<string, BigDecimal>("Reserve1", (BigDecimal)info.ContractInfo.Reserve1),
+                new KeyValuePair<string, BigDecimal>("BlockTimestampLast", info.ContractInfo.BlockTimestampLast)
+            };
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(reservesData);
+        }
+    }
+}
+```
+This C# code defines a formula plugin for the `GetReserves` method of a Solidity contract. The formula retrieves the reserve0, reserve1 and blockTimestampLast values from the `ContractInfo` object in the `TransactionInfo` and returns them as a list of key-value pairs.

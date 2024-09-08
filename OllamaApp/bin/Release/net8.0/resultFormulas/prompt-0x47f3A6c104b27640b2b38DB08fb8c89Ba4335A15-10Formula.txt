@@ -1,0 +1,30 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var distinctTokens = GetDistinctTokens(info.Transfers);
+            if (distinctTokens == null || !distinctTokens.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("No tokens found in the transaction.");
+
+            var userAddresses = info.GetDistinctUserAddresses();
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            foreach (var address in userAddresses)
+            {
+                var tokenAmounts = GetTokenAmountsForAddress(info.Transfers, address);
+                var totalPnl = CalculateTotalPnl(tokenAmounts, tokenPrices);
+                pnlResults.Add(new KeyValuePair<string, BigDecimal>(address, totalPnl));
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+        }
+    }
+}
+```
+This is a simple implementation of the `SyncFormula` class in C# that follows all the rules mentioned. The method calculates PNL for each user address based on their token balances and transaction fees.

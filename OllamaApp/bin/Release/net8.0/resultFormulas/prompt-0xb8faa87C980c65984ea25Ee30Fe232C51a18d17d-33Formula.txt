@@ -1,0 +1,22 @@
+//Method to update Maximum Transaction Allowed based on Solidity contract method
+
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> UpdateMaximumTransactionAllowed(TransactionInfo info, uint256 newNum)
+    {
+        //Get the total supply of tokens
+        var totalSupply = info.TokenInfo.TotalSupply;
+
+        //Check if the new number is greater than or equal to 0.1% of the total supply
+        if (newNum >= ((totalSupply * BigDecimal.One) / BigDecimal.FromDouble(1000)) / BigDecimal.FromDouble(Math.Pow(10, 9)))
+        {
+            //Update maximum transaction allowed
+            var newMaxTransaction = newNum * (BigDecimal.FromDouble(Math.Pow(10, 9)));
+
+            //Return no PNL as this is an owner-only method that doesn't affect user balances or transactions directly
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(null);
+        }
+        else
+        {
+            //Return error if the new number is less than 0.1% of the total supply
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Fail("New value is less than 0.1% of the total supply");
+        }
+    }

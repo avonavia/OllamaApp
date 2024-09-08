@@ -1,0 +1,45 @@
+```csharp
+// Assuming that all necessary using directives and classes (such as TransactionInfo, IFormulaPlugin, CalculationResult) are already defined
+
+[assembly: FormulaAssembly("_mintFee")] // Exact match with the Solidity function name
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract necessary data from TransactionInfo object
+            var reserve0 = new BigInteger(info.Reserve0);
+            var reserve1 = new BigInteger(info.Reserve1);
+            var feeTo = info.FeeTo;
+            var totalSupply = new BigInteger(info.TotalSupply);
+            var kLast = new BigInteger(info.KLast);
+
+            // Calculate PNL for feeTo address only if it's not zero and kLast is not zero
+            if (feeTo != "0x0" && kLast != 0)
+            {
+                var rootK = BigInteger.Sqrt(reserve0 * reserve1);
+                var rootKLast = BigInteger.Sqrt(kLast);
+
+                // If rootK is greater than rootKLast, calculate liquidity and add it to feeTo's PNL
+                if (rootK > rootKLast)
+                {
+                    var numerator = totalSupply * (rootK - rootKLast);
+                    var denominator = rootK * 5 + rootKLast;
+                    var liquidity = numerator / denominator;
+
+                    // Subtract fee from liquidity as per the rules and return the result
+                    if (liquidity > 0)
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                            (new List<KeyValuePair<string, BigDecimal>>
+                             { new KeyValuePair<string, BigDecimal>(feeTo, liquidity - info.Fee) });
+                }
+            }
+            // Return null if no PNL is calculated for feeTo address
+            return null;
+        }
+    }
+}
+```

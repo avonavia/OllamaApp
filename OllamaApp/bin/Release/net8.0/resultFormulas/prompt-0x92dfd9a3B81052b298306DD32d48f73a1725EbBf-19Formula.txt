@@ -1,0 +1,41 @@
+// This method is not calculating PNL as it's not a transaction that involves token transfer or value exchange.
+// However, for completeness, here's a simple implementation of how to handle ownership transfer in C#, following the given rules:
+
+namespace Sauron.Formula.OwnershipTransfer
+
+public class OwnershipTransferFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Check if the transaction involves ownership transfer
+        if (info.FunctionSignature == "transferOwnership" && info.FromAddress != null && info.InputData != null)
+        {
+            // Decode the new owner address from input data
+            string newOwner = DecodeNewOwner(info.InputData);
+
+            // If new owner is not the zero address, consider it as a valid ownership transfer
+            if (newOwner != "0x0")
+            {
+                // Since this is an ownership transfer and not a token transaction, PNL can't be calculated directly.
+                // However, for the sake of returning a result, we could return the current owner's address with a PNL of 0,
+                // and the new owner's address with a PNL of 0 as well, indicating that their positions have not changed.
+                var results = new List<KeyValuePair<string, BigDecimal>>
+                {
+                    new KeyValuePair<string, BigDecimal>(info.FromAddress, 0),
+                    new KeyValuePair<string, BigDecimal>(newOwner, 0)
+                };
+
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+            }
+        }
+
+        // If the transaction doesn't involve ownership transfer or new owner is zero address, return null
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+    }
+
+    private string DecodeNewOwner(string inputData)
+    {
+        // Assuming that the new owner address is encoded as a 32-byte value starting from the 4th byte of the input data
+        return "0x" + inputData.Substring(10, 64);
+    }
+}

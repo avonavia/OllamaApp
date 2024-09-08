@@ -1,0 +1,35 @@
+```csharp
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // CalculationResult is always an enumerable of KeyValuePair where key is address and value is PNL in Eth
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get user addresses from TransactionInfo object
+            string fromAddress = info.FromAddress;
+            string toAddress = info.ToAddress;
+
+            // Calculate PNL for both users, considering fee if they are not the same address
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            // Assuming that balance0 and balance1 are available in TransactionInfo object
+            BigDecimal balanceChangeFrom = (BigDecimal)info.Balance0 - (BigDecimal)info.PreviousBalance0;
+            BigDecimal balanceChangeTo = (BigDecimal)info.Balance1 - (BigDecimal)info.PreviousBalance1;
+
+            // Fee is subtracted from the sender's balance change
+            if (fromAddress != toAddress)
+                balanceChangeFrom -= info.Fee;
+
+            pnlResult[fromAddress] = -balanceChangeFrom; // PNL for sender is negative
+            pnlResult[toAddress] = balanceChangeTo; // PNL for receiver is positive
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResult.AsEnumerable());
+        }
+    }
+}
+```

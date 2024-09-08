@@ -1,0 +1,10 @@
+//Method to get reserves information
+
+public IEnumerable<KeyValuePair<string, BigDecimal>>? GetReserves()
+{
+    if (Transfers is not null)
+    {
+        yield return new KeyValuePair<string, BigDecimal>("reserve0", BigDecimal.FromString(Reserve0)); // assuming Reserve0 and Reserve1 are properties of TransactionInfo class
+        yield return new KeyValuePair<string, BigDecimal>("reserve1", BigDecimal.FromString(Reserve1));
+    }
+}

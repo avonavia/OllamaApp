@@ -1,0 +1,41 @@
+```csharp
+// Assembly info for PNL calculation
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.BurnUniswapV2
+{
+    public class BurnUniswapV2Formula : IFormulaPlugin
+    {
+        // Calculate PNL for the burn method in UniswapV2 contract
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction is successful
+            if (info.Status == false || info.Events == null || !info.Events.Any())
+                return new CalculationResult<decimal?>() { Success = false };
+
+            var burnEvent = info.Events.FirstOrDefault(e => e.Name == "Burn");
+
+            // Check if Burn event exists and has correct data
+            if (burnEvent == null || !burnEvent.Args.ContainsKey("amount0") || !burnEvent.Args.ContainsKey("amount1"))
+                return new CalculationResult<decimal?>() { Success = false };
+
+            var amount0 = BigDecimal.ToDecimal(burnEvent.Args["amount0"]);
+            var amount1 = BigDecimal.ToDecimal(burnEvent.Args["amount1"]);
+
+            // Check if token prices exist
+            if (tokenPrices == null || !tokenPrices.Any())
+                return new CalculationResult<decimal?>() { Success = false };
+
+            var token0Price = tokenPrices.FirstOrDefault(t => t.Key == info.ContractAddress).Value;
+            var token1Price = tokenPrices.FirstOrDefault(t => t.Key != info.ContractAddress).Value;
+
+            // Calculate PNL in Eth
+            decimal pnl = amount0 * token0Price + amount1 * token1Price - info.FeeEth;
+
+            return new CalculationResult<decimal?>() { Success = true, Result = pnl };
+        }
+    }
+}
+```

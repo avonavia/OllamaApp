@@ -1,0 +1,18 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        // The formula method should return a tuple containing reserve0, reserve1 and blockTimestampLast values
+        // from the TransactionInfo object. These values are assumed to be already decoded in the TransactionInfo object.
+        public CalculationResult<Tuple<BigDecimal, BigDecimal, uint>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Create a tuple with the reserve values and return it as the result of the calculation
+            var result = new Tuple<BigDecimal, BigDecimal, uint>(info.Reserve0, info.Reserve1, info.BlockTimestampLast);
+            return CalculationResult<Tuple<BigDecimal, BigDecimal, uint>>.Success(result);
+        }
+    }
+}
+```

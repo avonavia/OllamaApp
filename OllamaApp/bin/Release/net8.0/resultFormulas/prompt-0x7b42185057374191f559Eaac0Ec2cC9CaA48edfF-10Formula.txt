@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Calculate PNL for user addresses from transfers
+            var pnlResults = new Dictionary<string, BigDecimal>();
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                if (!pnlResults.ContainsKey(transfer.FromAddress))
+                    pnlResults[transfer.FromAddress] = BigDecimal.Zero;
+                if (!pnlResults.ContainsKey(transfer.ToAddress))
+                    pnlResults[transfer.ToAddress] = BigDecimal.Zero;
+
+                // Assuming that token0 and token1 are the first two tokens in transfers list
+                var tokenIndex = transfer.TokenInfo == info.Tokens?.ElementAtOrDefault(0) ? 0 : 1;
+
+                // Subtract the amount of tokens sent from user's balance
+                pnlResults[transfer.FromAddress] -= transfer.Amount * (tokenPrices?.ElementAtOrDefault(tokenIndex).Value ?? 1);
+                // Add the amount of tokens received to user's balance
+                pnlResults[transfer.ToAddress] += transfer.Amount * (tokenPrices?.ElementAtOrDefault(tokenIndex).Value ?? 1);
+            }
+
+            // Subtract fees from sender's PNL if it exists in the dictionary
+            if (pnlResults.ContainsKey(info.From))
+                pnlResults[info.From] -= info.Fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

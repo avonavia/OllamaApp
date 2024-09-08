@@ -1,0 +1,35 @@
+```csharp
+// This is a simple implementation of the PNL calculation for the swap method of UniswapV2 contract.
+// Note that this is not an exact copy of the solidity contract, but it follows the same logic.
+
+using System;
+
+public class UniswapV2PNLCalculator
+{
+    // Assuming that _reserve0 and _reserve1 are public properties or methods in your ERC20 token contracts
+    public decimal CalculatePNL(decimal reserve0, decimal reserve1, decimal amount0Out, decimal amount1Out, decimal fee)
+    {
+        // Check if user sends tokens to themselves
+        bool isSelfSwap = (amount0Out > 0 && amount1Out == 0) || (amount0Out == 0 && amount1Out > 0);
+
+        // Calculate the initial value of reserves in Ether
+        decimal reserveValueInEth = reserve0 * reservePrice + reserve1 * ethPrice;
+
+        // Simulate the swap by updating the reserves
+        reserve0 -= (amount0Out - fee);
+        reserve1 -= (amount1Out - fee);
+
+        // Calculate the final value of reserves in Ether after the swap
+        decimal newReserveValueInEth = reserve0 * reservePrice + reserve1 * ethPrice;
+
+        // PNL is calculated for user addresses, not tokens. So we subtract the initial reserve value from the final reserve value to get the change in Eth for the user.
+        decimal pnl = newReserveValueInEth - reserveValueInEth;
+
+        // If it's a self swap, then PNL is halved as per UniswapV2 logic
+        if (isSelfSwap)
+            pnl /= 2;
+
+        return pnl;
+    }
+}
+```

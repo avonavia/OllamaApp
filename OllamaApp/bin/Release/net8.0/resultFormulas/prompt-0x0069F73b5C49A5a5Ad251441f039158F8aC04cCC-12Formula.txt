@@ -1,0 +1,30 @@
+[assembly: FormulaAssembly("RecoverEth")]
+
+namespace Sauron.Formula.RecoverEth
+{
+    public class RecoverEthFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fee is already subtracted from the balance of the contract before this method is called.
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Assuming _taxWallet is the address that triggered the transaction
+            if (info.FromAddress == info.TaxWallet)
+            {
+                pnl[info.TaxWallet] = -info.Value;
+            }
+            else
+            {
+                pnl[info.FromAddress] = BigDecimal.Zero;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = pnl,
+                Messages = null // No messages in this case
+            };
+        }
+    }
+}

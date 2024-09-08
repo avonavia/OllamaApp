@@ -1,0 +1,18 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using Sauron.Common.FormulaInterface;
+using Sauron.Common.Model.Objects.Formulas.Transactions;
+
+[assembly: FormulaAssembly("_mintFee")]
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if feeTo is not zero (feeOn is true) and kLast is not zero
+            if (!info.FromAddress.Equals("0x0000000000000000000000000000000

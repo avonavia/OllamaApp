@@ -1,0 +1,50 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_Update")]
+
+namespace Sauron.Formula.UniswapV2_Update
+{
+    public class UniswapV2_UpdateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Check if the transaction is from UniswapV2 contract
+            if (info.ToAddress != "UNISWAP_V2_CONTRACT_ADDRESS") return null;
+
+            // Decode input data to get balance0, balance1, _reserve0 and _reserve1
+            var decodedInput = DecodeInputData(info.Input);
+            if (!decodedInput.Success) return null;
+
+            var balance0 = new BigDecimal(decodedInput.Decoded[0]);
+            var balance1 = new BigDecimal(decodedInput.Decoded[1]);
+            var _reserve0 = new BigDecimal((ulong)decodedInput.Decoded[2]);
+            var _reserve1 = new BigDecimal((ulong)decodedInput.Decoded[3]);
+
+            // Calculate timeElapsed
+            uint currentTimestamp = (uint)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % Math.Pow(2, 32));
+            uint blockTimestampLast = GetBlockTimestampLast(); // This should be stored in the context or fetched from a database
+            uint timeElapsed = currentTimestamp - blockTimestampLast;
+
+            if (timeElapsed > 0 && _reserve0 != BigDecimal.Zero && _reserve1 != BigDecimal.Zero)
+            {
+                // Calculate price0CumulativeLast and price1CumulativeLast
+                var price0CumulativeLast = new BigDecimal(UQ112x112.Encode(_reserve1).Uqdiv(_reserve0)) * timeElapsed;
+                var price1CumulativeLast = new BigDecimal(UQ112x112.Encode(_reserve0).Uqdiv(_reserve1)) * timeElapsed;
+
+                // Calculate PNL for each user address involved in the transaction
+                // This requires additional context or data about which addresses are involved and their initial balances
+            }
+
+            // Update reserve0 and reserve1
+            SetReserve0(balance0);
+            SetReserve1(balance1);
+
+            // Update blockTimestampLast
+            SetBlockTimestampLast(currentTimestamp);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = result };
+        }
+    }
+}
+```

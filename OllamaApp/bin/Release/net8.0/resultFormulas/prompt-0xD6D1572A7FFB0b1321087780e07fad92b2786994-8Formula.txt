@@ -1,0 +1,66 @@
+```csharp
+[assembly: FormulaAssembly("transferFrom")]
+namespace Sauron.Formula.TransferFrom;
+public class TransferFromFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // If there are no transfers in the transaction or transfer information is not present, return null.
+        if (info.Transfers == null || !info.Transfers.Any())
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+        // Get distinct tokens involved in the transaction.
+        var tokens = info.GetDistinctTokens();
+
+        if (tokens == null)
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+        // Initialize a dictionary to store PNL for each address.
+        Dictionary<string, BigDecimal> pnl = new Dictionary<string, BigDecimal>();
+
+        // Loop through all unique tokens involved in the transaction.
+        foreach (var token in tokens)
+        {
+            // Get all transfers related to the current token.
+            var tokenTransfers = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+            // Loop through each transfer related to the current token.
+            foreach (var transfer in tokenTransfers)
+            {
+                // Subtract transferred amount from sender's PNL.
+                if (!pnl.ContainsKey(transfer.FromAddress))
+                    pnl[transfer.FromAddress] = new BigDecimal(0);
+
+                pnl[transfer.FromAddress] -= transfer.Amount;
+
+                // Add transferred amount to recipient's PNL.
+                if (!pnl.ContainsKey(transfer.ToAddress))
+                    pnl[transfer.ToAddress] = new BigDecimal(0);
+
+                pnl[transfer.ToAddress] += transfer.Amount;
+            }
+        }
+
+        // Subtract transaction fee from sender's PNL if it is a valid address and the fee is available.
+        if (!string.IsNullOrEmpty(info.FromAddress) && info.Fee != null)
+        {
+            pnl[info.FromAddress] -= info.Fee;
+        }
+
+        // Convert PNL to Eth by multiplying with token price, if provided.
+        if (tokenPrices != null)
+        {
+            foreach (var pair in pnl)
+            {
+                var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == info.Transfers.First(t => t.FromAddress == pair.Key).TokenInfo.Symbol);
+                if (!tokenPrice.Equals(default(KeyValuePair<string, decimal>)))
+                    pnl[pair.Key] *= (BigDecimal)tokenPrice.Value;
+            }
+        }
+
+        // Return the PNL for each address.
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+    }
+}
+```

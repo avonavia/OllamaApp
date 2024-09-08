@@ -1,0 +1,31 @@
+```csharp
+[assembly: FormulaAssembly("_balanceChecker")]
+namespace Sauron.Formula._balanceChecker
+{
+    public class _balanceCheckerFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var sender = info.FromAddress;
+            var balance = new BigDecimal(0);
+
+            if (info.Allowed(sender))
+            {
+                balance = info._allowed; // Assuming _allowed is a property in TransactionInfo
+            }
+            else
+            {
+                balance = info.Balances[sender]; // Assuming Balances is a dictionary in TransactionInfo
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>>
+                {
+                    new KeyValuePair<string, BigDecimal>(sender, balance)
+                }
+            };
+        }
+    }
+}
+```

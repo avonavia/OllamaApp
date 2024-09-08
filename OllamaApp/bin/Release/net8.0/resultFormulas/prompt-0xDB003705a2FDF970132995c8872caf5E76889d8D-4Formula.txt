@@ -1,0 +1,47 @@
+```csharp
+// Assembly info for Solidity contract function name "_update"
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // CalculationResult is a generic type that can contain the result of PNL calculation or NULL
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extracting necessary information from TransactionInfo object
+            var balance0 = (BigDecimal)info.DecodedData[0];
+            var balance1 = (BigDecimal)info.DecodedData[1];
+            var _reserve0 = (BigDecimal)info.DecodedData[2];
+            var _reserve1 = (BigDecimal)info.DecodedData[3];
+
+            // Calculate the price cumulatives
+            BigDecimal timeElapsed = info.BlockTimestamp - info.BlockTimestampLast;
+            BigDecimal price0CumulativeLast = 0;
+            BigDecimal price1CumulativeLast = 0;
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                price0CumulativeLast += (_reserve1 / _reserve0) * timeElapsed;
+                price1CumulativeLast += (_reserve0 / _reserve1) * timeElapsed;
+            }
+
+            // Calculate the PNL for user addresses
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            var fee = info.Fee;
+
+            BigDecimal pnl = 0;
+            if (fromAddress == info.UserAddress)
+                pnl -= balance0 + fee; // User sent tokens, so PNL is negative
+            else if (toAddress == info.UserAddress)
+                pnl += balance1 - fee; // User received tokens, so PNL is positive
+
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            result.Add(new KeyValuePair<string, BigDecimal>(info.UserAddress, pnl));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> { Data = result };
+        }
+    }
+}
+```

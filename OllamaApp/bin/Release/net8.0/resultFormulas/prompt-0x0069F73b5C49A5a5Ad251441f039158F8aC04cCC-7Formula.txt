@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("SwapTokensForEth")]
+
+namespace Sauron.Formula.SwapTokensForEth
+{
+    public class SwapTokensForEthFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new Dictionary<string, BigDecimal>();
+
+            // Check if the transaction is locked for swap
+            if (!info.ExtraData?.Contains("lockTheSwap") ?? false)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Swap not locked");
+
+            // Iterate through all transfers in the transaction
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<Transfer>())
+            {
+                // Check if the transfer is from the contract to UniswapV2Router for swapping tokens
+                if (transfer.ToAddress == "UniswapV2Router" && transfer.FromAddress == info.SmartContractAddress)
+                {
+                    // Subtract the fee from the transferred amount
+                    var netAmount = transfer.Amount - (info.Fee ?? BigDecimal.Zero);
+
+                    // If the token has a price, calculate the PNL in Eth
+                    if (tokenPrices?.FirstOrDefault(tp => tp.Key == transfer.TokenInfo.Symbol).Value is decimal price)
+                        pnlResults[transfer.FromAddress] = -(netAmount * new BigDecimal(price));
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+        }
+    }
+}
+```
+This C# code defines a `SwapTokensForEthFormula` class that implements the `IFormulaPlugin` interface. The `Formula` method calculates the profit and loss (PNL) for each unique address in the transaction that swaps tokens for Ethereum using UniswapV2Router. It first checks if the swap is locked by verifying the existence of "lockTheSwap" in the extra data of the transaction. Then, it iterates through all transfers to find those where tokens are sent from the smart contract address to the UniswapV2Router for swapping. The net amount after subtracting the fee is calculated and if a price for the token exists in the `tokenPrices` dictionary, the PNL is calculated in Ethereum and added to the results. Finally, the method returns the calculation result as a dictionary containing addresses and their corresponding PNLs.

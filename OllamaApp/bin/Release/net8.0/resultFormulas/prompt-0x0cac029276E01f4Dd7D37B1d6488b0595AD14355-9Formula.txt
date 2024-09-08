@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                var pnl = CalculatePnl(info, tokenPrices);
+                results.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, new BigDecimal(pnl)));
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+
+        private decimal CalculatePnl(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>> tokenPrices)
+        {
+            var pnl = 0m;
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.FromAddress == info.ToAddress && tokenPrices.TryGetValue(transfer.TokenInfo.Symbol, out var price))
+                {
+                    pnl -= (decimal)transfer.Amount * price; // Subtract the amount transferred to the recipient in Eth
+                }
+            }
+
+            if (info.Fee != null && tokenPrices.TryGetValue(info.Fee.Symbol, out var feePrice))
+            {
+                pnl -= (decimal)info.Fee.Amount * feePrice; // Subtract the transaction fee in Eth
+            }
+
+            return pnl;
+        }
+    }
+}
+```

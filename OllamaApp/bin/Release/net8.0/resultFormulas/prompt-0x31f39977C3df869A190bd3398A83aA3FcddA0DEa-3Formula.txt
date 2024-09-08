@@ -1,0 +1,42 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2InitializePNL")]
+namespace Sauron.Formula.UniswapV2InitializePNL
+{
+    public class UniswapV2InitializePNLFormula : IFormulaPlugin
+    {
+        // Since the initialize method only sets the token0 and token1 addresses,
+        // there is no direct profit or loss calculation for this method.
+        // However, we can calculate potential PNL if tokens are transferred in/out of the pool.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if tokens were transferred in/out of the pool
+            var transfersInPool = info.Transfers?.Where(t => t.ToAddress == info.ContractAddress || t.FromAddress == info.ContractAddress);
+
+            if (transfersInPool != null)
+            {
+                // Calculate PNL for each user address based on transferred tokens and their prices
+                var pnlResult = transfersInPool.GroupBy(t => t.FromAddress).Select(group => new KeyValuePair<string, BigDecimal>(
+                    group.Key,
+                    -CalculateTotalAmount(group) + (group.Key == info.UserAddress ? CalculateFeeAmount(info) : 0)));
+                return pnlResult;
+            }
+
+            // If no transfers in/out of the pool, PNL is 0 for all users
+            return Enumerable.Empty<KeyValuePair<string, BigDecimal>>();
+        }
+
+        private static BigDecimal CalculateTotalAmount(IEnumerable<TokenTransferInfo> transfers)
+        {
+            return transfers.Sum(t => t.Amount * (BigDecimal)t.Price);
+        }
+
+        private static BigDecimal CalculateFeeAmount(TransactionInfo info)
+        {
+            // Assuming fee is a fixed percentage of the total amount transferred in/out of the pool
+            const decimal FEE_PERCENTAGE = 0.003M; // 0.3% fee
+            return (BigDecimal)(info.GasUsed * info.GasPrice * new BigDecimal(FEE_PERCENTAGE));
+        }
+    }
+}
+```

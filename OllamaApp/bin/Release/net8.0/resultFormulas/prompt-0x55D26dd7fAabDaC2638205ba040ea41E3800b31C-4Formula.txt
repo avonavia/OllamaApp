@@ -1,0 +1,48 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("UniswapV2PNL")]
+
+namespace Sauron.Formula.UniswapV2PNL
+{
+    public class UniswapV2PNLFormula : IFormulaPlugin
+    {
+        // Formula signature as per Solidity contract method
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Fetch the relevant addresses and balances from TransactionInfo
+            var address0 = info.FromAddress;
+            var balance0 = info.TokenAmounts[0];
+            var address1 = info.ToAddress;
+            var balance1 = info.TokenAmounts[1];
+
+            // Calculate the reserve changes
+            uint112 _reserve0 = (uint112)balance0;
+            uint112 _reserve1 = (uint112)balance1;
+
+            BigDecimal price0CumulativeLast = GetPriceCumulativeLast(address0); // Implement this method to fetch the last cumulative price for address0's token
+            BigDecimal price1CumulativeLast = GetPriceCumulativeLast(address1); // Implement this method to fetch the last cumulative price for address1's token
+            uint32 blockTimestampLast = GetBlockTimestampLast(); // Implement this method to fetch the last recorded block timestamp
+
+            uint32 blockTimestamp = (uint32)(DateTimeOffset.Now.ToUnixTimeSeconds() % ((BigInteger)1 << 32));
+            uint32 timeElapsed = blockTimestamp - blockTimestampLast;
+
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                price0CumulativeLast += (BigDecimal)_reserve1 / _reserve0 * timeElapsed;
+                price1CumulativeLast += (BigDecimal)_reserve0 / _reserve1 * timeElapsed;
+            }
+
+            // Calculate PNL for each address
+            var pnlAddress0 = balance0 - GetInitialBalance(address0) - info.Fee;
+            var pnlAddress1 = balance1 - GetInitialBalance(address1);
+
+            results.Add(new KeyValuePair<string, BigDecimal>(address0, pnlAddress0));
+            results.Add(new KeyValuePair<string, BigDecimal>(address1, pnlAddress1));
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+    }
+}
+```

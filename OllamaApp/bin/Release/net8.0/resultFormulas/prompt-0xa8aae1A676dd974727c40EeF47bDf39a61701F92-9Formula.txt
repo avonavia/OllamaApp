@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !tokenPrices?.Any() ?? false)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var userAddresses = info.GetDistinctUserAddresses();
+            var pnl = userAddresses.Select(user =>
+            {
+                var tokenAmounts = GetTokenAmountsForAddress(info, user);
+                var totalPnl = BigDecimal.Zero;
+
+                foreach (var (tokenInfo, amount) in tokenAmounts)
+                {
+                    if (!tokenPrices.TryGetValue(tokenInfo.Symbol, out var price))
+                        continue;
+
+                    totalPnl += amount * price;
+                }
+
+                return new KeyValuePair<string, BigDecimal>(user, totalPnl - info.Fee);
+            });
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+        }
+
+        private IEnumerable<KeyValuePair<TokenInfo, BigDecimal>> GetTokenAmountsForAddress(TransactionInfo info, string address)
+        {
+            return info.Transfers
+                .Where(t => t.From == address || t.To == address)
+                .GroupBy(t => t.TokenInfo.Symbol)
+                .Select(group => new KeyValuePair<TokenInfo, BigDecimal>(
+                    group.First().TokenInfo,
+                    group.Sum(t => (t.From == address ? -1 : 1) * t.Amount)));
+        }
+    }
+}
+```

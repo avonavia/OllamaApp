@@ -1,0 +1,52 @@
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get tokens and their amounts in this transaction
+            var tokensWithAmounts = info.Transfers?.GetTokensWithAmounts();
+
+            if (tokensWithAmounts == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+
+            // Get distinct tokens in this transaction
+            var tokens = info.Transfers.GetDistinctTokens();
+
+            if (tokens == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+
+            foreach (var token in tokens)
+            {
+                // Get all transfers for this token
+                var tokenTransfers = tokensWithAmounts.Where(t => t.Key.Symbol == token.Symbol).ToList();
+
+                if (!tokenTransfers.Any()) continue;
+
+                // Calculate total amount of this token transferred in this transaction
+                BigDecimal totalAmount = tokenTransfers.Sum(t => t.Value);
+
+                // If user sent tokens to another address, PNL is negative
+                if (info.ToAddress != info.FromAddress)
+                    result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, -totalAmount));
+
+                // If user received tokens from another address, PNL is positive
+                if (tokenTransfers.Any(t => t.Key.Symbol == token.Symbol && t.Key.Address != info.FromAddress))
+                    result.Add(new KeyValuePair<string, BigDecimal>(info.ToAddress, totalAmount));
+            }
+
+            // Subtract fee from sender's PNL
+            if (result.Any(r => r.Key == info.FromAddress))
+            {
+                var fromPnl = result.First(r => r.Key == info.FromAddress).Value;
+                result[result.FindIndex(r => r.Key == info.FromAddress)] = new KeyValuePair<string, BigDecimal>(info.FromAddress, fromPnl - info.Fee);
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+        }
+    }
+}

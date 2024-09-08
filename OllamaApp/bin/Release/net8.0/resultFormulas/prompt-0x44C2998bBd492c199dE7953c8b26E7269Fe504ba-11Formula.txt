@@ -1,0 +1,61 @@
+Here's a possible implementation of the `swapTokensForEth` method as a C# Formula method:
+
+```csharp
+[assembly: FormulaAssembly("swapTokensForEth")]
+
+namespace Sauron.Formula.SwapTokensForEth
+{
+    public class SwapTokensForEthFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if there are any transfers in the transaction
+            if (info.Transfers == null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get the token transfer that represents the swap
+            var swapTransfer = info.Transfers.FirstOrDefault(t => t.ToAddress == info.ToAddress && t.TokenInfo.Symbol == "UNISWAP_V2_ROUTER");
+            if (swapTransfer == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get the token that was swapped for ETH
+            var inputToken = swapTransfer.TokenInfo;
+            if (inputToken == null || inputToken.Symbol == "ETH")
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get the amount of the swapped token that was transferred to the Uniswap V2 Router contract
+            var inputAmount = swapTransfer.Amount;
+
+            // Calculate the amount of ETH received from the swap using the Uniswap V2 formula:
+            // output_eth = input_token * (reserve_eth / reserve_token) * (1 - fee)
+            var ethReserve = 0m;
+            var tokenReserve = 0m;
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.TokenInfo.Symbol == "ETH")
+                    ethReserve += Convert.ToDecimal(transfer.Amount);
+                else if (transfer.TokenInfo.Address == inputToken.Address)
+                    tokenReserve += Convert.ToDecimal(transfer.Amount);
+            }
+            var fee = 0.003m; // Uniswap V2 default fee is 0.3%
+            var outputEth = (decimal)(inputAmount * ethReserve / tokenReserve) * (1 - fee);
+
+            // Calculate the PNL for each user address that participated in the swap
+            var pnlResult = new Dictionary<string, BigDecimal>();
+            if (info.FromAddress != null)
+                pnlResult[info.FromAddress] -= inputAmount; // User sent tokens to Uniswap V2 Router contract
+            if (info.ToAddress != null)
+                pnlResult[info.ToAddress] += outputEth; // User received ETH from Uniswap V2 Router contract
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.FromAddress == info.ToAddress && transfer.TokenInfo.Symbol != "ETH" && transfer.TokenInfo.Symbol != inputToken.Symbol)
+                    pnlResult[info.ToAddress] -= transfer.Amount; // User paid fees to other contracts
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult);
+        }
+    }
+}
+```
+This implementation assumes that the Uniswap V2 Router contract is identified by its `TokenInfo.Symbol` field with a value of "UNISWAP\_V2\_ROUTER". The calculation also assumes a default fee of 0.3% for Uniswap V2 swaps, but this can be adjusted as needed.

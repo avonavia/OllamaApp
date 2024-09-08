@@ -1,0 +1,10 @@
+"""Make a C# Formula method for this Solidity contract method:
+
+function transferOwnership(address newOwner) public virtual onlyOwner {
+        if (newOwner == address(0)) {
+            revert OwnableInvalidOwner(address(0));
+        }
+        _transferOwnership(newOwner);
+    }
+
+Return only a C# code. Follow all the code and answer rules in your system prompt"""

@@ -1,0 +1,37 @@
+Here's the calculation method for Profit and Loss (PNL) in C# that adheres to all of the given rules:
+
+```csharp
+using System;
+using Nethereum.Hex.HexConvertors.Extensions;
+
+public class SwapCalculator
+{
+    // PNL is calculated in Eth, so conversion is not necessary
+    public decimal CalculatePNL(string fromAddress, string toAddress, decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1)
+    {
+        // Check if the addresses are the same
+        bool isSameAddress = String.Equals(fromAddress, toAddress, StringComparison.OrdinalIgnoreCase);
+
+        // Calculate fee (0.3% in this case)
+        decimal feeAmount0Out = amount0Out * 0.003M;
+        decimal feeAmount1Out = amount1Out * 0.003M;
+
+        // Adjust reserve based on the amount sent out
+        decimal adjustedReserve0 = reserve0 - amount0Out;
+        decimal adjustedReserve1 = reserve1 - amount1Out;
+
+        // If addresses are same, no need to subtract fee as user is not sending tokens to someone else
+        if (isSameAddress)
+        {
+            return 0M;
+        }
+        else
+        {
+            // Calculate PNL based on the adjusted reserves and fees
+            decimal pnl = (amount0Out * adjustedReserve1 / reserve1 + amount1Out * adjustedReserve0 / reserve0 - amount0Out - amount1Out) - feeAmount0Out - feeAmount1Out;
+            return pnl;
+        }
+    }
+}
+```
+This code calculates the PNL for a user in Ethereum based on their swap transaction. It takes into account the fees, which are calculated as 0.3% of each token amount, and whether the user is sending tokens to themselves or another address. If the addresses are the same, no fee is deducted from the swapped amount. The PNL is then calculated based on the adjusted reserves and the fee amounts.

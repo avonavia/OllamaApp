@@ -1,0 +1,22 @@
+```csharp
+[assembly: FormulaAssembly("GetReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        // The Formula method returns a CalculationResult containing a tuple of reserve amounts and the last block timestamp
+        // Token prices are not used in this calculation, so they are optional
+        public CalculationResult<(BigDecimal Reserve0, BigDecimal Reserve1, uint LastBlockTimestamp)> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // We assume that the reserve amounts and last block timestamp are stored in specific fields of the TransactionInfo object
+            var reserve0 = new BigDecimal((decimal)info.Reserve0);
+            var reserve1 = new BigDecimal((decimal)info.Reserve1);
+            var lastBlockTimestamp = info.BlockTimestampLast;
+
+            return CalculationResult<(BigDecimal, BigDecimal, uint)>
+                .Successful((reserve0, reserve1, lastBlockTimestamp));
+        }
+    }
+}
+```

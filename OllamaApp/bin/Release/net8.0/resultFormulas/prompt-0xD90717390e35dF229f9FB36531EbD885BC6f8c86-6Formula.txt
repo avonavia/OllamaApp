@@ -1,0 +1,45 @@
+```csharp
+// Assembly info
+[assembly: FormulaAssembly("MINT_FORMULA")]
+
+namespace Sauron.Formula.MINT_FORMULA
+{
+    public class MINT_FORMULA : IFormulaPlugin
+    {
+        // PNL calculation for mint method in Solidity contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info == null || tokenPrices == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null, "Invalid input data");
+
+            // Get reserves and balances
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+            var balance0 = info.BalanceToken0;
+            var balance1 = info.BalanceToken1;
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Calculate liquidity and totalSupply
+            BigDecimal liquidity;
+            BigDecimal totalSupply = info.TotalSupply;
+            if (totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min((amount0 * totalSupply) / reserve0, (amount1 * totalSupply) / reserve1);
+
+            // Check if liquidity is positive and calculate PNL
+            if (liquidity > 0)
+            {
+                // If the recipient is not the sender, we assume that the user sent tokens to another address
+                if (info.ToAddress != info.FromAddress)
+                    return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(-(liquidity - info.Fee), null);
+            }
+
+            // If there is no change in PNL or an error occurred, we return 0 and a possible message
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(0, "No PNL change or error");
+        }
+    }
+}
+```

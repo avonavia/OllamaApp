@@ -1,0 +1,29 @@
+```csharp
+// CalculationResult must always be CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>, having Address-PNL pairs in it or NULL.
+[assembly: FormulaAssembly("div")]
+
+namespace Sauron.Formula.Div
+{
+    public class DivFormula : IFormulaPlugin
+    {
+        // CalculationResult signature will ALWAYS be the same: CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // This method is an implementation of the Solidity div function. It takes two uint256 numbers and returns their division result as a uint256 number. If the second number is 0, it throws an error message. In this context, we don't have transaction data to calculate PNL, so we'll return null for now.
+            if (info.Transfers == null || info.Transfers.Count < 2) // Assuming 'div' function requires at least two transfers
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Not enough transfers to perform division");
+
+            var a = info.Transfers[0].Amount;
+            var b = info.Transfers[1].Amount;
+
+            if (b == 0)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Division by zero is not allowed");
+
+            // Perform the division and store the result in a KeyValuePair with an empty string key as we don't have a specific address to associate the PNL with.
+            var pnl = new[] { new KeyValuePair<string, BigDecimal>("", a / b) };
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl);
+        }
+    }
+}
+```

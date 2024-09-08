@@ -1,0 +1,33 @@
+// Formula for calculating square root based on Solidity contract method
+
+[assembly: FormulaAssembly("sqrt")]
+
+namespace Sauron.Formula.Sqrt
+{
+    public class SqrtFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info, BigDecimal y)
+        {
+            if (y > 3)
+            {
+                var z = y;
+                var x = y / 2 + 1;
+                while (x < z)
+                {
+                    z = x;
+                    x = (y / x + x) / 2;
+                }
+                return new CalculationResult<BigDecimal>(z);
+            }
+            else if (y != 0)
+            {
+                return new CalculationResult<BigDecimal>(1);
+            }
+            else
+            {
+                // Return an error or a specific value for y = 0 as per the requirements of your system
+                throw new ArgumentException("Input cannot be zero");
+            }
+        }
+    }
+}

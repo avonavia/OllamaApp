@@ -1,0 +1,43 @@
+```csharp
+using Sauron.Formula;
+using Nethereum.Util;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+
+[assembly: FormulaAssembly("_safeTransfer")]
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        private const string SELECTOR = "0xa9059cbb"; // Transfer function selector
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlMap = new Dictionary<string, BigDecimal>();
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                if (transfer.From == transfer.To || !transfer.Data.StartsWith(SELECTOR)) continue; // Skip self-transfers and non-transfer calls
+
+                var amount = new BigDecimal(transfer.Amount);
+                if (!pnlMap.ContainsKey(transfer.From)) pnlMap[transfer.From] = 0;
+                if (!pnlMap.ContainsKey(transfer.To)) pnlMap[transfer.To] = 0;
+
+                // Subtract the fee from sender's PNL and add it to recipient's PNL
+                pnlMap[transfer.From] -= amount + info.Fee;
+                pnlMap[transfer.To] += amount;
+            }
+
+            if (tokenPrices != null)
+            {
+                // Convert token amounts to Eth based on provided prices
+                foreach (var pair in pnlMap)
+                    pnlMap[pair.Key] = pair.Value * new BigDecimal(tokenPrices.FirstOrDefault(p => p.Key == pair.Key).Value);
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Ok(pnlMap.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

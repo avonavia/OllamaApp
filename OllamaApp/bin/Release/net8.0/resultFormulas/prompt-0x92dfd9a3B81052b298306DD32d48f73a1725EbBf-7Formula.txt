@@ -1,0 +1,22 @@
+//Method to get PNL for transaction sender
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        if (info.FromAddress == info.ToAddress || info.Transfers?.Count != 1)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+        var transfer = info.Transfers[0];
+
+        // If token has no price, we can't calculate PNL
+        if (!tokenPrices?.Any(t => t.Key == transfer.TokenInfo.Symbol) ?? false)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+        // Calculate total amount of tokens sent in Eth
+        var tokenPrice = tokenPrices?.First(t => t.Key == transfer.TokenInfo.Symbol).Value;
+        var ethAmountSent = (decimal)transfer.Amount * (decimal)tokenPrice / (10m.Pow(info.Decimals));
+
+        // Calculate PNL in Eth, subtracting fee
+        var pnl = -ethAmountSent - info.Fee;
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, (BigDecimal)pnl) });
+    }

@@ -1,0 +1,43 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.Transfers != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // If the transfer is to the specified address 'to' and it involves tokens from this contract
+                    if (transfer.ToAddress == info.Parameters[0].Value && (transfer.TokenInfo.Symbol == "token0" || transfer.TokenInfo.Symbol == "token1"))
+                    {
+                        // Subtract the fee from the amount to get the actual profit for the user
+                        var profit = transfer.Amount - info.Fee;
+
+                        if (profit > 0) // Only consider transfers where the user gained value
+                        {
+                            // If tokenPrices is provided, convert the profit from tokens to Eth and add it to results
+                            if (tokenPrices != null)
+                            {
+                                var price = tokenPrices.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value;
+                                if (price > 0)
+                                {
+                                    results.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, profit / new BigDecimal((decimal)price)));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+        }
+    }
+}
+```

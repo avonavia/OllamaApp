@@ -1,0 +1,55 @@
+// No need to implement this method as it's an internal Solidity function and not meant to be called externally from a different language like C#.
+
+// However, if we were dealing with ERC20 tokens and needed to calculate PNL based on allowance changes in transactions, the code might look something like this:
+
+[assembly: FormulaAssembly("ERC20_Approval_PNL")]
+
+namespace Sauron.Formula.ERC20ApprovalPNL
+{
+    public class ERC20ApprovalPNL : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new Dictionary<string, BigDecimal>();
+
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Check if the transfer is an approval transaction (this can be determined by inspecting input data, as Solidity ABI encoding allows us to identify function calls based on their signatures)
+                    if (IsApprovalTransaction(transfer))
+                    {
+                        var tokenSymbol = transfer.TokenInfo.Symbol;
+                        var price = GetPriceForToken(tokenPrices, tokenSymbol);
+                        var amountInEth = BigDecimal.Multiply(transfer.Amount, price);
+
+                        if (results.ContainsKey(info.FromAddress))
+                            results[info.FromAddress] -= amountInEth;
+                        else
+                            results[info.FromAddress] = -amountInEth;
+
+                        // We don't change the balance of 'spender' address as it's not a direct transfer to them
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>()
+            {
+                Data = results.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value))
+            };
+        }
+
+        private bool IsApprovalTransaction(TokenTransferInfo transfer)
+        {
+            // This is a placeholder. In real scenario, we would inspect the transaction input data to determine if it's an approval transaction.
+            return false;
+        }
+
+        private decimal GetPriceForToken(IEnumerable<KeyValuePair<string, decimal>> tokenPrices, string tokenSymbol)
+        {
+            var price = tokenPrices.FirstOrDefault(kvp => kvp.Key == tokenSymbol).Value;
+            return price > 0 ? new decimal(price) : throw new Exception($"Price not found for token: {tokenSymbol}");
+        }
+    }
+}

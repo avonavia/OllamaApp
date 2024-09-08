@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        // CalculationResult will be NULL as fee is not a profit/loss for the user but for the feeTo address
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // We assume that reserve0 and reserve1 are already decoded in the TransactionInfo object
+            var _reserve0 = info.DecodedData["_reserve0"];
+            var _reserve1 = info.DecodedData["_reserve1"];
+
+            var feeTo = info.FactoryFeeTo; // We assume that factory's feeTo address is already decoded in the TransactionInfo object
+
+            // If feeTo is not zero, it means a fee is applied
+            if (feeTo != "0x0")
+            {
+                var _kLast = info.KLast; // We assume that kLast is already decoded in the TransactionInfo object
+
+                if (_kLast != 0)
+                {
+                    BigDecimal rootK = Sqrt(_reserve0 * _reserve1);
+                    BigDecimal rootKLast = Sqrt(_kLast);
+
+                    // If rootK is greater than rootKLast, a fee is owed
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = info.TotalSupply; // We assume that totalSupply is already decoded in the TransactionInfo object
+                        BigDecimal numerator = totalSupply * (rootK - rootKLast);
+                        BigDecimal denominator = rootK * 5 + rootKLast;
+                        BigDecimal liquidity = numerator / denominator;
+
+                        // If there is a fee owed, we return NULL as it's not a profit/loss for the user but for the feeTo address
+                    }
+                }
+            }
+
+            // If no fee is owed or if feeTo is zero, we return NULL
+            return null;
+        }
+
+        // We assume that Sqrt function is already implemented and works correctly
+        private BigDecimal Sqrt(BigDecimal n) { /* implementation not shown */ }
+    }
+}
+```

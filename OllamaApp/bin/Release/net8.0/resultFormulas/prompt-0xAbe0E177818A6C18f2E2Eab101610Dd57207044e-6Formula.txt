@@ -1,0 +1,53 @@
+Here's how you might implement this function in C#:
+
+```csharp
+[assembly: FormulaAssembly("MintFormula")]
+
+namespace Sauron.Formula.MINTFORMULA
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decode relevant data from TransactionInfo object.
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+            var balance0 = info.Balance0;
+            var balance1 = info.Balance1;
+            var totalSupply = info.TotalSupply;
+            var toAddress = info.ToAddress;
+            var fromAddress = info.FromAddress;
+            var fee = info.Fee;
+
+            // Calculate amounts.
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+            {
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MinimumLiquidity;
+            }
+            else
+            {
+                liquidity = BigDecimal.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+            }
+
+            if (liquidity <= 0)
+            {
+                throw new Exception("UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED");
+            }
+
+            // Check if toAddress is the same as fromAddress. If not, calculate PNL as negative liquidity (user sent money), else, 0 (kept money in pool).
+            BigDecimal pnl = (toAddress != fromAddress) ? -liquidity : BigDecimal.Zero;
+
+            // Subtract fee if applicable.
+            pnl -= fee;
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```
+
+This code assumes that the `TransactionInfo` object contains all necessary data (like `Reserve0`, `Reserve1`, `Balance0`, `Balance1`, `TotalSupply`, `ToAddress`, `FromAddress`, and `Fee`) as properties. The PNL is calculated based on whether the user sent tokens to another address or not, and it subtracts any applicable fees.

@@ -1,0 +1,34 @@
+```csharp
+// Assembly Info
+[assembly: FormulaAssembly("MINT")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = info.TokenBalances[info.ToAddress][0].Amount; // Balance of Token 0 in the contract after minting
+            var balance1 = info.TokenBalances[info.ToAddress][1].Amount; // Balance of Token 1 in the contract after minting
+            var _reserve0 = (BigDecimal)info.DecodedData["_reserve0"]; // Reserved amount of Token 0 before minting
+            var _reserve1 = (BigDecimal)info.DecodedData["_reserve1"]; // Reserved amount of Token 1 before minting
+            var amount0 = balance0 - _reserve0; // Amount of Token 0 to be minted
+            var amount1 = balance1 - _reserve1; // Amount of Token 1 to be minted
+            var _totalSupply = (BigDecimal)info.DecodedData["_totalSupply"]; // Total supply of the liquidity tokens before minting
+
+            BigDecimal liquidity;
+            if (_totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * _totalSupply / _reserve0, amount1 * _totalSupply / _reserve1);
+
+            // Check if the minting is for transferring to another address or burning (sending to address(0))
+            var pnl = liquidity;
+            if (info.ToAddress != info.FromAddress)
+                pnl = -pnl; // Subtract Fee as the user is sending tokens to another address
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

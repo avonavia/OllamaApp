@@ -1,0 +1,18 @@
+Here's the C# Formula method for the Solidity contract method you provided:
+
+```csharp
+/// <summary>
+/// Divides two numbers with error handling. Returns the quotient if successful, otherwise throws an exception.
+/// </summary>
+/// <param name="a">The dividend.</param>
+/// <param name="b">The divisor. Must be greater than zero.</param>
+/// <param name="errorMessage">The error message to throw if the division is not possible.</param>
+/// <returns>The quotient of a divided by b.</returns>
+public static BigDecimal Div(BigDecimal a, BigDecimal b, string errorMessage)
+{
+    if (b == 0)
+        throw new ArgumentException(errorMessage);
+
+    return a / b;
+}
+```

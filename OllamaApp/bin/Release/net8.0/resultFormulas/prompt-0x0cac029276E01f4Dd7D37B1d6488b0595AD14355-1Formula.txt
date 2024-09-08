@@ -1,0 +1,23 @@
+```csharp
+[assembly: FormulaAssembly("GetReserves")]
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserves = new List<KeyValuePair<string, BigDecimal>>();
+            if (info.Reserve0 != null && info.Reserve1 != null)
+            {
+                reserves.Add(new KeyValuePair<string, BigDecimal>("_reserve0", info.Reserve0));
+                reserves.Add(new KeyValuePair<string, BigDecimal>("_reserve1", info.Reserve1));
+                if (info.BlockTimestampLast != null)
+                    reserves.Add(new KeyValuePair<string, BigDecimal>("_blockTimestampLast", new BigDecimal((decimal)info.BlockTimestampLast)));
+            }
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>() { Result = reserves };
+        }
+    }
+}
+```
+This code follows all the rules and provides a C# method for calculating reserves based on the provided Solidity contract method. It returns the results as a list of Key-Value pairs with reserve information.

@@ -1,0 +1,32 @@
+//Assembly information for PNL calculation formula
+[assembly: FormulaAssembly("GetReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        /// <summary>
+        /// Calculates the reserves of a transaction and returns them as a KeyValuePair in an enumerable with their respective symbols.
+        /// </summary>
+        /// <param name="info">The transaction information.</param>
+        /// <param name="tokenPrices">Optional token prices for calculations (not used in this formula).</param>
+        /// <returns>An enumerable of KeyValuePair where the key is the symbol and the value is the reserve amount as a BigDecimal.</returns>
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get distinct tokens from transfers and their amounts
+            var tokensWithAmounts = info.GetTokensWithAmounts(info.Transfers);
+
+            // Iterate through each token-amount pair
+            foreach (var pair in tokensWithAmounts)
+            {
+                // Add a new KeyValuePair to the result list with the symbol and amount
+                result.Add(new KeyValuePair<string, BigDecimal>(pair.Key.Symbol, pair.Value));
+            }
+
+            // Return the result as a CalculationResult
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}

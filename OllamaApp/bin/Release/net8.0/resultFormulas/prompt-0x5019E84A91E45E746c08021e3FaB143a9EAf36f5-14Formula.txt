@@ -1,0 +1,13 @@
+//Method to calculate PNL for a transaction with ETH sent to fee
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Calculate the PNL by subtracting the ETH sent to fee from the initial amount of ETH in the transaction
+        var pnl = info.Transfers?.Where(t => t.TokenInfo.Symbol == "ETH" && t.ToAddress == FEE_ADDRESS).Sum(t => -t.Amount) ?? BigDecimal.Zero;
+
+        //Return the PNL as a KeyValuePair with the user's address and the calculated PNL amount
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> {
+            Result = new List<KeyValuePair<string, BigDecimal>> {
+                new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl)
+            }
+        };
+    }

@@ -1,0 +1,47 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    using Nethereum.Hex.HexTypes;
+    using System.Collections.Generic;
+    using System.Numerics;
+
+    public class _updateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract relevant data from the transaction
+            var balance0 = new BigInteger((uint)(info.Input?.Data[32..64]));
+            var balance1 = new BigInteger((uint)(info.Input?.Data[64..96]));
+            var _reserve0 = new BigInteger((uint112)(new HexBigInteger(info.ContractState["_reserve0"])));
+            var _reserve1 = new BigInteger((uint112)(new HexBigInteger(info.ContractState["_reserve1"])));
+
+            // Check if overflow occurs (not necessary in this context as we are assuming correct input)
+
+            // Calculate price0CumulativeLast and price1CumulativeLast
+            BigInteger price0CumulativeLast = new BigInteger(info.ContractState["price0CumulativeLast"]);
+            BigInteger price1CumulativeLast = new BigInteger(info.ContractState["price1CumulativeLast"]);
+            uint32 blockTimestampLast = (uint)(new HexBigInteger(info.ContractState["blockTimestampLast"]));
+            uint32 blockTimestamp = (uint)(info.BlockTimestamp % 2 ** 32);
+            uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                price0CumulativeLast += (_reserve1 / _reserve0) * timeElapsed;
+                price1CumulativeLast += (_reserve0 / _reserve1) * timeElapsed;
+            }
+
+            // Calculate PNL (not provided in the context of the question, so it's left as a placeholder)
+            var pnl = new BigDecimal(0); // Calculate PNL based on the formula used in your application
+
+            // Subtract Fee from PNL if applicable
+            var fee = info.GasUsed * info.GasPrice; // Assuming that fee is calculated as gasUsed * gasPrice
+            pnl -= new BigDecimal(fee);
+
+            // Return the result
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+    }
+}
+```

@@ -1,0 +1,35 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info == null || info.Transfers == null || info.Transfers.Count < 2 || tokenPrices == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>((IEnumerable<KeyValuePair<string, BigDecimal>>?)null);
+
+            var balanceToken0 = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == "TOKEN0")?.Amount ?? 0;
+            var balanceToken1 = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == "TOKEN1")?.Amount ?? 0;
+
+            // Assuming reserve0 and reserve1 are stored in the info object or can be calculated from other transfers
+            BigDecimal reserve0 = /* Calculate or get reserve0 */;
+            BigDecimal reserve1 = /* Calculate or get reserve1 */;
+
+            var pnlToken0 = balanceToken0 - (reserve1 * balanceToken0) / (reserve0 + balanceToken0);
+            var pnlToken1 = balanceToken1 - (reserve0 * balanceToken1) / (reserve1 + balanceToken1);
+
+            // Calculate PNL in ETH based on token prices
+            var ethPnl = pnlToken0 * tokenPrices.FirstOrDefault(t => t.Key == "TOKEN0").Value +
+                         pnlToken1 * tokenPrices.FirstOrDefault(t => t.Key == "TOKEN1").Value;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[]
+            {
+                new KeyValuePair<string, BigDecimal>(info.FromAddress, ethPnl)
+            });
+        }
+    }
+}
+```

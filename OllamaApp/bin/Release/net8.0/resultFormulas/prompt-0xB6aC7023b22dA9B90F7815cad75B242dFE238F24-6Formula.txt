@@ -1,0 +1,42 @@
+```csharp
+// assembly: FormulaAssembly("UniswapV2Mint")
+namespace Sauron.Formula.UniswapV2Mint
+{
+    using Nethereum.Hex.HexConvertors.Extensions;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Numerics;
+    using Sauron.Interfaces;
+    using Sauron.Models;
+
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        private const BigInteger MINIMUM_LIQUIDITY = 1000 * (BigInteger)1e18; // Example value, replace with actual value if different
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming that the TransactionInfo object contains 'amount0' and 'amount1' fields which are already decoded from the Solidity contract
+            var amount0 = BigInteger.Parse(info.Amount0);
+            var amount1 = BigInteger.Parse(info.Amount1);
+
+            // Assuming that the TransactionInfo object contains '_reserve0', '_reserve1' and 'totalSupply' fields which are already decoded from the Solidity contract
+            var _reserve0 = BigInteger.Parse(info._Reserve0);
+            var _reserve1 = BigInteger.Parse(info._Reserve1);
+            var _totalSupply = BigInteger.Parse(info.TotalSupply);
+
+            // Calculate liquidity
+            BigInteger liquidity;
+            if (_totalSupply == 0)
+                liquidity = (BigInteger)Math.Sqrt((double)(amount0 * amount1)) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = Math.Min(amount0 * _totalSupply / _reserve0, amount1 * _totalSupply / _reserve1);
+
+            // Since the PNL is calculated for user addresses and minting does not involve sending funds to other users, we assume no PNL change in this scenario
+            var pnl = BigDecimal.Zero;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new Dictionary<string, BigDecimal>() { {"PNL", pnl} }, null);
+        }
+    }
+}
+```

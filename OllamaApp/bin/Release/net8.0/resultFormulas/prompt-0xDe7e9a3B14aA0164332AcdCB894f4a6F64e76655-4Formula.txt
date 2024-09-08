@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the necessary values from TransactionInfo
+            var balance0 = new BigDecimal(info.Transfers[0].Amount);
+            var balance1 = new BigDecimal(info.Transfers[1].Amount);
+            var _reserve0 = new BigDecimal(info.Reserves[0]);
+            var _reserve1 = new BigDecimal(info.Reserves[1]);
+            var blockTimestampLast = new BigDecimal(info.BlockTimestampLast);
+            var blockTimestamp = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds() % 4294967296; // assuming blockTimestamp is current Unix timestamp
+
+            // Calculate timeElapsed with overflow
+            uint32 timeElapsed = (blockTimestamp - blockTimestampLast) & 0xffffffff;
+
+            var pnl = BigDecimal.Zero;
+            if (timeElapsed > 0 && _reserve0 != BigDecimal.Zero && _reserve1 != BigDecimal.Zero)
+            {
+                // Calculate priceCumulativeLast for both tokens
+                var price0CumulativeLast = info.Price0CumulativeLast + (_reserve1 / _reserve0) * timeElapsed;
+                var price1CumulativeLast = info.Price1CumulativeLast + (_reserve0 / _reserve1) * timeElapsed;
+
+                // Calculate PNL based on the token prices
+                if (tokenPrices != null)
+                {
+                    var token0Price = tokenPrices.FirstOrDefault(t => t.Key == info.Transfers[0].Token).Value;
+                    var token1Price = tokenPrices.FirstOrDefault(t => t.Key == info.Transfers[1].Token).Value;
+
+                    pnl -= (balance0 * token0Price + balance1 * token1Price); // subtract the input value in Eth
+                    pnl += ((BigDecimal)info.Reserves[0] * token0Price + (BigDecimal)info.Reserves[1] * token1Price); // add the output value in Eth
+                }
+            }
+
+            // Subtract Fee if necessary
+            var fromAddress = info.Transfers[0].From;
+            var toAddress = info.Transfers[0].To;
+            if (fromAddress != toAddress)
+            {
+                pnl -= new BigDecimal(info.Fee); // subtract Fee in Eth
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new[] { new KeyValuePair<string, BigDecimal>(fromAddress, pnl) });
+        }
+    }
+}
+```

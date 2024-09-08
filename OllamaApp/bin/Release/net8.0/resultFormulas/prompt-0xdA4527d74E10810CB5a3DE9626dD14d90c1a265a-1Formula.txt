@@ -1,0 +1,28 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserves from the transaction data
+            var reserve0 = (BigDecimal)info.Reserve0;
+            var reserve1 = (BigDecimal)info.Reserve1;
+
+            // Create a list to store the results
+            var result = new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>("reserve0", reserve0),
+                new KeyValuePair<string, BigDecimal>("reserve1", reserve1)
+            };
+
+            // Return the results without a message
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+        }
+    }
+}
+```
+This C# code defines a `getReservesFormula` class that implements the `IFormulaPlugin` interface. The `Formula` method retrieves the reserve values from the transaction data and returns them as a list of key-value pairs without any additional message.

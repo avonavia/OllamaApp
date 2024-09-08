@@ -1,0 +1,29 @@
+//Method to get PNL for each address
+    public IEnumerable<KeyValuePair<string, BigDecimal>>? GetPNL(TransactionInfo info)
+    {
+        var fromAddress = info.FromAddress;
+        var toAddress = info.Transfers[0].To; // Assuming there's only one transfer in the transaction
+        var value = info.Transfers[0].Amount; // Transfer amount
+
+        if (fromAddress == toAddress)
+            return null; // No PNL for self-transactions
+
+        var pnl = new Dictionary<string, BigDecimal>();
+
+        // Subtract the transfer amount from sender's balance and add it to recipient's balance
+        UpdateBalance(pnl, fromAddress, -value);
+        UpdateBalance(pnl, toAddress, value);
+
+        // Subtract fee from sender's PNL
+        UpdateBalance(pnl, fromAddress, -info.Fee);
+
+        return pnl;
+    }
+
+    private void UpdateBalance(Dictionary<string, BigDecimal> balance, string address, BigDecimal amount)
+    {
+        if (balance.ContainsKey(address))
+            balance[address] += amount;
+        else
+            balance[address] = amount;
+    }

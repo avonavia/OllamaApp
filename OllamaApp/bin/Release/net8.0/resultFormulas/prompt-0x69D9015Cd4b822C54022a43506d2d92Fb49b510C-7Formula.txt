@@ -1,0 +1,50 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Sauron")]
+
+namespace Sauron.Formula.Burn
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming token0 and token1 addresses are stored in TokenAddresses property of TransactionInfo object
+            var balance0 = info.TokenBalances[info.TokenAddresses["_token0"]];
+            var balance1 = info.TokenBalances[info.TokenAddresses["_token1"]];
+
+            var liquidity = info.TokenBalances[info.ContractAddress];
+            var _totalSupply = info.TotalSupply;
+
+            // Calculate burned amounts
+            var amount0 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance0), _totalSupply);
+            var amount1 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance1), _totalSupply);
+
+            // Get token prices and calculate PNL
+            if (tokenPrices != null)
+            {
+                var token0Price = tokenPrices.FirstOrDefault(tp => tp.Key == info.TokenAddresses["_token0"]).Value;
+                var token1Price = tokenPrices.FirstOrDefault(tp => tp.Key == info.TokenAddresses["_token1"]).Value;
+
+                if (token0Price > 0 && token1Price > 0)
+                {
+                    var pnlEth0 = amount0 * (decimal)token0Price;
+                    var pnlEth1 = amount1 * (decimal)token1Price;
+
+                    // Subtract Fee from PNL if toAddress is different from user address
+                    if (info.ToAddress != info.FromAddress && info.Fee > 0)
+                        return new CalculationResult<BigDecimal?>(pnlEth0 + pnlEth1 - info.Fee);
+                    else
+                        return new CalculationResult<BigDecimal?>(pnlEth0 + pnlEth1);
+                }
+            }
+
+            // Return null if token prices are not available
+            return new CalculationResult<BigDecimal?>(null);
+        }
+    }
+}
+```

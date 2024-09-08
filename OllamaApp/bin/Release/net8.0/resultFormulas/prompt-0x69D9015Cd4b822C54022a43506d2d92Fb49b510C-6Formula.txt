@@ -1,0 +1,66 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Assets;
+using Sauron.Formula;
+
+[assembly: FormulaAssembly("UniswapV2Mint")]
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        private const decimal MINIMUM_LIQUIDITY = 1000m; // Define the minimum liquidity value as per your contract
+
+        public CalculationResult<decimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming reserve0 and reserve1 are available in TransactionInfo object as BigDecimal values
+            var _reserve0 = Convert.ToDecimal(info.Reserve0);
+            var _reserve1 = Convert.ToDecimal(info.Reserve1);
+
+            var balance0 = info.BalanceOfToken0;
+            var balance1 = info.BalanceOfToken1;
+
+            // Calculate amount of tokens that will be minted
+            var amount0 = balance0 - _reserve0;
+            var amount1 = balance1 - _reserve1;
+
+            var _totalSupply = info.TotalSupply;
+
+            decimal liquidity;
+            if (_totalSupply == 0)
+            {
+                // Calculate initial liquidity pool
+                liquidity = (decimal)Math.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                // Calculate liquidity to be minted
+                liquidity = Math.Min((amount0 * _totalSupply / _reserve0), (amount1 * _totalSupply / _reserve1));
+            }
+
+            if (liquidity <= 0)
+            {
+                return new CalculationResult<decimal?>("INSUFFICIENT_LIQUIDITY_MINTED", null);
+            }
+
+            // Calculate PNL. Assuming Fee is not included in liquidity and PNL is calculated for user addresses
+            var fee = info.Fee;
+            decimal pnl;
+            if (info.ToAddress == info.FromAddress)
+            {
+                // User sends tokens to their own address, so consider only the fee as PNL
+                pnl = -fee;
+            }
+            else
+            {
+                // User sends tokens to another address, calculate PNL considering liquidity and fee
+                pnl = (liquidity * tokenPrices[info.Token0]) - (liquidity * tokenPrices[info.Token1] + fee);
+            }
+
+            return new CalculationResult<decimal?>(null, pnl);
+        }
+    }
+}
+```

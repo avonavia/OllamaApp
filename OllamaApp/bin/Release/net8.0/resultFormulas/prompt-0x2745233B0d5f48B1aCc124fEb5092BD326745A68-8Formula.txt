@@ -1,0 +1,36 @@
+// C# Assembly Information
+[assembly: System.Reflection.AssemblyTitle("PNL Calculation")]
+[assembly: System.Reflection.AssemblyDescription("Calculate PNL for UniswapV2 swaps")]
+[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+using System;
+
+public class PnlCalculator
+{
+    // Method to calculate PNL
+    public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal fee)
+    {
+        if (amount0Out == 0 && amount1Out == 0) throw new ArgumentException("Insufficient output amount");
+
+        // Checking if there is enough liquidity in the pool
+        if (amount0Out >= reserve0 || amount1Out >= reserve1) throw new ArgumentException("Insufficient liquidity");
+
+        decimal amount0In = reserve0 - amount0Out;
+        decimal amount1In = reserve1 - amount1Out;
+
+        // If no tokens were swapped in, there is no PNL
+        if (amount0In == reserve0 && amount1In == reserve1) return 0;
+
+        // Calculate the value of tokens that were taken out of the pool
+        decimal valueOut = Math.Min(amount0Out * reserve1 / reserve0, amount1Out);
+
+        // Calculate the value of tokens that were added to the pool
+        decimal valueIn = Math.Max(amount0In * reserve1 / (reserve0 + amount0In), amount1In);
+
+        // Subtract the fee from the value that was added to the pool
+        decimal netValueIn = valueIn - fee;
+
+        // Calculate PNL
+        return netValueIn - valueOut;
+    }
+}

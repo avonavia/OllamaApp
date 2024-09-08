@@ -1,0 +1,29 @@
+```csharp
+// Method to get approvals for each token in transaction
+public IEnumerable<KeyValuePair<TokenInfo, BigDecimal>>? GetApprovals()
+{
+    return Approvals?.Select(a => new KeyValuePair<TokenInfo, BigDecimal>(new TokenInfo { Address = a.Spender }, (BigDecimal)a.Value)).ToList();
+}
+
+// Formula to calculate PNL for _approve method
+public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+{
+    var approvals = GetApprovals();
+
+    if (approvals == null || !tokenPrices.Any())
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(null);
+
+    var pnl = new List<KeyValuePair<string, BigDecimal>>();
+
+    foreach (var approval in approvals)
+    {
+        if (tokenPrices.Any(tp => tp.Key == approval.Key.Address))
+        {
+            var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == approval.Key.Address).Value;
+            pnl.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, -approval.Value * (BigDecimal)tokenPrice));
+        }
+    }
+
+    return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnl);
+}
+```

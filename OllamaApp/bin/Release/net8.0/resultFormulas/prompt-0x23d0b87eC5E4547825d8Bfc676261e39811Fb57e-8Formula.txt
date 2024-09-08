@@ -1,0 +1,38 @@
+Here is a C# method that calculates PNL for the given swap function:
+
+```csharp
+using System;
+
+namespace UniswapV2Calculations
+{
+    public class Calculator
+    {
+        /// <summary>
+        /// Calculate Profit and Loss (PNL) in Eth for a user address.
+        /// </summary>
+        /// <param name="amount0Out">The amount of token0 sent out.</param>
+        /// <param name="amount1Out">The amount of token1 sent out.</param>
+        /// <param name="price0">Current price of token0 in Eth.</param>
+        /// <param name="price1">Current price of token1 in Eth.</param>
+        /// <param name="userBalance0Before">User's balance of token0 before the swap.</param>
+        /// <param name="userBalance1Before">User's balance of token1 before the swap.</param>
+        /// <returns>PNL in Eth for the user.</returns>
+        public decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal price0, decimal price1, decimal userBalance0Before, decimal userBalance1Before)
+        {
+            // Calculate user's balance after the swap
+            var userBalance0After = userBalance0Before - amount0Out;
+            var userBalance1After = userBalance1Before - amount1Out;
+
+            // Calculate total value before and after the swap in Eth
+            var totalValueBefore = (userBalance0Before * price0) + (userBalance1Before * price1);
+            var totalValueAfter = (userBalance0After * price0) + (userBalance1After * price1);
+
+            // Calculate PNL
+            var pnl = totalValueAfter - totalValueBefore;
+
+            return pnl;
+        }
+    }
+}
+```
+This method calculates the Profit and Loss (PNL) of a user in Eth after a swap. It takes into account the amount of tokens sent out, their prices, and the user's balance before the swap. Please note that this is a simplified calculation and does not include gas fees or other costs that could affect real-world transactions.

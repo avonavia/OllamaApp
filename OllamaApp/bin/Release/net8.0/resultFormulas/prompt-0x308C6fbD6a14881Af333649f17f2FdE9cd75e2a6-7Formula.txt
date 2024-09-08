@@ -1,0 +1,37 @@
+```csharp
+// Assembly info for PNL calculation
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+
+namespace Sauron.Formula.BurnUniswapV2
+{
+    public class BurnUniswapV2Formula : IFormulaPlugin
+    {
+        // Calculates PNL for the burn function in UniswapV2 contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get initial reserves and balances
+            var reserve0 = (BigInteger)info.DecodedArgs[0];
+            var reserve1 = (BigInteger)info.DecodedArgs[1];
+            var balance0 = (BigInteger)info.TokenBalances[info.ContractAddress][info.From];
+            var balance1 = (BigInteger)info.TokenBalances[info.To][info.From]; // Assuming token balances are updated after transfer
+            var liquidity = (BigInteger)info.DecodedArgs[2];
+            var totalSupply = (BigInteger)info.ContractState["totalSupply"];
+
+            // Calculate amount of tokens burned
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // Calculate PNL for the user (negative because they're sending tokens)
+            var pnl = -(amount0 * tokenPrices.FirstOrDefault(x => x.Key == info.DecodedArgs[3]).Value +
+                        amount1 * tokenPrices.FirstOrDefault(x => x.Key == info.DecodedArgs[4]).Value);
+
+            // No message for the user
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> { Result = pnl };
+        }
+    }
+}
+```

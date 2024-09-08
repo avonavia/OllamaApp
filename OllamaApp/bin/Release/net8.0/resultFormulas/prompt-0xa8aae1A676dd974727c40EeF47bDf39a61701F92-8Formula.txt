@@ -1,0 +1,59 @@
+```csharp
+// PNL Calculation for UniswapV2 Swap Transaction
+// Assembly Information
+[assembly: System.Reflection.AssemblyVersion("1.0.*")]
+
+using System;
+
+namespace PNLCalculator
+{
+    public class Calculator
+    {
+        // Calculate Profit and Loss (PNL) for a given swap transaction
+        // All necessary conversions are assumed to have been done beforehand
+        // PNL is calculated in ETH, not converted
+        // PNL is calculated for user addresses, not tokens
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal token0PriceInETH, decimal token1PriceInETH, string fromAddress, string toAddress)
+        {
+            // Check if the user is sending or receiving tokens
+            bool isSending = fromAddress != toAddress;
+
+            // Calculate the value of tokens sent/received in ETH
+            decimal valueOutInETH = amount0Out * token0PriceInETH + amount1Out * token1PriceInETH;
+
+            decimal PNL;
+
+            if (isSending)
+            {
+                // If user is sending tokens, calculate the fee and subtract it from the sent value
+                decimal fee = CalculateFee(amount0Out, amount1Out, reserve0, reserve1);
+                decimal valueSentInETH = valueOutInETH + fee * token0PriceInETH; // Assuming fee is in token0
+                PNL = -valueSentInETH;
+            }
+            else
+            {
+                // If user is receiving tokens, calculate the difference between received and sent values
+                decimal amountReceived = CalculateAmountReceived(amount0Out, amount1Out, reserve0, reserve1);
+                decimal valueReceivedInETH = amountReceived * token0PriceInETH; // Assuming amountReceived is in token0
+                PNL = valueReceivedInETH - valueOutInETH;
+            }
+
+            return PNL;
+        }
+
+        private static decimal CalculateFee(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1)
+        {
+            // Fee calculation logic based on UniswapV2 swap function
+            // Placeholder for actual fee calculation
+            return 0.0M;
+        }
+
+        private static decimal CalculateAmountReceived(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1)
+        {
+            // Amount received calculation logic based on UniswapV2 swap function
+            // Placeholder for actual amount received calculation
+            return 0.0M;
+        }
+    }
+}
+```

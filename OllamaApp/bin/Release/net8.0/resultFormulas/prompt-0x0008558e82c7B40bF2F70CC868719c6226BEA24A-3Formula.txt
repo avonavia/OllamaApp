@@ -1,0 +1,14 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Since this method only initializes the contract and does not involve any transfers or calculations of PNL, we return an empty result.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = Enumerable.Empty<KeyValuePair<string, BigDecimal>>() };
+        }
+    }
+}
+```

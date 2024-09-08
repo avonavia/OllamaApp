@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("Sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        // Assuming token0 and token1 addresses are available as properties in TransactionInfo object
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get contract address for this formula
+            var contractAddress = info.ToAddress;
+
+            // Initialize PNL dictionary with zero values for both tokens and the contract itself
+            var pnl = new Dictionary<string, BigDecimal>
+            {
+                [info.Token0] = 0,
+                [info.Token1] = 0,
+                [contractAddress] = 0
+            };
+
+            // Get token balances in the contract
+            var token0Balance = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == info.Token0)?.Amount ?? 0;
+            var token1Balance = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == info.Token1)?.Amount ?? 0;
+
+            // Calculate PNL for both tokens and the contract
+            if (tokenPrices != null)
+            {
+                var token0Price = tokenPrices.FirstOrDefault(p => p.Key == info.Token0).Value;
+                var token1Price = tokenPrices.FirstOrDefault(p => p.Key == info.Token1).Value;
+
+                // PNL for tokens is the difference between current balance and reserved amount multiplied by price
+                pnl[info.Token0] += (token0Balance - info.Reserve0) * new BigDecimal((decimal)token0Price);
+                pnl[info.Token1] += (token1Balance - info.Reserve1) * new BigDecimal((decimal)token1Price);
+            }
+
+            // PNL for contract is negative of total token balances in Eth
+            pnl[contractAddress] -= pnl[info.Token0] + pnl[info.Token1];
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

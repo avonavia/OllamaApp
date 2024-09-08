@@ -1,0 +1,55 @@
+```csharp
+using Sauron.Formula;
+using Nethereum.Util;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigInteger?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Retrieve necessary variables from TransactionInfo object.
+            var reserve0 = (BigInteger)info.Decoded[nameof(reserve0)];
+            var reserve1 = (BigInteger)info.Decoded[nameof(reserve1)];
+            var token0 = (string)info.Decoded[nameof(token0)];
+            var token1 = (string)info.Decoded[nameof(token1)];
+            var balance0 = (BigInteger)info.Decoded[nameof(balance0)];
+            var balance1 = (BigInteger)info.Decoded[nameof(balance1)];
+            var liquidity = (BigInteger)info.Decoded[nameof(liquidity)];
+            var totalSupply = (BigInteger)info.Decoded[nameof(totalSupply)];
+            var toAddress = info.To;
+            var fromAddress = info.From;
+
+            // Calculate burned amount of tokens
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // Calculate the price of the burned tokens in Ether
+            BigInteger? tokenPrice0 = null, tokenPrice1 = null;
+            if (tokenPrices != null)
+            {
+                foreach (var pair in tokenPrices)
+                {
+                    if (pair.Key == token0)
+                        tokenPrice0 = UnitConversion.Convert.ToWei(new BigDecimal(pair.Value));
+                    else if (pair.Key == token1)
+                        tokenPrice1 = UnitConversion.Convert.ToWei(new BigDecimal(pair.Value));
+                }
+            }
+
+            var burnedTokensValue0 = amount0 * tokenPrice0 ?? 0;
+            var burnedTokensValue1 = amount1 * tokenPrice1 ?? 0;
+            var totalBurnedValue = burnedTokensValue0 + burnedTokensValue1;
+
+            // Calculate PNL: if user burns tokens, they lose the value of these tokens.
+            // If toAddress is the same as fromAddress (user burning their own tokens), PNL is 0.
+            var pnl = toAddress == fromAddress ? 0 : -totalBurnedValue;
+
+            return new CalculationResult<BigInteger?>(pnl);
+        }
+    }
+}
+```

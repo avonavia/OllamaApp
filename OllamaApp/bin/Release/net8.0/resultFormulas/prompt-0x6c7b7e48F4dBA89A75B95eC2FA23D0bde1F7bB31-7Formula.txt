@@ -1,0 +1,49 @@
+```csharp
+// Assembly Info
+[assembly: System.Reflection.AssemblyTitle("Sauron Formula - Burn")]
+
+namespace Sauron.Formula.Burn
+{
+    using Nethereum.RPC.Eth.DTOs;
+    using Sauron.Core.Models;
+    using Sauron.Interfaces;
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+    using static Sauron.Utilities.BigDecimalHelper;
+
+    public class BurnFormula : IFormulaPlugin
+    {
+        /// <summary>
+        /// Calculates the PNL for a burn transaction in a UniswapV2-like contract.
+        /// </summary>
+        /// <param name="info">TransactionInfo object containing necessary information.</param>
+        /// <returns>CalculationResult with the calculated PNL.</returns>
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info)
+        {
+            var reserve0 = ConvertToBigDecimal((ulong)info.ReadValues["reserve0"]);
+            var reserve1 = ConvertToBigDecimal((ulong)info.ReadValues["reserve1"]);
+            var balance0 = ConvertToBigDecimal((ulong)info.ReadValues["balance0"]);
+            var balance1 = ConvertToBigDecimal((ulong)info.ReadValues["balance1"]);
+            var liquidity = ConvertToBigDecimal((ulong)info.ReadValues["liquidity"]);
+            var totalSupply = ConvertToBigDecimal((ulong)info.ReadValues["totalSupply"]);
+            var feeOn = (bool)info.ReadValues["feeOn"];
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // Calculate PNL: subtract the value of burned tokens from the user's initial token holdings
+            var pnl = -(amount0 + amount1);
+
+            if (feeOn)
+                pnl -= CalculateFee(reserve0, reserve1);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>("PNL", pnl) }
+            };
+        }
+
+        private BigDecimal CalculateFee(BigDecimal reserve0, BigDecimal reserve1) => (reserve0 * reserve1) - (reserve0 * reserve1); // Placeholder calculation
+    }
+}
+```

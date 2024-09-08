@@ -1,0 +1,42 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            string feeToAddress = ""; // This address should be retrieved from the Solidity contract's factory method.
+
+            if (feeToAddress == "0x0") return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            uint reserve0 = info.InputParams[0];
+            uint reserve1 = info.InputParams[1];
+            uint kLast = info.KLast; // This value should be retrieved from the Solidity contract's state variable.
+
+            if (kLast != 0)
+            {
+                BigDecimal rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                BigDecimal rootKLast = BigDecimal.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    BigDecimal totalSupply = GetTotalSupply(); // This value should be retrieved from the Solidity contract's state variable.
+                    BigDecimal numerator = totalSupply * (rootK - rootKLast);
+                    BigDecimal denominator = rootK * 5 + rootKLast;
+                    BigDecimal liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>> {
+                            new KeyValuePair<string, BigDecimal>(feeToAddress, liquidity * tokenPrices.FirstOrDefault(x => x.Key == "TOKEN").Value) // Assume the token price is provided in `tokenPrices`.
+                        });
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

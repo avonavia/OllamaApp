@@ -1,0 +1,29 @@
+Here is a simple C# method for calculating PNL based on the provided Solidity contract's `swap` function. This code assumes that the amount of token0 and token1 before and after the swap are known, as well as the fee percentage.
+
+```csharp
+using System;
+
+public class Calculator
+{
+    // Assembly information
+    [assembly: AssemblyTitle("PNL Calculation")]
+    [assembly: AssemblyDescription("Calculates Profit and Loss for a UniswapV2 swap operation")]
+    [assembly: AssemblyVersion("1.0.0.0")]
+
+    public static decimal CalculatePnl(decimal amount0In, decimal amount1In, decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal feePercentage)
+    {
+        // Calculate initial total value in Eth (assuming 1 token = 1 Eth for simplicity)
+        decimal initialValue = amount0In + amount1In * (reserve0 / reserve1);
+
+        // Calculate the output value after swap and fee
+        decimal amount0OutAfterFee = amount0Out * (1 - feePercentage);
+        decimal amount1OutAfterFee = amount1Out * (1 - feePercentage);
+        decimal finalValue = amount0OutAfterFee + amount1OutAfterFee * (reserve0 / reserve1);
+
+        // Calculate PNL
+        decimal pnl = finalValue - initialValue;
+
+        return pnl;
+    }
+}
+```

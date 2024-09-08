@@ -1,0 +1,54 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assume that reserve0 and reserve1 are already decoded and available in the TransactionInfo object
+            BigDecimal balance0 = info.TokenBalances[info.ContractAddresses["token0"]];
+            BigDecimal balance1 = info.TokenBalances[info.ContractAddresses["token1"]];
+            BigDecimal _reserve0 = (BigDecimal)info.Reserves["_reserve0"];
+            BigDecimal _reserve1 = (BigDecimal)info.Reserves["_reserve1"];
+
+            BigDecimal amount0 = balance0 - _reserve0;
+            BigDecimal amount1 = balance1 - _reserve1;
+
+            BigDecimal totalSupply = info.TotalSupply;
+
+            // Calculate liquidity, it is not used for PNL calculation but added for completeness
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / _reserve0, amount1 * totalSupply / _reserve1);
+
+            // Calculate PNL
+            // As this is a mint operation, user gets new tokens, so PNL should be positive and equal to the value of the liquidity
+            BigDecimal pnl = 0;
+            if (tokenPrices != null)
+            {
+                var token0Price = tokenPrices.FirstOrDefault(p => p.Key == info.ContractAddresses["token0"]).Value;
+                var token1Price = tokenPrices.FirstOrDefault(p => p.Key == info.ContractAddresses["token1"]).Value;
+                if (token0Price > 0 && token1Price > 0)
+                    pnl = liquidity * (amount0 / balance0 * token0Price + amount1 / balance1 * token1Price);
+            }
+
+            // Subtract fee if necessary
+            if (_mintFee(_reserve0, _reserve1))
+                pnl -= info.Fees;
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+
+        private bool _mintFee(BigDecimal reserve0, BigDecimal reserve1)
+        {
+            // This is a placeholder, the actual implementation of this function should be provided by the user or another source.
+            throw new NotImplementedException();
+        }
+    }
+}
+```

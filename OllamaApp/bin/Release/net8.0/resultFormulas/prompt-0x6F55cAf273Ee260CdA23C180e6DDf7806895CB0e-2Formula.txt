@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("SAFETRANSFER")]
+namespace Sauron.Formula.SAFETRANSFER
+{
+    public class SAFETRANSFERFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                if (transfer.ToAddress == info.FromAddress)
+                    continue; // ignore transfers to self
+
+                var key = transfer.ToAddress.ToLower();
+                var tokenPrice = tokenPrices?.FirstOrDefault(x => x.Key.Equals(transfer.TokenInfo.Symbol, StringComparison.OrdinalIgnoreCase)).Value ?? 0;
+                var amount = transfer.Amount * new BigDecimal(tokenPrice);
+                if (pnl.ContainsKey(key))
+                    pnl[key] -= amount; // subtract token value from recipient's PNL
+                else
+                    pnl[key] = -amount;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>() { Data = pnl };
+        }
+    }
+}
+```

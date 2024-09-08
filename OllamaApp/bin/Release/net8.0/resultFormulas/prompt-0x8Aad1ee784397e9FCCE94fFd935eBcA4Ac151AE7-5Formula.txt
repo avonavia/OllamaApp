@@ -1,0 +1,52 @@
+Here is the equivalent C# formula for the given Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            string feeTo = GetFeeToAddress(); // this is a placeholder for the actual implementation of getting feeTo address.
+
+            bool feeOn = feeTo != "0x0";
+
+            BigDecimal kLast = info.KLast; // assuming KLast property exists in TransactionInfo class.
+            if (feeOn)
+            {
+                if (kLast > 0)
+                {
+                    BigDecimal reserve0 = new BigDecimal(info.Reserve0);
+                    BigDecimal reserve1 = new BigDecimal(info.Reserve1);
+                    BigDecimal rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                    BigDecimal rootKLast = BigDecimal.Sqrt(kLast);
+
+                    if (rootK > rootKLast)
+                    {
+                        BigDecimal totalSupply = new BigDecimal(info.TotalSupply);
+                        BigDecimal numerator = totalSupply * (rootK - rootKLast);
+                        BigDecimal denominator = rootK * 5 + rootKLast;
+                        BigDecimal liquidity = numerator / denominator;
+
+                        if (liquidity > 0)
+                        {
+                            // assuming Fee calculation is done outside this formula, subtract it here.
+                            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                                (new[] { new KeyValuePair<string, BigDecimal>(feeTo, -liquidity) });
+                        }
+                    }
+                }
+            }
+            else if (kLast > 0)
+            {
+                info.KLast = 0; // assuming KLast property exists in TransactionInfo class and it's mutable.
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

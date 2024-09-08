@@ -1,0 +1,48 @@
+```csharp
+// [assembly: FormulaAssembly("UniswapV2_PNL")]
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2Formula : IFormulaPlugin
+    {
+        // PNL calculation for Uniswap V2 contract
+        // Formula signature matches the Solidity contract method
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize PNL dictionary to store address-PNL pairs
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Calculate time elapsed
+            uint32 blockTimestamp = (uint32)(DateTimeOffset.Now.ToUnixTimeSeconds() % Math.Pow(2, 32));
+            uint32 timeElapsed = blockTimestamp - info.BlockTimestampLast;
+
+            if (timeElapsed > 0 && info.Reserve0 != 0 && info.Reserve1 != 0)
+            {
+                // Calculate price cumulative for tokens
+                BigDecimal price0Cumulative = (BigDecimal)info.Reserve1 / (BigDecimal)info.Reserve0;
+                BigDecimal price1Cumulative = (BigDecimal)info.Reserve0 / (BigDecimal)info.Reserve1;
+
+                // Update PNL for fromAddress and toAddress based on the transaction info
+                if (!pnlDictionary.ContainsKey(info.FromAddress)) pnlDictionary[info.FromAddress] = BigDecimal.Zero;
+                if (!pnlDictionary.ContainsKey(info.ToAddress)) pnlDictionary[info.ToAddress] = BigDecimal.Zero;
+
+                if (info.FromAddress == info.Token0Address)
+                    pnlDictionary[info.FromAddress] -= price0Cumulative * (BigDecimal)(info.Balance0 - info.InitialBalance0);
+                else
+                    pnlDictionary[info.FromAddress] -= price1Cumulative * (BigDecimal)(info.Balance1 - info.InitialBalance1);
+
+                if (info.ToAddress == info.Token0Address)
+                    pnlDictionary[info.ToAddress] += price0Cumulative * (BigDecimal)info.Balance0;
+                else
+                    pnlDictionary[info.ToAddress] += price1Cumulative * (BigDecimal)info.Balance1;
+            }
+
+            // Subtract fee from the PNL of the sender
+            if (pnlDictionary.ContainsKey(info.FromAddress))
+                pnlDictionary[info.FromAddress] -= info.Fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+        }
+    }
+}
+```

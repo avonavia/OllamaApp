@@ -1,0 +1,52 @@
+```csharp
+// Assembly Info
+[assembly: FormulaAssembly("UniswapV2MintFormula")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserves and balances from TransactionInfo object as it is already decoded
+            var reserve0 = (BigDecimal)info.InputData["_reserve0"];
+            var reserve1 = (BigDecimal)info.InputData["_reserve1"];
+            var balance0 = (BigDecimal)info.InputData["balance0"];
+            var balance1 = (BigDecimal)info.InputData["balance1"];
+
+            // Calculate amounts to mint
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Get total supply from TransactionInfo object as it is already decoded
+            var _totalSupply = (BigDecimal)info.InputData["_totalSupply"];
+
+            BigDecimal liquidity;
+            if (_totalSupply == 0)
+            {
+                const decimal MINIMUM_LIQUIDITY = 1m; // Assuming MINIMUM_LIQUIDITY is a constant value
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                liquidity = BigDecimal.Min(amount0 * _totalSupply / reserve0, amount1 * _totalSupply / reserve1);
+            }
+
+            // Check if the liquidity is greater than 0 and calculate PNL
+            // Since this method creates new tokens (liquidity), there's no initial capital to lose. Therefore, PNL is calculated as negative of the minted amount in ETH
+            var toAddress = info.ToAddress;
+            var userAddresses = info.UserAddresses.Select(a => a.ToString());
+            if (userAddresses.Contains(toAddress))
+            {
+                // If user is receiving tokens, PNL should be calculated as negative of the minted amount in ETH
+                var tokenPrice = tokenPrices?.FirstOrDefault(t => t.Key == info.Token).Value ?? 0m;
+                return new CalculationResult<BigDecimal> { Value = -liquidity * (decimal)tokenPrice };
+            }
+
+            // If user is not the recipient, PNL is considered to be 0 as no tokens are being sent directly to the user's address
+            return new CalculationResult<BigDecimal> { Value = 0m };
+        }
+    }
+}
+```

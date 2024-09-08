@@ -1,0 +1,40 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Shared;
+using Sauron.Interfaces;
+using Nethereum.Util;
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // This method calculates the PNL for the burn method of a UniswapV2-like contract in Solidity
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the reserve amounts and balance amounts from TransactionInfo object
+            var reserve0 = BigDecimal.Parse(info["reserve0"].ToString());
+            var reserve1 = BigDecimal.Parse(info["reserve1"].ToString());
+            var balance0 = BigDecimal.Parse(info["balance0"].ToString());
+            var balance1 = BigDecimal.Parse(info["balance1"].ToString());
+            var liquidity = BigDecimal.Parse(info["liquidity"].ToString());
+            var totalSupply = BigDecimal.Parse(info["totalSupply"].ToString());
+
+            // Calculate the amount of tokens burned
+            var amount0 = (liquidity * balance0) / totalSupply;
+            var amount1 = (liquidity * balance1) / totalSupply;
+
+            // Get token prices from input parameters if available, otherwise use 1
+            var priceToken0 = tokenPrices?.FirstOrDefault(x => x.Key == info["token0"].ToString()).Value ?? 1m;
+            var priceToken1 = tokenPrices?.FirstOrDefault(x => x.Key == info["token1"].ToString()).Value ?? 1m;
+
+            // Calculate PNL in Eth for the user
+            var pnl = (amount0 * (decimal)priceToken0 + amount1 * (decimal)priceToken1) - (decimal)info.Fee;
+
+            return new CalculationResult<BigDecimal?> { Value = BigDecimal.Parse(pnl.ToString()) };
+        }
+    }
+}
+```

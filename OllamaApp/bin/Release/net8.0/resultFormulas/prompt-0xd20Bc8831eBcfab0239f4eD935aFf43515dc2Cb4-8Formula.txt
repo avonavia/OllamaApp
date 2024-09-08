@@ -1,0 +1,57 @@
+Sure! Below is a possible implementation of the PNL calculation formula in C#:
+
+```csharp
+using System;
+
+// Assuming that the following data are provided as input parameters to the method:
+// - amount0Out: The amount of token0 that was swapped out.
+// - amount1Out: The amount of token1 that was swapped out.
+// - reserve0BeforeSwap: The balance of token0 in the pool before the swap.
+// - reserve1BeforeSwap: The balance of token1 in the pool before the swap.
+// - senderBalance0BeforeSwap: The balance of token0 for the sender address before the swap.
+// - senderBalance1BeforeSwap: The balance of token1 for the sender address before the swap.
+// - senderAddress: The address of the user who performed the swap.
+// - recipientAddress: The address that received the swapped tokens.
+// - feePercentage: The percentage of the total amount that is taken as a fee. (0.3% Uniswap v2 fee is considered)
+
+[assembly: AssemblyTitle("PNLCalculation")]
+public class PNLCalculator
+{
+    public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0BeforeSwap, decimal reserve1BeforeSwap, decimal senderBalance0BeforeSwap, decimal senderBalance1BeforeSwap, string senderAddress, string recipientAddress)
+    {
+        // Calculate the price impact
+        decimal priceImpact = (amount0Out / reserve0BeforeSwap) * (amount1Out / reserve1BeforeSwap);
+
+        // Calculate the total amount that was swapped out by the user
+        decimal totalAmountOut = amount0Out + amount1Out;
+
+        // Calculate the fee amount for each token
+        decimal fee0 = amount0Out * (decimal)feePercentage / 100;
+        decimal fee1 = amount1Out * (decimal)feePercentage / 100;
+
+        // Subtract fees from totalAmountOut if user sent to themselves, else add them back to sender balance before swap
+        if (senderAddress.ToLower() == recipientAddress.ToLower())
+            totalAmountOut -= fee0 + fee1;
+        else
+        {
+            senderBalance0BeforeSwap += fee0;
+            senderBalance1BeforeSwap += fee1;
+        }
+
+        // Calculate the user's balance after the swap
+        decimal senderBalance0AfterSwap = senderBalance0BeforeSwap - amount0Out;
+        decimal senderBalance1AfterSwap = senderBalance1BeforeSwap - amount1Out;
+
+        // Calculate the value of tokens held by user before and after swap in terms of token1
+        decimal userValueBeforeSwap = (senderBalance0BeforeSwap / reserve0BeforeSwap) * reserve1BeforeSwap + senderBalance1BeforeSwap;
+        decimal userValueAfterSwap = (senderBalance0AfterSwap / reserve0BeforeSwap) * reserve1BeforeSwap + senderBalance1AfterSwap;
+
+        // Calculate the PNL as the difference between the value of tokens held by the user after and before the swap, scaled by price impact
+        decimal pnl = (userValueAfterSwap - userValueBeforeSwap) / priceImpact;
+
+        return pnl;
+    }
+}
+```
+
+This code calculates the PNL for a given swap operation on UniswapV2, taking into account the fees and the price impact of the swap. The formula for PNL is calculated as the difference between the value of tokens held by the user after and before the swap, scaled by the price impact.

@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !tokenPrices?.Any() ?? true) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>();
+
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Iterate over all transfers in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                // Find the price of the token in the transfer
+                var tokenPrice = tokenPrices?.FirstOrDefault(x => x.Key == transfer.TokenInfo.Symbol).Value ?? 0;
+
+                // If the token price is zero, we cannot calculate PNL for this token
+                if (tokenPrice <= 0) continue;
+
+                // Calculate the value of tokens in Eth
+                var tokenValue = transfer.Amount * new BigDecimal(tokenPrice);
+
+                // Subtract the fee from the total value
+                var netTokenValue = tokenValue - transfer.Fee;
+
+                // Update or add user's PNL
+                if (pnlDictionary.ContainsKey(transfer.FromAddress))
+                    pnlDictionary[transfer.FromAddress] -= netTokenValue;
+                else
+                    pnlDictionary[transfer.FromAddress] = -netTokenValue;
+
+                if (pnlDictionary.ContainsKey(transfer.ToAddress))
+                    pnlDictionary[transfer.ToAddress] += netTokenValue;
+                else
+                    pnlDictionary[transfer.ToAddress] = netTokenValue;
+            }
+
+            // Convert the dictionary to IEnumerable<KeyValuePair<string, BigDecimal>> for the result
+            var result = pnlDictionary.Select(x => new KeyValuePair<string, BigDecimal>(x.Key, x.Value));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

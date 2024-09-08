@@ -1,0 +1,21 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize does not perform any actions that would result in a PNL change.
+            // Therefore, it will always return an empty enumerable.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = Enumerable.Empty<KeyValuePair<string, BigDecimal>>(),
+                Success = true
+            };
+        }
+    }
+}
+```

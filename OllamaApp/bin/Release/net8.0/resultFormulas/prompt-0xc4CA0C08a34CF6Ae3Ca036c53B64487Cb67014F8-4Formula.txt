@@ -1,0 +1,43 @@
+```csharp
+// Assembly name should be exactly as function name in Solidity contract
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // Method signature is the same as required by Solidity contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Getting addresses from the transaction
+            var userAddress = info.From;
+            var contractAddress = info.To;
+
+            if (info.TryGetDecodedInput("balance0", out BigDecimal balance0) &&
+                info.TryGetDecodedInput("balance1", out BigDecimal balance1) &&
+                info.TryGetDecodedInput("_reserve0", out BigDecimal reserve0) &&
+                info.TryGetDecodedInput("_reserve1", out BigDecimal reserve1) &&
+                tokenPrices != null)
+            {
+                // Calculating PNL only for user address
+                var initialBalance = balance0 + balance1;
+                var finalBalance = balance0.Min(new BigDecimal(decimal.MaxValue)) + balance1.Min(new BigDecimal(decimal.MaxValue));
+                var pnl = finalBalance - initialBalance - info.Fee; // Subtracting fee
+
+                if (tokenPrices.Any(tp => tp.Key == contractAddress) && tokenPrices.First(tp => tp.Key == contractAddress).Value > 0)
+                {
+                    var ethPrice = new BigDecimal(tokenPrices.First(tp => tp.Key == contractAddress).Value);
+                    pnl *= ethPrice; // Converting PNL to Eth
+                }
+
+                result.Add(new KeyValuePair<string, BigDecimal>(userAddress, pnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

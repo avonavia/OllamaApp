@@ -1,0 +1,45 @@
+Using the information from the Solidity contract and following the guidelines provided, here's how you could write a C# method for calculating PNL:
+
+```csharp
+using System;
+using System.Numerics;
+
+[assembly: CLSCompliant(true)]
+namespace UniswapV2Calculations
+{
+    public class PnlCalculator
+    {
+        /// <summary>
+        /// Calculates the Profit and Loss for a swap in Eth.
+        /// </summary>
+        /// <param name="amount0Out">Amount of token 0 sent out.</param>
+        /// <param name="amount1Out">Amount of token 1 sent out.</param>
+        /// <param name="reserve0">Reserve amount of token 0.</param>
+        /// <param name="reserve1">Reserve amount of token 1.</param>
+        /// <param name="balance0BeforeSwap">Balance of token 0 before swap.</param>
+        /// <param name="balance1BeforeSwap">Balance of token 1 before swap.</param>
+        /// <param name="balance0AfterSwap">Balance of token 0 after swap.</param>
+        /// <param name="balance1AfterSwap">Balance of token 0 after swap.</param>
+        /// <param name="feePercentage">Fee percentage. Assuming it is already subtracted from amounts.</param>
+        /// <returns>Profit and Loss in Eth.</returns>
+        public static decimal CalculatePnl(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal balance0BeforeSwap, decimal balance1BeforeSwap, decimal balance0AfterSwap, decimal balance1AfterSwap, decimal feePercentage)
+        {
+            // Calculate input amounts for the swap
+            var amount0In = BigDecimal.Max(balance0AfterSwap - (reserve0 - amount0Out), 0);
+            var amount1In = BigDecimal.Max(balance1AfterSwap - (reserve1 - amount1Out), 0);
+
+            // Calculate the initial value of tokens in Eth
+            var initialValueEth = amount0In * balance0BeforeSwap / reserve0 + amount1In * balance1BeforeSwap / reserve1;
+
+            // Calculate the final value of tokens in Eth
+            var finalValueEth = amount0Out * balance0AfterSwap / (reserve0 - amount0In) + amount1Out * balance1AfterSwap / (reserve1 - amount1In);
+
+            // Calculate PNL and deduct the fee percentage
+            var pnlBeforeFeeDeduction = finalValueEth - initialValueEth;
+            var pnlAfterFeeDeduction = pnlBeforeFeeDeduction * (1 - feePercentage / 100);
+
+            return (decimal)pnlAfterFeeDeduction;
+        }
+    }
+}
+```

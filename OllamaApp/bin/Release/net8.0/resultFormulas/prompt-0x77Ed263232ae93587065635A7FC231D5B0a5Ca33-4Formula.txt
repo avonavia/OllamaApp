@@ -1,0 +1,56 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2_PNL
+{
+    public class UniswapV2_PNLFormula : IFormulaPlugin
+    {
+        // PNL calculation formula for UniswapV2 contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new Dictionary<string, BigDecimal>();
+
+            // Check if token prices are provided
+            if (tokenPrices == null || !tokenPrices.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+
+            var token0Price = tokenPrices.FirstOrDefault(p => p.Key == info.Token0Address).Value;
+            var token1Price = tokenPrices.FirstOrDefault(p => p.Key == info.Token1Address).Value;
+
+            if (token0Price <= 0 || token1Price <= 0)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+
+            // Convert balances to BigDecimal
+            var balance0 = BigDecimal.Parse(info.Balance0.ToString());
+            var balance1 = BigDecimal.Parse(info.Balance1.ToString());
+
+            // Calculate initial token values in Eth
+            var initialToken0ValueInEth = balance0 * (decimal)token0Price;
+            var initialToken1ValueInEth = balance1 * (decimal)token1Price;
+
+            // Calculate final token values in Eth using reserve prices
+            var finalToken0ValueInEth = balance0 * (decimal)(info.Reserve1 / info.Reserve0);
+            var finalToken1ValueInEth = balance1 * (decimal)(info.Reserve0 / info.Reserve1);
+
+            // Calculate PNL for each address
+            foreach (var address in info.Addresses)
+            {
+                // Assume that initial balances are held by the user
+                var pnl = BigDecimal.Zero;
+
+                if (address == info.FromAddress && address != info.ToAddress)
+                    // If user sends tokens, subtract fee and calculate PNL loss
+                    pnl -= ((initialToken0ValueInEth + initialToken1ValueInEth) * info.Fee / 100) - finalToken0ValueInEth;
+                else if (address == info.ToAddress && address != info.FromAddress)
+                    // If user receives tokens, calculate PNL gain
+                    pnl += finalToken1ValueInEth - initialToken1ValueInEth;
+
+                results[address] = pnl;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+        }
+    }
+}
+```

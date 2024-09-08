@@ -1,0 +1,58 @@
+```csharp
+[assembly: FormulaAssembly("_afterTokenTransfer")]
+
+namespace Sauron.Formula._afterTokenTransfer
+{
+    public class _afterTokenTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get distinct tokens in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(null);
+
+            // Prepare PNL dictionary for each address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                // Get transfers for the current token
+                var tokenTransfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+                if (tokenTransfers != null)
+                {
+                    foreach (var transfer in tokenTransfers)
+                    {
+                        // Calculate PNL for the 'from' address
+                        var pnlFrom = -transfer.Amount; // Subtracting amount sent
+                        AddToDictionary(pnlDictionary, transfer.FromAddress, pnlFrom);
+
+                        // If 'to' and 'from' addresses are different, calculate PNL for the 'to' address as well
+                        if (transfer.ToAddress != transfer.FromAddress)
+                        {
+                            var pnlTo = transfer.Amount; // Adding amount received
+                            AddToDictionary(pnlDictionary, transfer.ToAddress, pnlTo);
+                        }
+                    }
+                }
+            }
+
+            // Convert the dictionary to KeyValuePair list and return as CalculationResult
+            var result = pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)).ToList();
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(result);
+        }
+
+        // Helper method to add a value to the dictionary for a given key (address)
+        private void AddToDictionary(Dictionary<string, BigDecimal> dictionary, string key, BigDecimal value)
+        {
+            if (dictionary.ContainsKey(key))
+                dictionary[key] += value;
+            else
+                dictionary[key] = value;
+        }
+    }
+}
+```

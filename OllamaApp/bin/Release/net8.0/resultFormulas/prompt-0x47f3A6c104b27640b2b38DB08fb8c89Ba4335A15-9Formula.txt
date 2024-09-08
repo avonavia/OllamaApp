@@ -1,0 +1,35 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !tokenPrices?.Any() ?? true) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Invalid data");
+
+            var userAddresses = info.FromAddresses.Union(info.ToAddresses); // all unique addresses in transaction
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            foreach (var address in userAddresses)
+            {
+                var addressPnL = BigDecimal.Zero;
+                var transfersForAddress = info.Transfers.Where(t => t.From == address || t.To == address); // get all transfers for the current address
+
+                foreach (var transfer in transfersForAddress)
+                {
+                    if (!tokenPrices.TryGetValue(transfer.TokenInfo.Symbol, out var price)) continue;
+
+                    var amountInEth = BigDecimal.FromDecimal((decimal)price * Decimal.ToDouble(transfer.Amount));
+                    addressPnL += (address == transfer.From) ? -amountInEth : amountInEth; // subtract if tokens were sent, add if received
+                }
+
+                pnlResult[address] = addressPnL;
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResult.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value - info.Fee)));
+        }
+    }
+}
+```

@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers is null || !tokenPrices?.Any() ?? false)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Invalid data");
+
+            var contractAddress = info.To; // Assuming the contract's address is the 'to' field of the transaction
+            var token0Balance = GetTokenBalance(info.Transfers, "token0");
+            var token1Balance = GetTokenBalance(info.Transfers, "token1");
+
+            if (!tokenPrices.Any(t => t.Key == "token0" || t.Key == "token1"))
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Missing token prices");
+
+            var token0Price = tokenPrices.First(t => t.Key == "token0").Value;
+            var token1Price = tokenPrices.First(t => t.Key == "token1").Value;
+
+            var pnlToken0 = (token0Balance * new BigDecimal(token0Price)) - info.FeeInEth;
+            var pnlToken1 = (token1Balance * new BigDecimal(token1Price));
+            var totalPnl = pnlToken0 + pnlToken1;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new[] { new KeyValuePair<string, BigDecimal>(contractAddress, totalPnl) });
+        }
+
+        private BigDecimal GetTokenBalance(List<TokenTransferInfo> transfers, string tokenSymbol)
+        {
+            return transfers.Where(t => t.TokenInfo.Symbol == tokenSymbol).Sum(t => t.Amount);
+        }
+    }
+}
+```

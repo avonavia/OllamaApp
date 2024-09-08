@@ -1,0 +1,37 @@
+```csharp
+using System;
+
+// Assembly Information for PNL Calculation
+[assembly: System.Reflection.AssemblyTitle("PNLCalculation")]
+[assembly: System.Reflection.AssemblyDescription("A C# formula method for PNL calculation based on the provided Solidity contract method.")]
+
+namespace PNLCalculator
+{
+    public class PNLCalculator
+    {
+        /// <summary>
+        /// Calculates Profit and Loss (PNL) for a swap transaction.
+        /// </summary>
+        /// <param name="amount0Out">Amount of token 0 swapped out.</param>
+        /// <param name="amount1Out">Amount of token 1 swapped out.</param>
+        /// <param name="reserve0">Reserve amount of token 0 before swap.</param>
+        /// <param name="reserve1">Reserve amount of token 1 before swap.</param>
+        /// <param name="price0Out">Price of token 0 at the time of the transaction.</param>
+        /// <param name="price1Out">Price of token 1 at the time of the transaction.</param>
+        /// <returns>Profit and Loss (PNL) in Eth.</returns>
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal price0Out, decimal price1Out)
+        {
+            // Calculate the value of tokens swapped out at the time of transaction.
+            decimal valueSwappedOut = (amount0Out * price0Out) + (amount1Out * price1Out);
+
+            // Calculate the current value of tokens in the reserves.
+            decimal reserveValue = (reserve0 * price0Out) + (reserve1 * price1Out);
+
+            // Calculate Profit and Loss (PNL).
+            decimal pnl = valueSwappedOut - reserveValue;
+
+            return pnl;
+        }
+    }
+}
+```

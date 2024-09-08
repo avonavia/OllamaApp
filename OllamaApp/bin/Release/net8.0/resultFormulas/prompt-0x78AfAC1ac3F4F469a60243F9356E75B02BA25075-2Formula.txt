@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("sub")]
+
+namespace Sauron.Formula.sub
+{
+    public class subFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming x and y are available as uint in TransactionInfo object
+            var x = info.X;
+            var y = info.Y;
+
+            // Perform subtraction and check for underflow
+            if (y > x)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(false, "Subtraction underflow", null);
+
+            var z = x - y;
+
+            // Return the result as PNL for user addresses (assuming they are available in TransactionInfo object)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(true, "", new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>(info.FromAddress, z - info.Fee), // Subtract fee from the result
+                new KeyValuePair<string, BigDecimal>(info.ToAddress, -z) // Negative PNL for recipient address
+            });
+        }
+    }
+}
+```

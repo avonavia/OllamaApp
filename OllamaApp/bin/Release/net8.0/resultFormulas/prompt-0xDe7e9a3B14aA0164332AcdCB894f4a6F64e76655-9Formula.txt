@@ -1,0 +1,35 @@
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            if (info.Transfers == null || !info.Transfers.Any()) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Assuming token0 and token1 are the symbols for the two tokens involved in the transaction
+            var token0Symbol = info.TokenInfo.First(t => t.Address == info.ContractInfo.Parameters["token0"]).Symbol;
+            var token1Symbol = info.TokenInfo.First(t => t.Address == info.ContractInfo.Parameters["token1"]).Symbol;
+
+            // Calculate PNL for each unique address in the transaction
+            foreach (var address in info.Transfers.Select(t => t.ToAddress).Distinct())
+            {
+                var pnl = BigDecimal.Zero;
+                var token0Transfer = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == token0Symbol && t.ToAddress == address);
+                if (token0Transfer != null)
+                    pnl += tokenPrices?.FirstOrDefault(p => p.Key == token0Symbol).Value * (decimal)token0Transfer.Amount;
+
+                var token1Transfer = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == token1Symbol && t.ToAddress == address);
+                if (token1Transfer != null)
+                    pnl += tokenPrices?.FirstOrDefault(p => p.Key == token1Symbol).Value * (decimal)token1Transfer.Amount;
+
+                result.Add(new KeyValuePair<string, BigDecimal>(address, new BigDecimal((double)pnl)));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}

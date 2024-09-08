@@ -1,0 +1,26 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.Reserve0 != null && info.Reserve1 != null && info.BlockTimestampLast != null)
+            {
+                // Assuming Reserve0 and Reserve1 are already decoded BigDecimals in the TransactionInfo object
+                result.Add(new KeyValuePair<string, BigDecimal>("reserve0", info.Reserve0));
+                result.Add(new KeyValuePair<string, BigDecimal>("reserve1", info.Reserve1));
+                // BlockTimestampLast is already a Unix timestamp in the TransactionInfo object
+                result.Add(new KeyValuePair<string, BigDecimal>("blockTimestampLast", new BigDecimal((decimal)info.BlockTimestampLast)));
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.CreateSuccessfulResult(result);
+        }
+    }
+}
+```

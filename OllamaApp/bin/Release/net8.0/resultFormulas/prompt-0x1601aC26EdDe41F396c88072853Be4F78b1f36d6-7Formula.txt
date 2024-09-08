@@ -1,0 +1,40 @@
+Here's a simple representation of how you could calculate PNL for a burn function from a Solidity UniswapV2-like contract in C#. Please note that this assumes you have already decoded necessary information into `TransactionInfo` object:
+
+```csharp
+using System;
+using System.Numerics;
+using System.Collections.Generic;
+using System.Linq;
+using Sauron.Formula.Core;
+
+namespace Sauron.Formula.BurnFunction
+{
+    public class BurnFunction : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the amount of tokens burned from TransactionInfo
+            BigDecimal balance0 = info.TokensIn.SingleOrDefault(t => t.Key == "Token0").Value;
+            BigDecimal balance1 = info.TokensIn.SingleOrDefault(t => t.Key == "Token1").Value;
+
+            // Calculate the value of burned tokens in Eth using token prices
+            BigDecimal priceToken0 = new BigDecimal(tokenPrices?.FirstOrDefault(p => p.Key == "Token0").Value ?? 0);
+            BigDecimal priceToken1 = new BigDecimal(tokenPrices?.FirstOrDefault(p => p.Key == "Token1").Value ?? 0);
+            BigDecimal valueBurnedTokensInEth = (balance0 * priceToken0) + (balance1 * priceToken1);
+
+            // Calculate the PNL, assuming that the burned tokens were bought earlier for a lower price
+            // Assuming here that we have the initial purchase amount of each token in Eth
+            BigDecimal initialValueInEth = ...;  // Get this from your database or elsewhere
+
+            // If user sent tokens to another address, subtract fee (this is a simplification)
+            if (info.ToAddress != info.FromAddress)
+                valueBurnedTokensInEth *= new BigDecimal(0.997);  // Subtracting 0.3% Uniswap fee as an example
+
+            BigDecimal pnl = valueBurnedTokensInEth - initialValueInEth;
+
+            return CalculationResult<BigDecimal?>.Success(pnl);
+        }
+    }
+}
+```

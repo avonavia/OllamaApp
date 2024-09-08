@@ -1,0 +1,59 @@
+```csharp
+// Assembly info for PNL calculation without messages for user
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+public class ProfitAndLossCalculator
+{
+    private decimal Token0BalanceBeforeMint, Token1BalanceBeforeMint;
+    private decimal Token0Reserve, Token1Reserve;
+    private decimal TotalSupplyBeforeMint;
+
+    // Method to calculate PNL based on transaction info and token prices
+    public Dictionary<string, BigDecimal> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Assuming that Token0BalanceBeforeMint, Token1BalanceBeforeMint, Token0Reserve, Token1Reserve and TotalSupplyBeforeMint are correctly set elsewhere in the program
+        // ...
+
+        decimal amount0 = Token0BalanceBeforeMint - Token0Reserve;
+        decimal amount1 = Token1BalanceBeforeMint - Token1Reserve;
+
+        bool feeOn = MintFee(Token0Reserve, Token1Reserve);
+
+        decimal liquidity;
+
+        if (TotalSupplyBeforeMint == 0)
+        {
+            // Assuming that the migrator is not involved in this transaction
+            liquidity = (decimal)BigInteger.Sqrt((BigDecimal)(amount0 * amount1)) - MinimumLiquidity;
+        }
+        else
+        {
+            liquidity = Math.Min(amount0 * TotalSupplyBeforeMint / Token0Reserve, amount1 * TotalSupplyBeforeMint / Token1Reserve);
+        }
+
+        // Check if user sent or received tokens to calculate PNL
+        decimal pnl;
+        if (info.toAddress == info.fromAddress)
+            pnl = -info.fee;  // Subtract fee as the user is sending to themselves
+        else if (info.token0Amount > 0)
+            pnl = -amount0 * tokenPrices[info.token0Symbol];  // User sent tokens, so PNL is negative
+        else
+            pnl = amount1 * tokenPrices[info.token1Symbol] - info.fee;  // User received tokens, calculate PNL including fees
+
+        return new Dictionary<string, BigDecimal> { {"PNL", (BigDecimal)pnl} };
+    }
+
+    private bool MintFee(decimal reserve0, decimal reserve1)
+    {
+        // Implement the _mintFee logic here
+        throw new NotImplementedException();
+    }
+
+    // Other necessary methods and properties...
+    // ...
+}
+```

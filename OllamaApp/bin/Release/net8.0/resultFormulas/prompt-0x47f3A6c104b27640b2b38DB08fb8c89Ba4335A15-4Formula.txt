@@ -1,0 +1,54 @@
+Here is a possible implementation of the `_update` method as a C# Formula method:
+
+```csharp
+[assembly: FormulaAssembly("UniswapV2Update")]
+
+namespace Sauron.Formula.UniswapV2Update
+{
+    public class UniswapV2UpdateFormula : IFormulaPlugin
+    {
+        // The C# Formula method for the _update function in Solidity contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extracting necessary data from TransactionInfo object
+            uint balance0 = (uint)info.FromTokenBalance;
+            uint balance1 = (uint)info.ToTokenBalance;
+            BigDecimal _reserve0 = info.Reserve0;
+            BigDecimal _reserve1 = info.Reserve1;
+
+            // No overflow check is needed as the values are already checked in Solidity contract
+
+            uint blockTimestamp = (uint)(DateTimeOffset.Now.ToUnixTimeSeconds() % Math.Pow(2, 32));
+            uint timeElapsed = blockTimestamp - info.BlockTimestampLast; // overflow is desired
+
+            BigDecimal price0CumulativeLast = new BigDecimal(info.Price0CumulativeLast);
+            BigDecimal price1CumulativeLast = new BigDecimal(info.Price1CumulativeLast);
+
+            if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                // Calculate the new cumulative prices
+                price0CumulativeLast += (_reserve1 / _reserve0) * timeElapsed;
+                price1CumulativeLast += (_reserve0 / _reserve1) * timeElapsed;
+            }
+
+            info.Reserve0 = new BigDecimal(balance0); // Updating reserve0 and reserve1 as per Solidity contract
+            info.Reserve1 = new BigDecimal(balance1);
+
+            info.BlockTimestampLast = blockTimestamp; // Updating the last block timestamp
+
+            // Calculating PNL for user addresses, no conversion needed as PNL is returned in Eth
+            BigDecimal pnl = (info.ToTokenBalance - balance1) * tokenPrices["token1"] - (balance0 - info.FromTokenBalance) * tokenPrices["token0"];
+
+            // Subtracting the fee if any
+            pnl -= info.Fee;
+
+            var result = new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>(info.UserAddress, pnl)
+            };
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}
+```

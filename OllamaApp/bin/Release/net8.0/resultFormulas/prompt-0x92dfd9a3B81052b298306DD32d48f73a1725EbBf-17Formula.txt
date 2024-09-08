@@ -1,0 +1,24 @@
+//Method to initialize tokens for a given address
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Check if function selector is correct (for 'init' method in Solidity contract)
+        if (info.Selector != "0x23b872dd")
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Failure("Incorrect function selector");
+
+        //Get the target address and amount from input data
+        string toAddress = info.InputData[1..43];  //Assuming that the address is always at this position in the input data
+        BigDecimal amount = new BigDecimal(info.InputData[65..131], 0);  //Assuming that the uint256 value is always at this position in the input data and it's not a decimal number
+
+        //Check if the creator of the transaction is the same as onlyCreator address (not shown in provided Solidity code)
+        //This check assumes that 'creator' field exists in TransactionInfo object and contains the address of the onlyCreator
+        //if (info.FromAddress != info.Creator)
+            //return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Failure("Only creator can call this function");
+
+        //Mint tokens for the given address
+        //This part assumes that there is a method to mint tokens, which is not shown in provided Solidity code
+        //So, this part is just a placeholder and needs to be replaced with actual minting logic
+        MintTokens(toAddress, amount);
+
+        //Return PNL for the target address (PNL is 0 since no transaction was made)
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new[] { new KeyValuePair<string, BigDecimal>(toAddress, 0) });
+    }

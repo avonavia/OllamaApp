@@ -1,0 +1,39 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Get unique tokens in transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Error("No transfers found");
+
+            foreach (var token in tokens)
+            {
+                // Get balance of the token before and after transaction for this contract
+                var balanceBefore = info.Transfers.FirstOrDefault(t => t.TokenInfo.Symbol == token.Symbol && t.FromAddress == info.ToAddress).Amount;
+                var balanceAfter = token.Balance - balanceBefore;
+
+                // Calculate PNL for this token
+                var pnlValue = (balanceAfter - balanceBefore) * tokenPrices?.FirstOrDefault(t => t.Key == token.Symbol).Value ?? 0;
+
+                if (!pnl.ContainsKey(info.FromAddress))
+                    pnl[info.FromAddress] = 0;
+
+                // Add PNL for this token to total PNL for the user
+                pnl[info.FromAddress] += new BigDecimal(pnlValue);
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

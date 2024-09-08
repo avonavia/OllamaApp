@@ -1,0 +1,40 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2PNL")]
+
+namespace Sauron.Formula.UniswapV2PNL
+{
+    public class UniswapV2PNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new Dictionary<string, BigDecimal>();
+            foreach (var address in info.Addresses)
+            {
+                // Initialize the PNL for this address to zero
+                BigDecimal pnl = 0;
+                foreach (var transferInfo in info.Transfers.Where(t => t.From == address || t.To == address))
+                {
+                    if (transferInfo.Data != null && transferInfo.Data.StartsWith("0x7ff36ab5")) // _update function selector
+                    {
+                        uint balance0 = info.BalanceChanges[address][info.Token0Address];
+                        uint balance1 = info.BalanceChanges[address][info.Token1Address];
+                        uint reserve0 = (uint)transferInfo.Data.Substring(34, 24); // Parse reserve0 from data
+                        uint reserve1 = (uint)transferInfo.Data.Substring(58, 24); // Parse reserve1 from data
+
+                        if (address == transferInfo.From && balance0 < reserve0)
+                            pnl += (reserve0 - balance0) * tokenPrices[info.Token0Address];
+                        else if (address == transferInfo.To && balance1 < reserve1)
+                            pnl += (reserve1 - balance1) * tokenPrices[info.Token1Address];
+                    }
+                }
+                // Subtract fee and add PNL to results
+                pnl -= info.Fee;
+                pnlResults[address] = pnl;
+            }
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults);
+        }
+    }
+}
+```
+This C# code defines a formula for calculating the profit and loss (PNL) of Uniswap V2 transactions. It loops through each address in the transaction info to calculate their PNL based on the `_update` function selector and balance changes of tokens 0 and 1. The fee is then subtracted from the calculated PNL. The results are returned as a dictionary with addresses as keys and PNLs as values.

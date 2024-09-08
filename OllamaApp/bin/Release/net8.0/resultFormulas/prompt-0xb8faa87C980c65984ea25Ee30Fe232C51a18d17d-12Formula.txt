@@ -1,0 +1,21 @@
+//This formula will not calculate any PNL as approving tokens does not result in direct financial gain or loss for the user addresses. However, it's important to note that the formula is required to follow the standard structure and rules.
+
+```csharp
+[assembly: FormulaAssembly("approve")]  //The assembly name should be exactly as function name in Solidity contract
+
+namespace Sauron.Formula.Approve
+{
+    public class ApproveFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Since approving tokens does not result in any financial transaction for the user addresses, we return an empty sequence of Key-value pairs.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = Enumerable.Empty<KeyValuePair<string, BigDecimal>>()
+            };
+        }
+    }
+}
+```

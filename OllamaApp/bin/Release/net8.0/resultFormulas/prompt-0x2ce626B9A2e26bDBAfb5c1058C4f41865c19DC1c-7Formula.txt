@@ -1,0 +1,44 @@
+```csharp
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssemblyInfo("Sauron.Formula.UniSwapV2Burn", "PNL Calculation for UniswapV2 Burn Function")]
+namespace Sauron.Formula.UniSwapV2Burn
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+    using Sauron.Interfaces;
+
+    /// <summary>
+    /// Implements PNL calculation formula for the UniswapV2 Burn function
+    /// </summary>
+    public class UniSwapV2BurnFormula : IFormulaPlugin
+    {
+        // Calculation method for PNL
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IDictionary<string, decimal>? tokenPrices = null)
+        {
+            // Ensure required parameters are provided
+            if (info == null || !info.Success || tokenPrices == null)
+                return new CalculationResult<BigDecimal?>(null, "Invalid transaction information or missing token prices.");
+
+            // Decode the relevant data from TransactionInfo object
+            var balance0 = BigDecimal.Parse(info.Balance0);
+            var balance1 = BigDecimal.Parse(info.Balance1);
+            var reserve0 = BigDecimal.Parse(info.Reserve0);
+            var reserve1 = BigDecimal.Parse(info.Reserve1);
+            var totalSupply = BigDecimal.Parse(info.TotalSupply);
+            var liquidity = BigDecimal.Parse(info.Liquidity);
+            var token0Price = (decimal)tokenPrices[info.Token0];
+            var token1Price = (decimal)tokenPrices[info.Token1];
+
+            // Calculate the amount of each token burned
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // Calculate PNL in Eth by subtracting the value of the tokens burned from the user's initial investment
+            var pnlEth = (amount0 * (BigDecimal)token0Price + amount1 * (BigDecimal)token1Price) - info.Fee;
+
+            return new CalculationResult<BigDecimal?>(pnlEth);
+        }
+    }
+}
+```

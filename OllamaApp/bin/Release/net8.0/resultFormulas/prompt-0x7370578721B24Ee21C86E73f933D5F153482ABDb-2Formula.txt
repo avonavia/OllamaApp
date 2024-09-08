@@ -1,0 +1,62 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var userAddresses = info.FromToAddresses; // assuming this property exists in TransactionInfo object
+
+            var pnlByUserAddress = new Dictionary<string, BigDecimal>();
+
+            foreach (var address in userAddresses)
+                pnlByUserAddress[address] = BigDecimal.Zero;
+
+            if(info.Transfers != null && info.Fee > BigDecimal.Zero)
+            {
+                // subtract Fee from sender's PNL
+                var senderPnl = pnlByUserAddress[info.From];
+                senderPnl -= info.Fee;
+                pnlByUserAddress[info.From] = senderPnl;
+            }
+
+            if (info.Transfers != null)
+            {
+                foreach(var transfer in info.Transfers)
+                {
+                    // subtract transfer amount from sender's PNL
+                    var senderPnl = pnlByUserAddress[transfer.From];
+                    senderPnl -= transfer.Amount;
+                    pnlByUserAddress[transfer.From] = senderPnl;
+
+                    // add transfer amount to receiver's PNL (only if it is a user address)
+                    if(userAddresses.Contains(transfer.To))
+                    {
+                        var receiverPnl = pnlByUserAddress[transfer.To];
+                        receiverPnl += transfer.Amount;
+                        pnlByUserAddress[transfer.To] = receiverPnl;
+                    }
+                }
+            }
+
+            // convert PNL to Eth if tokenPrices are provided
+            if (tokenPrices != null)
+            {
+                foreach (var address in userAddresses)
+                {
+                    var pnl = pnlByUserAddress[address];
+                    var tokenSymbol = info.Transfers?.FirstOrDefault(t => t.From == address)?.TokenInfo.Symbol; // assuming this property exists in TransactionInfo object
+                    if (tokenSymbol != null && tokenPrices.Any(tp => tp.Key == tokenSymbol))
+                        pnlByUserAddress[address] = pnl / new BigDecimal((decimal)tokenPrices.FirstOrDefault(tp => tp.Key == tokenSymbol).Value);
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlByUserAddress.Select(kv => new KeyValuePair<string, BigDecimal>(kv.Key, kv.Value)));
+        }
+    }
+}
+```
+This C# code calculates the PNL for each user address in a transaction that includes token transfers through a SafeTransfer method. It subtracts the transfer amount from the sender's PNL and adds it to the receiver's PNL, as long as the receiver is one of the user addresses. If the transaction fee is not zero, it is subtracted from the sender's PNL. The code also handles converting the PNL to Eth if token prices are provided.

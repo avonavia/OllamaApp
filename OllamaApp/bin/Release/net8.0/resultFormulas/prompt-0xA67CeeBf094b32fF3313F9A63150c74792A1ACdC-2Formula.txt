@@ -1,0 +1,57 @@
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("SafeTransferFormula")]
+
+namespace Sauron.Formula.SafeTransferFormula
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get user addresses from transaction info
+            var userAddresses = new HashSet<string> { info.From, info.To };
+
+            // Initialize dictionary to store PNL for each user address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Iterate through each transfer in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                // If token price is available, calculate PNL in Eth
+                if (tokenPrices != null && tokenPrices.Any(tp => tp.Key == transfer.TokenInfo.Symbol))
+                {
+                    var tokenPrice = tokenPrices.First(tp => tp.Key == transfer.TokenInfo.Symbol).Value;
+
+                    // Calculate PNL for sender
+                    if (pnlDictionary.ContainsKey(info.From))
+                        pnlDictionary[info.From] -= new BigDecimal(transfer.Amount * tokenPrice);
+                    else
+                        pnlDictionary[info.From] = -new BigDecimal(transfer.Amount * tokenPrice);
+
+                    // If recipient is different from sender, calculate PNL for recipient
+                    if (info.To != info.From)
+                    {
+                        if (pnlDictionary.ContainsKey(info.To))
+                            pnlDictionary[info.To] += new BigDecimal(transfer.Amount * tokenPrice);
+                        else
+                            pnlDictionary[info.To] = new BigDecimal(transfer.Amount * tokenPrice);
+                    }
+                }
+            }
+
+            // Subtract transaction fee from sender's PNL
+            if (pnlDictionary.ContainsKey(info.From))
+                pnlDictionary[info.From] -= new BigDecimal((decimal)info.FeeInEth);
+            else
+                pnlDictionary[info.From] = -new BigDecimal((decimal)info.FeeInEth);
+
+            // Convert dictionary to IEnumerable<KeyValuePair<string, BigDecimal>> and return as CalculationResult
+            var calculationResult = new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = pnlDictionary.Select(kvp => kvp)
+            };
+
+            return calculationResult;
+        }
+    }
+}

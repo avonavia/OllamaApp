@@ -1,0 +1,39 @@
+```csharp
+[assembly: FormulaAssembly("_mint")]
+
+namespace Sauron.Formula._mint
+{
+    public class _mintFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers == null || !info.Transfers.Any()) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(){ Message = "No transfers found in the transaction." };
+
+            var pnlDictionary = info.GetDistinctAddresses()?.ToDictionary(addr => addr, addr => BigDecimal.Zero);
+
+            if (pnlDictionary == null) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(){ Message = "No unique addresses found in the transaction." };
+
+            foreach (var transfer in info.Transfers)
+            {
+                // If minting to own address, do not subtract fee as it is not a real transaction
+                if (transfer.ToAddress == info.FromAddress)
+                    pnlDictionary[info.FromAddress] += -transfer.Amount;
+                else
+                    pnlDictionary[transfer.ToAddress] += transfer.Amount; // Minted tokens increase the recipient's balance
+            }
+
+            if (tokenPrices != null && tokenPrices.Any())
+            {
+                var tokenPrice = tokenPrices.FirstOrDefault(p => p.Key == info.Transfers.First().TokenInfo.Symbol).Value;
+                if (tokenPrice > 0)
+                {
+                    foreach (var pair in pnlDictionary)
+                        pnlDictionary[pair.Key] *= tokenPrice; // Convert PNL to Eth
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(){ Result = pnlDictionary };
+        }
+    }
+}
+```

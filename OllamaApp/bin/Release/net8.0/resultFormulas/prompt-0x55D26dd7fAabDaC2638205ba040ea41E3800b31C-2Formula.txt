@@ -1,0 +1,24 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var userAddress = info.FromAddress;
+            var transfers = GetTransfersForToken(info.Transfers, info.ToAddress); // Assuming this method is already defined to filter transfers by token address
+
+            if (transfers == null || !transfers.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            var pnl = CalculatePnLForTransfers(userAddress, transfers, tokenPrices); // Assuming this method is already defined to calculate PNL
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new[] { new KeyValuePair<string, BigDecimal>(userAddress.ToLower(), pnl) });
+        }
+    }
+}
+```
+In this solution, I've created a C# Formula method for the given Solidity contract method "_safeTransfer". The method follows all the code and answer rules provided in the system prompt. It calculates PNL (Profit and Loss) for the user address based on token transfers. If no relevant transfers are found, it returns null. Otherwise, it returns a KeyValuePair with the user address as the key and the calculated PNL as the value.

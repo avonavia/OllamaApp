@@ -1,0 +1,40 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")] // Make sure this is exactly as the function name in Solidity contract
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction is successful and to address is not the same as from address
+            if (info.Success && info.ToAddress != info.FromAddress)
+            {
+                var pnlPairs = new List<KeyValuePair<string, BigDecimal>>();
+
+                foreach (var transfer in info.Transfers)
+                {
+                    // Check if token address matches the one used in _safeTransfer method
+                    if (transfer.TokenInfo.Address == info.InputParameters[0].ToString())
+                    {
+                        BigDecimal pnl = -BigDecimal.Parse(transfer.Amount.ToString());
+
+                        // If we have token prices, convert PNL to Eth
+                        if (tokenPrices != null)
+                            pnl /= BigDecimal.Parse((tokenPrices.FirstOrDefault(tp => tp.Key == transfer.TokenInfo.Symbol).Value ?? 0M).ToString());
+
+                        // Add pair to the list
+                        pnlPairs.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl));
+                    }
+                }
+
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnlPairs };
+            }
+
+            // If transaction is not successful or to address is the same as from address, return null
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>();
+        }
+    }
+}
+```

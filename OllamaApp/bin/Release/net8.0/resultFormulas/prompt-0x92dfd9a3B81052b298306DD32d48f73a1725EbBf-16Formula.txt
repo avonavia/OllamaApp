@@ -1,0 +1,39 @@
+//Method to calculate PNL before token transfer occurs
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        var pnl = new Dictionary<string, BigDecimal>();
+
+        //Loop through all transfers in the transaction
+        foreach (var transfer in info.Transfers)
+        {
+            var fromAddress = transfer.From;
+            var toAddress = transfer.To;
+            var amount = transfer.Amount;
+
+            //Get token price, if available
+            BigDecimal? tokenPrice = null;
+            if (tokenPrices != null && tokenPrices.Any(t => t.Key == transfer.TokenInfo.Symbol))
+            {
+                tokenPrice = tokenPrice.Value * amount;
+            }
+
+            //Subtract the fee from the amount sent
+            BigDecimal netAmount = amount - info.Fee;
+
+            //Update sender's PNL
+            if (!pnl.ContainsKey(fromAddress))
+                pnl[fromAddress] = BigDecimal.Zero;
+            //If sending to a different address, subtract the amount sent from PNL
+            //Otherwise, it means user is sending tokens to themselves and no PNL change
+            if (fromAddress != toAddress)
+                pnl[fromAddress] -= tokenPrice ?? netAmount;
+
+            //Update receiver's PNL
+            if (!pnl.ContainsKey(toAddress))
+                pnl[toAddress] = BigDecimal.Zero;
+            //Add the amount received to PNL
+            pnl[toAddress] += tokenPrice ?? netAmount;
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)) };
+    }

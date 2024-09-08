@@ -1,0 +1,55 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get unique tokens with amounts involved in transfers
+            var tokensWithAmounts = GetTokensWithAmounts(info.Transfers);
+
+            foreach (var token in tokensWithAmounts)
+            {
+                var fromAddressPnl = new BigDecimal(0);
+                var toAddressPnl = new BigDecimal(0);
+
+                // Calculate PNL for each unique token involved
+                foreach (var transfer in info.Transfers.Where(t => t.TokenInfo.Symbol == token.Key))
+                {
+                    if (transfer.FromAddress == info.TransactionHash)
+                        fromAddressPnl -= transfer.Amount;
+                    else if (transfer.ToAddress == info.TransactionHash && transfer.ToAddress != transfer.FromAddress)
+                        toAddressPnl += transfer.Amount;
+                }
+
+                // Subtract fee from sender's PNL
+                fromAddressPnl -= info.Fee;
+
+                results.Add(new KeyValuePair<string, BigDecimal>(info.TransactionHash, fromAddressPnl));
+                if (toAddressPnl != 0)
+                    results.Add(new KeyValuePair<string, BigDecimal>(token.Value.Key, toAddressPnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(results);
+        }
+
+        private IEnumerable<KeyValuePair<string, BigDecimal>> GetTokensWithAmounts(List<TokenTransferInfo> transfers)
+        {
+            var tokenAmounts = new Dictionary<string, BigDecimal>();
+            foreach (var transfer in transfers)
+            {
+                if (!tokenAmounts.ContainsKey(transfer.TokenInfo.Symbol))
+                    tokenAmounts[transfer.TokenInfo.Symbol] = transfer.Amount;
+                else
+                    tokenAmounts[transfer.TokenInfo.Symbol] += transfer.Amount;
+            }
+            return tokenAmounts;
+        }
+    }
+}
+```

@@ -1,0 +1,52 @@
+Based on the Solidity contract method provided, here's a possible implementation of the corresponding formula method in C#:
+
+```csharp
+[assembly: FormulaAssembly("SwapTokensForEth")]
+
+namespace Sauron.Formula.SwapTokensForEth
+{
+    public class SwapTokensForEthFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new Dictionary<string, BigDecimal>();
+
+            if (info.Transfers != null && tokenPrices != null)
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Check if the transfer is a swap from a token to ETH
+                    if (transfer.ToAddress == "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D" && // UniswapV2Router address
+                        transfer.TokenInfo != null)
+                    {
+                        var tokenSymbol = transfer.TokenInfo.Symbol;
+                        var tokenPrice = tokenPrices.FirstOrDefault(t => t.Key == tokenSymbol).Value;
+
+                        if (tokenPrice > 0)
+                        {
+                            // Calculate the amount of ETH received after the swap
+                            var ethAmount = transfer.Amount * new BigDecimal((decimal)tokenPrice);
+
+                            // Update the user's PNL by subtracting the token amount and adding the ETH amount
+                            if (results.ContainsKey(transfer.FromAddress))
+                                results[transfer.FromAddress] -= transfer.Amount * new BigDecimal((decimal)tokenPrice);
+                            else
+                                results[transfer.FromAddress] = -transfer.Amount * new BigDecimal((decimal)tokenPrice);
+
+                            if (results.ContainsKey(transfer.FromAddress))
+                                results[transfer.FromAddress] += ethAmount;
+                            else
+                                results[transfer.FromAddress] = ethAmount;
+                        }
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+    }
+}
+```
+
+This formula calculates the profit and loss (PNL) for each user who performed a swap from any token to ETH. It does so by iterating through all transfers in the transaction, identifying swaps based on their destination address (the UniswapV2Router), and updating the user's PNL accordingly.

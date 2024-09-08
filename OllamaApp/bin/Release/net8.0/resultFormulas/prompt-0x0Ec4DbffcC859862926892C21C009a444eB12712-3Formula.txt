@@ -1,0 +1,21 @@
+```csharp
+[assembly: FormulaAssembly("UNISWAP_V2_INITIALIZE")]
+
+namespace Sauron.Formula.UNISWAP_V2_INITIALIZE
+{
+    public class UNISWAP_V2_INITIALIZEFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // PNL calculation is not applicable for this method as it only initializes the contract.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = null,
+                Message = "PNL calculation is not applicable for this method."
+            };
+        }
+    }
+}
+```
+This C# code provides a formula for the `initialize` method of the Solidity contract. Since the `initialize` method only sets the addresses of two tokens and does not involve any transfers or changes in token balances, there is no need to calculate PNL for this method. The code follows all the rules specified in the system prompt, including returning a null result and an appropriate message indicating that PNL calculation is not applicable for this method.

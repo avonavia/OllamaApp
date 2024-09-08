@@ -1,0 +1,38 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.ToAddress == info.FromAddress || info.Fee == 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null); // No PNL for self-transfers or zero fees
+
+            var feeOn = info.ExtraData != "0x"; // Assuming that extra data is the address of the feeTo in factory contract
+            if (!feeOn) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null); // No fee to mint, no PNL
+
+            var reserve0 = info.InputData["_reserve0"]; // Assuming input data is decoded into these variables
+            var reserve1 = info.InputData["_reserve1"];
+            var kLast = info.ExtraData2; // Assuming this is the last k value stored in contract's state, decoded and converted beforehand
+
+            if (kLast == 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null); // No previous state to calculate liquidity from, no PNL
+
+            var rootK = BigMath.Sqrt(reserve0 * reserve1);
+            var rootKLast = BigMath.Sqrt(kLast);
+
+            if (rootK <= rootKLast) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null); // No increase in liquidity, no PNL
+
+            var numerator = info.ExtraData3 * (rootK - rootKLast); // Assuming this is the total supply of tokens, decoded and converted beforehand
+            var denominator = rootK * 5 + rootKLast;
+            var liquidity = numerator / denominator;
+
+            if (liquidity <= 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null); // No liquidity minted, no PNL
+
+            var pnl = -info.Fee; // User loses this much ETH due to the fee
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+    }
+}
+```

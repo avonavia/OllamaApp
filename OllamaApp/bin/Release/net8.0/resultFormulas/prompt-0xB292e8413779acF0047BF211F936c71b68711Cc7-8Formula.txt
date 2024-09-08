@@ -1,0 +1,51 @@
+Here is a simple representation of how you could calculate PNL in C# for the swap function in Solidity contract method:
+
+```csharp
+using System;
+
+public class CalculationResult
+{
+    public decimal Pnl { get; set; }
+}
+
+public class SwapTransaction
+{
+    public decimal Amount0Out { get; set; }
+    public decimal Amount1Out { get; set; }
+    public string ToAddress { get; set; }
+    public string FromAddress { get; set; }
+    public decimal Reserve0 { get; set; }
+    public decimal Reserve1 { get; set; }
+    // Add other necessary properties for calculation
+}
+
+public class PnlCalculator
+{
+    /// <summary>
+    /// Calculate Profit and Loss (PNL) for a swap transaction
+    /// </summary>
+    /// <param name="transaction">Swap transaction details</param>
+    /// <returns>Calculation result with PNL</returns>
+    public CalculationResult CalculatePnl(SwapTransaction transaction)
+    {
+        var calculation = new CalculationResult();
+
+        // Assuming price of token0 is 1 Eth and price of token1 is also 1 Eth for simplicity
+        decimal amountSpent = transaction.Amount0Out + transaction.Amount1Out;
+
+        // Calculate the current value of tokens in contract
+        decimal currentValue = transaction.Reserve0 + transaction.Reserve1;
+
+        // Check if the user is sending or receiving tokens
+        bool isSendingTokens = !transaction.ToAddress.Equals(transaction.FromAddress, StringComparison.OrdinalIgnoreCase);
+
+        // If the user is sending tokens, subtract the fee and update the amount spent
+        if (isSendingTokens)
+            amountSpent -= FeeCalculator.CalculateFee(amountSpent);
+
+        calculation.Pnl = currentValue - amountSpent;
+
+        return calculation;
+    }
+}
+```

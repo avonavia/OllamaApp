@@ -1,0 +1,45 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using Nethereum.Util;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // All values are already decoded and converted to BigDecimal before this method is called
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = info.Balance0;
+            var balance1 = info.Balance1;
+            var liquidity = info.Liquidity;
+            var totalSupply = info.TotalSupply;
+
+            // Calculate the amount of tokens burned for each token type
+            var amount0Burned = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance0), totalSupply);
+            var amount1Burned = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance1), totalSupply);
+
+            // Calculate the PNL in Eth (no conversion needed)
+            var pnlEth = 0m;
+            if (!info.IsToAddressSameAsFromAddress)
+            {
+                // If user sent tokens to a different address, they lost value
+                if (tokenPrices != null)
+                {
+                    foreach (var pair in tokenPrices)
+                    {
+                        if (pair.Key == info.Token0Address)
+                            pnlEth -= (decimal)amount0Burned * pair.Value;
+                        else if (pair.Key == info.Token1Address)
+                            pnlEth -= (decimal)amount1Burned * pair.Value;
+                    }
+                }
+                // Subtract fees from PNL only if to address is different from from address
+                pnlEth -= info.Fee;
+            }
+
+            return new CalculationResult<decimal?> { Result = pnlEth };
+        }
+    }
+}
+```

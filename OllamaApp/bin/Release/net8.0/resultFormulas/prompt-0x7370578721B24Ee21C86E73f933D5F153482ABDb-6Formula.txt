@@ -1,0 +1,27 @@
+```csharp
+// Assembly info
+[assembly: FormulaAssembly("MintFormula")]
+
+namespace Sauron.Formula.MintFormula
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        // Method for PNL calculation based on the Solidity contract method 'mint'
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            BigDecimal amount0 = (info.Token0Balance - info.Reserve0);
+            BigDecimal amount1 = (info.Token1Balance - info.Reserve1);
+
+            // Calculate liquidity and check for sufficient liquidity minted
+            if (info.TotalSupply == 0)
+                return new CalculationResult<BigDecimal?> { PnL = BigDecimal.Zero, ErrorMessage = "Insufficient Liquidity Minted" };
+
+            BigDecimal liquidity = System.Math.Min(amount0 * info.TotalSupply / info.Reserve0, amount1 * info.TotalSupply / info.Reserve1);
+
+            // Subtract fee if applicable and calculate PNL in Eth
+            BigDecimal pnl = (info.ToAddress == info.FromAddress) ? liquidity : -liquidity;
+            return new CalculationResult<BigDecimal?> { PnL = pnl };
+        }
+    }
+}
+```

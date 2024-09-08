@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // Since this method only initializes the token addresses, it doesn't directly calculate PNL.
+        // However, as per your rules, a calculation result should be returned, so we'll return null in this case.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // We can assume that the tokens are already decoded and available in TransactionInfo object.
+            var token0Address = info.TokenInfoList.FirstOrDefault(t => t.Symbol == "token0")?.ContractAddress;
+            var token1Address = info.TokenInfoList.FirstOrDefault(t => t.Symbol == "token1")?.ContractAddress;
+
+            // As this function only initializes the tokens and does not perform any transactions, we return null for PNL calculation.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = null };
+        }
+    }
+}
+```

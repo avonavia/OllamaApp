@@ -1,0 +1,17 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2Initialize")]
+
+namespace Sauron.Formula.UniswapV2Initialize
+{
+    public class UniswapV2InitializeFormula : IFormulaPlugin
+    {
+        // Method to calculate PNL for this transaction, which is not applicable in the case of initialize method as no tokens are transferred or received
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```
+This C# code defines a `FormulaAssembly` attribute with the name "UniswapV2Initialize". It then declares a class `UniswapV2InitializeFormula` that implements the `IFormulaPlugin` interface. The `Formula` method is implemented to return a `CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>`. Since the `initialize` method in Solidity does not involve any token transfers or receipts, it returns null as per the rules.

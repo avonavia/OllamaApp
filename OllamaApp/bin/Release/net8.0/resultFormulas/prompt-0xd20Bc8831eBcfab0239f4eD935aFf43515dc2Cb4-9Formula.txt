@@ -1,0 +1,32 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            var contractAddress = info.ToAddress;
+            var tokens = info.GetDistinctTokens()?.ToList();
+
+            if (tokens == null || !tokens.Any()) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+
+            foreach (var token in tokens)
+            {
+                var contractBalance = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == token.Symbol && t.ToAddress == contractAddress).Amount;
+                var userBalance = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == token.Symbol && t.FromAddress == contractAddress).Amount;
+
+                if (contractBalance != null && userBalance != null)
+                {
+                    var pnl = userBalance - contractBalance;
+                    result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, (BigDecimal)pnl));
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

@@ -1,0 +1,40 @@
+// Since the Solidity method decreaseAllowance() doesn't directly affect PNL, it is not possible to create an equivalent C# formula method for this function. However, if we assume that this method affects some external state or other metrics that can be used to calculate a user's PNL in another context, here's how the method could be translated into C#:
+
+```csharp
+using Sauron.Core;
+using System.Collections.Generic;
+using Nethereum.Util;
+
+namespace Sauron.Formula.DecreaseAllowance
+{
+    public class DecreaseAllowanceFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            var spender = info.Parameters[0].ToString();
+            var subtractedValue = new BigDecimal(UnitConversion.Convert.FromWei((BigInteger)info.Parameters[1], 18));
+
+            // Assuming that the decrease in allowance affects the PNL, we calculate it as follows:
+            // If the spender is not the recipient of the transaction, and the sender has decreased their allowance to the spender,
+            // we consider this a withdrawal from the pool and subtract the value of the tokens from the sender's PNL.
+            if (spender != toAddress)
+            {
+                var pnl = new Dictionary<string, BigDecimal>();
+                if (pnl.ContainsKey(fromAddress))
+                {
+                    pnl[fromAddress] -= subtractedValue;
+                }
+                else
+                {
+                    pnl.Add(fromAddress, -subtractedValue);
+                }
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+            }
+            // If the spender is the recipient of the transaction, we don't consider this a PNL-affecting operation.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

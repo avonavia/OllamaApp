@@ -1,0 +1,58 @@
+```csharp
+// Assembly info for formula calculation
+[assembly: FormulaAssembly("MintFormula")]
+
+namespace Sauron.Formula.MintFormula
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        // PNL calculation method for mint function in UniswapV2 contract
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get necessary data from the transaction
+            var balance0 = info.TokenBalances[info.FromAddress].FirstOrDefault(x => x.Key == "token0").Value;
+            var balance1 = info.TokenBalances[info.FromAddress].FirstOrDefault(x => x.Key == "token1").Value;
+            var _reserve0 = (BigDecimal)info.Reserves["_reserve0"];
+            var _reserve1 = (BigDecimal)info.Reserves["_reserve1"];
+            var totalSupply = info.TotalSupply;
+
+            // Calculate amounts
+            var amount0 = balance0 - _reserve0;
+            var amount1 = balance1 - _reserve1;
+
+            BigDecimal liquidity, fee;
+            if (totalSupply == 0)
+            {
+                liquidity = System.Math.Sqrt(amount0 * amount1) - 1m; // MINIMUM_LIQUIDITY is assumed to be 1 for simplicity
+            }
+            else
+            {
+                var liquidity0 = amount0 * totalSupply / _reserve0;
+                var liquidity1 = amount1 * totalSupply / _reserve1;
+                liquidity = System.Math.Min(liquidity0, liquidity1);
+            }
+
+            // Calculate fee if necessary (this part might need adjustments based on the actual _mintFee function)
+            var feeOn = info._MintFee(_reserve0, _reserve1);
+            if (feeOn)
+            {
+                var feePercentage = 0.05m; // Fee percentage is assumed to be 5%, it might need to be adjusted
+                fee = liquidity * feePercentage;
+            }
+            else
+            {
+                fee = 0;
+            }
+
+            // Calculate PNL: minted tokens value minus fees (if any)
+            var token0Price = tokenPrices.FirstOrDefault(x => x.Key == "token0").Value;
+            var token1Price = tokenPrices.FirstOrDefault(x => x.Key == "token1").Value;
+            var pnl = liquidity * (amount0 * token0Price + amount1 * token1Price) - fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl: pnl);
+        }
+    }
+}
+```
+This code includes calculation of liquidity and PNL for the mint function in a UniswapV2-like contract. It takes transaction data such as token balances and reserves as input and returns calculated PNL value (in Ether). Fee calculation part might need adjustments based on the actual `_mintFee` function implementation, but it shows the general idea of how to include fees in the calculation. Also, note that it's assumed that token prices are provided as an additional parameter, and fee percentage is assumed to be 5%.

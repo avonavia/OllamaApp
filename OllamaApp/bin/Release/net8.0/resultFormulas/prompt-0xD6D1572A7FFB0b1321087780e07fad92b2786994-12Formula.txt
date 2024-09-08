@@ -1,0 +1,21 @@
+//Method to remove limits on max transaction amount and wallet size
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info)
+    {
+        if (!info.IsOwner)
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>
+            {
+                Error = "Only owner can call this function"
+            };
+        }
+
+        //Update max transaction amount and wallet size to total supply of token (_tTotal)
+        info.TokenInfo._maxTxAmount = info.TokenInfo._tTotal;
+        info.TokenInfo._maxWalletSize = info.TokenInfo._tTotal;
+
+        //No changes in PNL for this function, so return null
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>
+        {
+            Result = null
+        };
+    }

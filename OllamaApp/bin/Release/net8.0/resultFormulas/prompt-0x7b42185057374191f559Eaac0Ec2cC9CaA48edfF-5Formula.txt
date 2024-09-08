@@ -1,0 +1,14 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal(info.DecodedInput[0]);
+            var reserve1 = new BigDecimal(info.DecodedInput[1]);
+            var feeTo = info.ContractCalls[0].To; // Assume the feeTo address is fetched from a contract call to IUniswapV2Factory's feeTo method
+
+            if (feeTo != "0x0000000000000000000000000000000

@@ -1,0 +1,55 @@
+Using the provided rules and guidelines, I'll write a C# method to calculate PNL for a transaction where a _safeTransfer function is called. Below is the C# code snippet:
+
+```csharp
+[assembly: FormulaAssembly("_SafeTransferPNL")]
+
+namespace Sauron.Formula._SafeTransferPNL
+{
+    public class _SafeTransferPNLFormula : IFormulaPlugin
+    {
+        // Calculate PNL for each address in a transaction where _safeTransfer function is called
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transfers exist in the transaction info
+            if (info.Transfers == null || !info.Transfers.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            // Initialize a dictionary to store PNL for each address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Iterate through each transfer in the transaction info
+            foreach (var transfer in info.Transfers)
+            {
+                // Check if transfer is not to user's own address and has a non-zero amount
+                if (!transfer.ToAddress.Equals(info.FromAddress, StringComparison.OrdinalIgnoreCase) && transfer.Amount > BigDecimal.Zero)
+                {
+                    // Subtract the transferred amount from sender's PNL
+                    UpdatePNL(pnlDictionary, info.FromAddress, -transfer.Amount);
+
+                    // Add the transferred amount to receiver's PNL
+                    UpdatePNL(pnlDictionary, transfer.ToAddress, transfer.Amount);
+                }
+            }
+
+            // Subtract transaction fee from sender's PNL if available
+            if (info.Fee != null && info.FromAddress != null)
+                UpdatePNL(pnlDictionary, info.FromAddress, -new BigDecimal((decimal)info.Fee));
+
+            // Return the calculated PNL for each address
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+
+        // Update PNL for a given address in the dictionary
+        private void UpdatePNL(Dictionary<string, BigDecimal> pnlDictionary, string address, BigDecimal amount)
+        {
+            if (!pnlDictionary.ContainsKey(address))
+                pnlDictionary[address] = BigDecimal.Zero;
+
+            pnlDictionary[address] += amount;
+        }
+    }
+}
+```
+
+This C# code calculates the PNL for each address in a transaction where the _safeTransfer function is called, taking into account the transferred amounts and the transaction fee.

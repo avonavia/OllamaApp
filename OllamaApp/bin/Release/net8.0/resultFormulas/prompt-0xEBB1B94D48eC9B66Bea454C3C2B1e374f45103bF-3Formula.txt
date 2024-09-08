@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // This method does not return any PNL calculations as the initialize function in Solidity contract does not involve any transfers or value changes.
+        // Therefore, it only sets the token0 and token1 addresses for future use within the contract.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // No need to decode or convert addresses as they are already in a readable format
+            var token0Address = info.GetDistinctTokens()?.FirstOrDefault()?.Address;
+            var token1Address = info.GetDistinctTokens()?.Skip(1).FirstOrDefault()?.Address;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = null }; // Returning NULL as per the rules
+        }
+    }
+}
+```

@@ -1,0 +1,53 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming 'token0', 'token1', 'reserve0' and 'reserve1' are available in TransactionInfo object.
+            var token0Balance = GetTokenBalance(info.Transfers, info.ToAddress, "token0");
+            var token1Balance = GetTokenBalance(info.Transfers, info.ToAddress, "token1");
+
+            // Calculate PNL for both tokens using provided _update formula
+            BigDecimal pnlToken0 = (token0Balance * new BigDecimal(info.Reserve1)) / info.Reserve0 - token0Balance;
+            BigDecimal pnlToken1 = (token1Balance * new BigDecimal(info.Reserve0)) / info.Reserve1 - token1Balance;
+
+            // If tokenPrices are provided, convert PNL to Eth
+            if (tokenPrices != null)
+            {
+                var token0Price = GetTokenPrice(tokenPrices, "token0");
+                var token1Price = GetTokenPrice(tokenPrices, "token1");
+
+                pnlToken0 *= token0Price;
+                pnlToken1 *= token1Price;
+            }
+
+            // Return PNL for both tokens
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = new[]
+                {
+                    new KeyValuePair<string, BigDecimal>(info.ToAddress + "_token0", pnlToken0),
+                    new KeyValuePair<string, BigDecimal>(info.ToAddress + "_token1", pnlToken1)
+                }
+            };
+        }
+
+        // Helper method to get token balance from transfers
+        private BigDecimal GetTokenBalance(List<TokenTransferInfo> transfers, string address, string tokenSymbol)
+        {
+            return transfers.Where(t => t.ToAddress == address && t.TokenInfo.Symbol == tokenSymbol).Sum(t => t.Amount);
+        }
+
+        // Helper method to get token price from tokenPrices
+        private BigDecimal GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>> tokenPrices, string tokenSymbol)
+        {
+            return new BigDecimal(tokenPrices.FirstOrDefault(t => t.Key == tokenSymbol).Value);
+        }
+    }
+}
+```
+This C# code defines a Formula method for calculating the PNL of both 'token0' and 'token1' in a Solidity contract transaction. The method uses the provided '_update' formula from the Solidity contract to calculate the PNL. If token prices are provided, it also converts the PNL to Eth before returning it. The code assumes that necessary information like 'token0', 'token1', 'reserve0', and 'reserve1' is available in the TransactionInfo object and all conversion operations were done beforehand.

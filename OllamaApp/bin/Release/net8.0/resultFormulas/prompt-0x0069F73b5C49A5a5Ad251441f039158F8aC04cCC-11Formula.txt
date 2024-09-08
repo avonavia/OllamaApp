@@ -1,0 +1,33 @@
+```csharp
+[assembly: FormulaAssembly("addLiquidity")]
+
+namespace Sauron.Formula.addLiquidity
+{
+    public class addLiquidityFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info == null || info.FromAddress != info.ToAddress || !tokenPrices?.Any() ?? true)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var ethAmount = Web3.Convert.FromWei(info.Value); // Convert value to ETH
+            var tokenAmount = info.Transfers?.GetTokensWithAmounts().FirstOrDefault().Value ?? 0;
+
+            var uniqueTokens = info.GetDistinctTokens();
+            if (uniqueTokens?.Count() != 1) // Check for single unique token in transaction
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var tokenPrice = tokenPrices.FirstOrDefault(t => t.Key == uniqueTokens.First().Symbol).Value;
+            if (tokenPrice <= 0) // Check for valid token price
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var totalInvestment = ethAmount + tokenAmount * (decimal)tokenPrice; // Total investment in ETH
+            var fee = info.Fee ?? 0; // Subtract transaction fee from total investment
+            var pnl = -(fee / totalInvestment); // Calculate PNL as a percentage of total investment
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+    }
+}
+```

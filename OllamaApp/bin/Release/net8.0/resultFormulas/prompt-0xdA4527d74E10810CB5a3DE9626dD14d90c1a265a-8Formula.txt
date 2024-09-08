@@ -1,0 +1,31 @@
+Here is a simple C# method that calculates PNL based on the provided Solidity contract:
+
+```csharp
+using System;
+using System.Numerics;
+
+// Assembly information for PNL calculation formula
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("YourAssemblyName")]
+namespace YourNamespace
+{
+    public class UniswapV2PNLCalculator
+    {
+        // Calculate PNL based on the swap function in Solidity contract
+        public static BigInteger CalculatePNL(BigInteger reserve0, BigInteger reserve1, BigInteger amount0Out, BigInteger amount1Out, BigInteger fee)
+        {
+            // Check if insufficient liquidity or invalid output amounts
+            if (amount0Out >= reserve0 || amount1Out >= reserve1 || amount0Out <= 0 && amount1Out <= 0)
+                throw new ArgumentException("Invalid swap parameters");
+
+            // Calculate the amount of tokens received after swapping and subtracting fee
+            BigInteger amountReceived = (amount0Out * reserve1) / (reserve0 + amount0Out);
+            amountReceived -= amountReceived * fee / 1000;
+
+            // PNL is calculated as the difference between the amount of tokens received and sent
+            return amountReceived - amount0Out - amount1Out;
+        }
+    }
+}
+```
+
+This formula assumes that `fee` is a fraction of a percentage (e.g., 3 for 0.3%). The method will throw an exception if the swap parameters are invalid or insufficient liquidity. PNL is returned in Eth, as per the rules. Note that this calculation does not include any possible loss due to price slippage and gas fees, which were not specified in the provided Solidity contract.

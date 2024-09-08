@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // This formula doesn't calculate PNL, it just checks if the transaction follows the rules of UniswapV2 initialization
+        // and returns a message indicating whether the initialization was successful or not.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the sender of the transaction is the factory address (as required by UniswapV2 contract)
+            bool isInitialized = info.FromAddress == "FACTORY_ADDRESS";
+
+            // Return a calculation result with no PNL data and a message indicating whether the initialization was successful or not
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, isInitialized ? null : "UniswapV2: FORBIDDEN");
+        }
+    }
+}
+```

@@ -1,0 +1,45 @@
+Here's a simplified version of how you might implement this formula in C#:
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Entities;
+using Sauron.Formula.Types;
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Assume that TransactionInfo.DecodedData contains the decoded data from the Solidity contract call
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.FromAddress != info.ToAddress) // Assuming that "burn" action doesn't generate PNL for the same address
+            {
+                var reserves = info.DecodedData["reserves"] as Tuple<BigDecimal, BigDecimal>;
+                var balance0 = info.DecodedData["balance0"] as BigDecimal;
+                var balance1 = info.DecodedData["balance1"] as BigDecimal;
+                var liquidity = info.DecodedData["liquidity"] as BigDecimal;
+                var totalSupply = info.DecodedData["totalSupply"] as BigDecimal;
+
+                // Calculating burned amounts
+                var amount0 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance0), totalSupply);
+                var amount1 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance1), totalSupply);
+
+                // Assuming tokenPrices contains the price of tokens in Eth
+                if (tokenPrices != null)
+                {
+                    var pnl0 = BigDecimal.Multiply(amount0, new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.DecodedData["_token0"].ToString()).Value));
+                    var pnl1 = BigDecimal.Multiply(amount1, new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.DecodedData["_token1"].ToString()).Value));
+
+                    // Returning PNL in Eth (subtracted by Fee)
+                    return CalculationResult<BigDecimal?>.Success((pnl0 + pnl1) - info.Fee);
+                }
+            }
+
+            // If tokenPrices is not provided or any other error, return null for PNL
+            return CalculationResult<BigDecimal?>.Success(null);
+        }
+    }
+}
+```

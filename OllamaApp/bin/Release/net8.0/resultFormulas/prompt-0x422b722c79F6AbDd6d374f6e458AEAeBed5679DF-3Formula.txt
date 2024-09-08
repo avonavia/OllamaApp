@@ -1,0 +1,18 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // This formula does not calculate PNL as it initializes the contract and doesn't involve any token transfers
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if tokens are correctly set in the contract
+            if (info.FromAddress == info.Factory && info.Transfers?.Count == 2)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            else
+                throw new ArgumentException("Invalid initialization parameters");
+        }
+    }
+}
+```

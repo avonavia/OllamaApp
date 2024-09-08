@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            var feeTo = info.GetFunctionParameter("feeTo");
+
+            if (feeTo != "0x0") // Fee is applied
+            {
+                var reserve0 = BigDecimal.Parse(info.GetFunctionParameter("_reserve0"));
+                var reserve1 = BigDecimal.Parse(info.GetFunctionParameter("_reserve1"));
+                var kLast = BigDecimal.Parse(info.GetFunctionParameter("kLast"));
+
+                if (kLast != 0)
+                {
+                    var rootK = (reserve0 * reserve1).Sqrt();
+                    var rootKLast = kLast.Sqrt();
+
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = BigDecimal.Parse(info.TotalSupply); // Assume TotalSupply is available in TransactionInfo object
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = rootK * 5 + rootKLast;
+                        var liquidity = numerator / denominator;
+
+                        if (liquidity > 0)
+                        {
+                            // Subtract fee from user's PNL as it is transferred to the feeTo address
+                            result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, -liquidity));
+                            result.Add(new KeyValuePair<string, BigDecimal>(feeTo, liquidity)); // Add PNL for feeTo address
+                        }
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.SuccessWith(result);
+        }
+    }
+}
+```

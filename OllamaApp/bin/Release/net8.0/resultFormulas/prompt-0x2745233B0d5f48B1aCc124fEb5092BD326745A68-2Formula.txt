@@ -1,0 +1,42 @@
+Here's an example of how you could implement this function in C#, following the rules provided above. Note that since this is a private method within Solidity contract, it's assumed to be called within an existing transaction.
+
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if fromAddress is the same as toAddress. If so, no PNL is generated.
+            if (info.FromAddress == info.ToAddress)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            // Loop through all token transfers in the transaction.
+            foreach (var transfer in info.Transfers)
+            {
+                // Make sure it's a valid ERC20 token transfer and its destination matches `to` parameter of _safeTransfer method.
+                if (!transfer.IsERC20 || transfer.To != info.ToAddress)
+                    continue;
+
+                var amountInEth = BigDecimal.FromDecimal(transfer.Amount * tokenPrices?.FirstOrDefault(t => t.Key == transfer.TokenInfo.Symbol).Value ?? 0);
+
+                // Subtract fee from the PNL (assuming it's in ETH)
+                amountInEth -= BigDecimal.FromDecimal(info.Fee * info.GasPrice);
+
+                if (!pnl.ContainsKey(transfer.TokenInfo.Symbol))
+                    pnl[transfer.TokenInfo.Symbol] = BigDecimal.Zero;
+
+                // Add or subtract the PNL based on whether tokens were sent or received.
+                pnl[transfer.TokenInfo.Symbol] += amountInEth;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+        }
+    }
+}
+```

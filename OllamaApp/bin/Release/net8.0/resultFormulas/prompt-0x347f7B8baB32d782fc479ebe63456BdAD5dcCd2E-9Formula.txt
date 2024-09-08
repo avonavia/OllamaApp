@@ -1,0 +1,45 @@
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            // Get distinct tokens in transaction
+            var tokens = info.GetDistinctTokens();
+            if (tokens == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("No tokens found in the transaction");
+
+            foreach (var token in tokens)
+            {
+                // Get total amount of token transferred to recipient
+                var totalAmount = info.Transfers
+                    .Where(t => t.ToAddress == info.Transaction.To && t.TokenInfo.Symbol == token.Symbol)
+                    .Sum(t => t.Amount);
+
+                // Get current balance of the contract for this token
+                var contractBalance = info.Transfers
+                    .Where(t => t.FromAddress == info.Transaction.To && t.TokenInfo.Symbol == token.Symbol)
+                    .Sum(t => -t.Amount);
+
+                // Calculate PNL for this token
+                var pnl = totalAmount - contractBalance;
+
+                // If the recipient is not the same as sender, subtract Fee (we assume that Fee was paid in ETH)
+                if (info.Transaction.From != info.Transaction.To)
+                    pnl -= new BigDecimal(info.Transaction.GasUsed * info.Transaction.GasPrice);
+
+                // Convert PNL to ETH if token price is provided
+                if (tokenPrices?.FirstOrDefault(p => p.Key == token.Symbol).Value is decimal tokenPrice)
+                    pnl *= new BigDecimal(tokenPrice);
+
+                result[info.Transaction.From] = result.ContainsKey(info.Transaction.From) ? result[info.Transaction.From] + pnl : pnl;
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}

@@ -1,0 +1,60 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2PNL")]
+
+namespace Sauron.Formula.UniswapV2PNL
+{
+    public class UniswapV2PNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlList = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (tokenPrices != null && info.Transfers != null)
+            {
+                // Get token prices
+                var token0Price = tokenPrices.FirstOrDefault(p => p.Key == info.TokenAddress).Value;
+                var token1Price = tokenPrices.FirstOrDefault(p => p.Key == info.ToTokenAddress).Value;
+
+                if (token0Price > 0 && token1Price > 0)
+                {
+                    foreach (var transfer in info.Transfers)
+                    {
+                        var balance0 = BigDecimal.Zero;
+                        var balance1 = BigDecimal.Zero;
+
+                        // Determine the balance based on the transferred token address
+                        if (transfer.Address == info.TokenAddress)
+                            balance0 = transfer.Value;
+                        else if (transfer.Address == info.ToTokenAddress)
+                            balance1 = transfer.Value;
+
+                        var reserve0 = BigDecimal.Zero;
+                        var reserve1 = BigDecimal.Zero;
+                        var price0CumulativeLast = BigDecimal.Zero;
+                        var price1CumulativeLast = BigDecimal.Zero;
+                        var blockTimestampLast = DateTimeOffset.UtcNow.ToUnixTimeSeconds() % (uint)Math.Pow(2, 32);
+
+                        // Calculate reserves and cumulative prices
+                        reserve0 += balance0;
+                        reserve1 += balance1;
+                        var blockTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() % (uint)Math.Pow(2, 32);
+                        var timeElapsed = blockTimestamp - blockTimestampLast;
+                        if (timeElapsed > 0 && reserve0 != BigDecimal.Zero && reserve1 != BigDecimal.Zero)
+                        {
+                            price0CumulativeLast += ((reserve1 / reserve0) * timeElapsed);
+                            price1CumulativeLast += ((reserve0 / reserve1) * timeElapsed);
+                        }
+                        blockTimestampLast = blockTimestamp;
+
+                        // Calculate PNL for the transfer address
+                        var pnl = (transfer.Address == info.TokenAddress ? balance0 - balance1 * token1Price / token0Price : balance1 - balance0 * token0Price / token1Price) - transfer.Fee;
+                        pnlList.Add(new KeyValuePair<string, BigDecimal>(transfer.FromAddress, pnl));
+                    }
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = pnlList };
+        }
+    }
+}
+```

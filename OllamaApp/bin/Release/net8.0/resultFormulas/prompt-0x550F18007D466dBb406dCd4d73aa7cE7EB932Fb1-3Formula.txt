@@ -1,0 +1,29 @@
+//Method to calculate PNL for UniswapV2 initialize method
+
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.Initialize
+
+public class InitializeFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Initialize PNL dictionary for users
+        var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+        //Get user's address (assuming it's the sender of the transaction)
+        string userAddress = info.From;
+
+        //Check if user already exists in the PNL dictionary
+        if (!pnlDictionary.ContainsKey(userAddress))
+            pnlDictionary[userAddress] = BigDecimal.Zero;
+
+        //Since initializing a pool doesn't involve any direct financial transactions, no PNL change occurs.
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>()
+        {
+            Result = pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)),
+            ErrorMessage = null
+        };
+    }
+}

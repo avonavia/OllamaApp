@@ -1,0 +1,43 @@
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get distinct tokens in transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null || !tokens.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.WithMessage("No tokens found in the transaction");
+
+            // Initialize a dictionary to hold PNL for each address
+            var pnl = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                // Get all transfers related to the current token
+                var tokenTransfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+                if (tokenTransfers != null && tokenTransfers.Any())
+                {
+                    foreach (var transfer in tokenTransfers)
+                    {
+                        // Update or add the PNL for each address
+                        var toAddress = transfer.To;
+                        var amount = transfer.Amount - info.Fee; // Subtract fee from the amount
+
+                        if (!pnl.ContainsKey(toAddress))
+                            pnl[toAddress] = amount;
+                        else
+                            pnl[toAddress] += amount;
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.WithSuccess(pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}

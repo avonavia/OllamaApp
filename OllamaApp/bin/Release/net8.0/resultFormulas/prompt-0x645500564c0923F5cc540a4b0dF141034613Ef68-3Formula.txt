@@ -1,0 +1,18 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // The Initialize function in Solidity contract doesn't have any effect on the PNL calculation.
+            // It only sets the token0 and token1 addresses for the UniswapV2 pair.
+            // Since we are not calculating PNL based on tokens, we don't need to perform any calculations here.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = null };
+        }
+    }
+}
+```

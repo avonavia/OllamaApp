@@ -1,0 +1,51 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2PNL")]
+
+namespace Sauron.Formula.UniswapV2PNL
+{
+    public class UniswapV2PNLFormula : IFormulaPlugin
+    {
+        // Calculate PNL for Uniswap V2 transactions. The formula calculates the change in price of a token pair over time and subtracts fees.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract relevant information from the transaction
+            var balance0 = (BigDecimal)info.DecodedData["balance0"];
+            var balance1 = (BigDecimal)info.DecodedData["balance1"];
+            var reserve0 = (BigDecimal)info.DecodedData["_reserve0"];
+            var reserve1 = (BigDecimal)info.DecodedData["_reserve1"];
+            var fee = info.Fee; // Assuming fee is a field in TransactionInfo object
+
+            // Calculate the time elapsed since last update
+            var blockTimestampLast = (uint)info.BlockTimestampLast; // Assuming this value is stored somewhere and accessible from TransactionInfo object
+            var blockTimestamp = (uint)(info.BlockTimestamp % Math.Pow(2, 32));
+            var timeElapsed = blockTimestamp - blockTimestampLast;
+
+            BigDecimal price0CumulativeLast = 0; // Assuming this value is stored and accessible from TransactionInfo object or can be calculated based on past transactions
+            BigDecimal price1CumulativeLast = 0; // Assuming this value is stored and accessible from TransactionInfo object or can be calculated based on past transactions
+
+            if (timeElapsed > 0 && reserve0 != 0 && reserve1 != 0)
+            {
+                // Calculate the cumulative price changes for both tokens
+                price0CumulativeLast += ((BigDecimal)(reserve1 / reserve0)) * timeElapsed;
+                price1CumulativeLast += ((BigDecimal)(reserve0 / reserve1)) * timeElapsed;
+            }
+
+            // Calculate the current prices of both tokens in terms of each other
+            var currentPrice0 = (BigDecimal)reserve1 / reserve0;
+            var currentPrice1 = (BigDecimal)reserve0 / reserve1;
+
+            // Calculate PNL based on token balances and their corresponding prices at the time of transaction
+            var pnlToken0 = (balance0 - (BigDecimal)(info.BalanceBefore / currentPrice0)) * currentPrice0;
+            var pnlToken1 = (balance1 - (BigDecimal)(info.BalanceBefore / currentPrice1)) * currentPrice1;
+
+            // Subtract the fee from PNL, as fees are deducted in Uniswap V2 transactions
+            var totalPNL = (pnlToken0 + pnlToken1) - fee;
+
+            // Return the result in Eth by using token prices
+            var pnlEth = totalPNL * new BigDecimal(tokenPrices.FirstOrDefault(p => p.Key == "TOKEN0").Value ?? 0); // Assuming TOKEN0 is one of the tokens in the transaction
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new[] { new KeyValuePair<string, BigDecimal>(info.ToAddress, pnlEth) });
+        }
+    }
+}
+```

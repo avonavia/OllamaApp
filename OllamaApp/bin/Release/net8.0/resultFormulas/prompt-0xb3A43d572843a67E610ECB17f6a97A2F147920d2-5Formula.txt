@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        // This function calculates the profit and loss for the fee minting process in a Uniswap V2 pool.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract reserve0 and reserve1 from the transaction input data
+            BigDecimal reserve0 = new BigDecimal((ulong)info.InputData[0]);
+            BigDecimal reserve1 = new BigDecimal((ulong)info.InputData[1]);
+
+            // Define an empty dictionary to store user addresses and their corresponding profit/loss
+            Dictionary<string, BigDecimal> pnlResults = new Dictionary<string, BigDecimal>();
+
+            // Check if the fee is enabled
+            bool feeOn = info.FeeTo != null;
+
+            // If fee is enabled and there was a previous liquidity pool in place
+            if (feeOn && info.KLast != 0)
+            {
+                BigDecimal rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                BigDecimal rootKLast = BigDecimal.Sqrt(info.KLast);
+
+                // If the current pool size is larger than the previous one, calculate the liquidity to be minted and deduct the fee
+                if (rootK > rootKLast)
+                {
+                    BigDecimal numerator = info.TotalSupply * (rootK - rootKLast);
+                    BigDecimal denominator = rootK * 5 + rootKLast;
+                    BigDecimal liquidity = numerator / denominator;
+
+                    // Subtract the fee from the user's position and add it to the feeTo address' position
+                    pnlResults[info.FromAddress] -= (liquidity * info.Fee) / info.TotalSupply * reserve0 + (liquidity * info.Fee) / info.TotalSupply * reserve1;
+                    if (!pnlResults.ContainsKey(info.FeeTo)) pnlResults[info.FeeTo] = 0;
+                    pnlResults[info.FeeTo] += (liquidity - (liquidity * info.Fee) / info.TotalSupply) * reserve1;
+                }
+            }
+
+            // If fee is disabled and there was a previous liquidity pool in place, reset kLast to 0
+            else if (!feeOn && info.KLast != 0)
+            {
+                info.KLast = 0;
+            }
+
+            // Return the profit/loss results for each user address
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults.Select(kv => new KeyValuePair<string, BigDecimal>(kv.Key, kv.Value)));
+        }
+    }
+}
+```

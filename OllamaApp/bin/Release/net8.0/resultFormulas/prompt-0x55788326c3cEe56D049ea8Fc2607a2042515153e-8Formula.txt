@@ -1,0 +1,29 @@
+// PNL Calculation for UniswapV2 swap method in C#
+
+using System;
+using System.Numerics;
+
+public class UniswapV2PNLCalculator
+{
+    public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0BeforeSwap, decimal reserve1BeforeSwap)
+    {
+        // Check if insufficient output amounts were requested
+        if (amount0Out <= 0 && amount1Out <= 0) throw new ArgumentException("UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
+
+        // Calculate the reserves after swap
+        decimal reserve0AfterSwap = reserve0BeforeSwap - amount0Out;
+        decimal reserve1AfterSwap = reserve1BeforeSwap - amount1Out;
+
+        // Check if insufficient liquidity
+        if (amount0Out >= reserve0BeforeSwap || amount1Out >= reserve1BeforeSwap) throw new InvalidOperationException("UniswapV2: INSUFFICIENT_LIQUIDITY");
+
+        // Calculate the total value of reserves after swap and before swap in both tokens
+        decimal totalValueAfterSwap = reserve0AfterSwap * amount1Out + reserve1AfterSwap * amount0Out;
+        decimal totalValueBeforeSwap = reserve0BeforeSwap * reserve1BeforeSwap;
+
+        // Calculate the PNL (profit/loss) for user
+        decimal pnl = totalValueBeforeSwap - totalValueAfterSwap;
+
+        return pnl;
+    }
+}

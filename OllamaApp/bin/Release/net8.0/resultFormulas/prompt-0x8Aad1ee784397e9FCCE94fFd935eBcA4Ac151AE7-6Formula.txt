@@ -1,0 +1,68 @@
+```csharp
+// assembly info
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        private const decimal MINIMUM_LIQUIDITY = 1m; // Assuming this value is defined in the Solidity contract
+
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decoded values from TransactionInfo object
+            var balance0 = info.DecodedInput[0];
+            var balance1 = info.DecodedInput[1];
+            var reserve0 = info.DecodedOutput[0];
+            var reserve1 = info.DecodedOutput[1];
+            var totalSupply = info.DecodedState[0]; // Assuming the totalSupply is retrieved from the contract state
+
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            decimal liquidity;
+            if (totalSupply == 0)
+            {
+                liquidity = Math.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                liquidity = Math.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+            }
+
+            if (liquidity <= 0)
+            {
+                return new CalculationResult<decimal?>("INSUFFICIENT_LIQUIDITY_MINTED");
+            }
+
+            // Assuming fee is a constant value retrieved from the contract state or calculated elsewhere
+            var fee = GetFee();
+            var netLiquidity = liquidity - fee;
+
+            if (info.FromAddress == info.ToAddress)
+            {
+                return new CalculationResult<decimal?>(-fee); // If user sent tokens to themselves, PNL is negative fee
+            }
+
+            var tokenPricesPair = tokenPrices?.FirstOrDefault();
+            if (tokenPricesPair.Key == "token0")
+            {
+                return new CalculationResult<decimal?>(netLiquidity * tokenPricesPair.Value);
+            }
+            else if (tokenPricesPair.Key == "token1")
+            {
+                return new CalculationResult<decimal?>(netLiquidity / tokenPricesPair.Value);
+            }
+
+            // If neither token0 nor token1 is found in the provided token prices, return liquidity as PNL since we can't convert to Eth
+            return new CalculationResult<decimal?>(netLiquidity);
+        }
+
+        private decimal GetFee()
+        {
+            // Logic to retrieve or calculate fee goes here
+            throw new NotImplementedException();
+        }
+    }
+}
+```

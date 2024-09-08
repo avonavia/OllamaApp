@@ -1,0 +1,27 @@
+[assembly: FormulaAssembly("SwapTokensForEthPNL")]
+
+namespace Sauron.Formula.SwapTokensForEthPNL
+{
+    public class SwapTokensForEthPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if there are transfers and token prices
+            if (info.Transfers == null || tokenPrices == null || !tokenPrices.Any())
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Invalid data");
+
+            // Get the transferred amount in ETH and the swap token price
+            var ethAmount = info.Transfers.Where(t => t.ToAddress == info.FromAddress).Sum(t => t.TokenInfo.Symbol == "WETH" ? (decimal)t.TokenValue : 0);
+            var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == info.Transfers.First().TokenInfo.Symbol).Value;
+
+            // Calculate the PNL in ETH
+            var pnlInEth = ethAmount - (info.Transfers.Where(t => t.ToAddress != info.FromAddress).Sum(t => (decimal)t.TokenValue * tokenPrice));
+
+            // Subtract the fee from the PNL
+            pnlInEth -= info.Fee;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>(info.FromAddress, (BigDecimal)pnlInEth) });
+        }
+    }
+}

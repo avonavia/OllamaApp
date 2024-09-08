@@ -1,0 +1,28 @@
+// This is an example of how you can implement the addBots method in C#.
+   // However, since the addBots function only adds addresses to a list, it doesn't seem to have a direct equivalent PNL calculation formula.
+   // Therefore, I will provide a skeleton for a possible formula that might be relevant for your system, such as a formula to calculate the number of bots added in a transaction.
+
+   [assembly: FormulaAssembly("BOTS_ADDED")]
+
+   namespace Sauron.Formula.BOTS\_ADDED
+
+   public class BOTS\_ADDEDFormula : IFormulaPlugin
+   {
+       public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+           IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+       {
+           // Get distinct addresses from input data (assuming they are in the format of a list of addresses)
+           var botsAdded = info.InputData?.Split(new[] {"0x"}, StringSplitOptions.RemoveEmptyEntries)
+               .Select(a => "0x" + a)
+               .Distinct()
+               .Count();
+
+           // Return the count as PNL (in this case, it's not meaningful as PNL, but for the sake of demonstration)
+           var result = new List<KeyValuePair<string, BigDecimal>>
+           {
+               new KeyValuePair<string, BigDecimal>(info.FromAddress, new BigDecimal(botsAdded))
+           };
+
+           return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Successful(result);
+       }
+   }

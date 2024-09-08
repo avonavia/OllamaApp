@@ -1,0 +1,42 @@
+```csharp
+using System;
+
+namespace UniswapV2PNLCalculation
+{
+    public class PNLCalculator
+    {
+        // Assembly info for PNL calculation
+        [assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+
+        /// <summary>
+        /// Calculates the Profit and Loss (PNL) for a swap transaction in UniswapV2
+        /// </summary>
+        /// <param name="amount0Out">The amount of token 0 that is swapped out</param>
+        /// <param name="amount1Out">The amount of token 1 that is swapped out</param>
+        /// <param name="reserve0">The total reserve of token 0 in the pool</param>
+        /// <param name="reserve1">The total reserve of token 1 in the pool</param>
+        /// <param name="userBalance0">User's balance of token 0 before swap</param>
+        /// <param name="userBalance1">User's balance of token 1 before swap</param>
+        /// <returns>The PNL value for the user in Eth (not converted)</returns>
+        public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal userBalance0, decimal userBalance1)
+        {
+            // Check if swap is valid and calculate input amounts
+            if (!(amount0Out > 0 || amount1Out > 0)) throw new Exception("UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
+            if (!(amount0Out < reserve0 && amount1Out < reserve1)) throw new Exception("UniswapV2: INSUFFICIENT_LIQUIDITY");
+
+            decimal balance0 = userBalance0 - amount0Out;
+            decimal balance1 = userBalance1 - amount1Out;
+
+            decimal amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0;
+            decimal amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0;
+
+            if (!(amount0In > 0 || amount1In > 0)) throw new Exception("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+
+            // Calculate PNL
+            decimal pnl = (amount1Out * reserve0 / (reserve1 + amount1Out) - amount0In) - (amount0Out * reserve1 / (reserve0 + amount0Out) - amount1In);
+
+            return pnl;
+        }
+    }
+}
+```

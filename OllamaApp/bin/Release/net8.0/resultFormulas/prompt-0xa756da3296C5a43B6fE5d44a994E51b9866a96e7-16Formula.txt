@@ -1,0 +1,32 @@
+// Since the provided Solidity method 'delBots' is not related to calculating PNL (Profit and Loss), it's not possible to directly convert this function into a C# formula for PNL calculation.
+
+    // However, I can provide a simplified representation of how you might manage a similar operation in a C# context. In this case, let's assume that we have a list of 'bots' (represented by addresses) and the method 'DelBots' is used to remove certain bots from this list based on their addresses:
+
+    using System;
+    using System.Collections.Generic;
+    using Sauron.Formula;
+
+    [assembly: FormulaAssembly("RemoveBots")]
+
+    namespace Sauron.Formula.RemoveBots
+    {
+        public class RemoveBotsFormula : IFormulaPlugin
+        {
+            // This method simulates the 'delBots' operation by removing specified addresses from a list of bots.
+            // Since PNL calculation is not involved in this operation, the method returns void as per your rules.
+            public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+            {
+                // Assuming that 'info' contains the necessary data for this operation.
+                var notBotAddresses = info.NotBotAddresses; // This might be a list of addresses obtained from the transaction data.
+
+                // Simulating removal of bots by setting their status to false in a dictionary.
+                var bots = new Dictionary<string, bool>(); // Replace this with your actual bot management structure.
+                foreach (var address in notBotAddresses)
+                    if (bots.ContainsKey(address))
+                        bots[address] = false;
+
+                // Since PNL calculation is not the purpose of this operation, return null as per your rules.
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Successful(null);
+            }
+        }
+    }

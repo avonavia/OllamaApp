@@ -1,0 +1,21 @@
+// This formula doesn't calculate any PNL as the approve function doesn't involve any token transfers or value changes.
+   // It simply sets an allowance for another address to spend tokens on behalf of the sender.
+   // Therefore, this method will always return null as per your specified CalculationResult type.
+
+[assembly: FormulaAssembly("approve")]
+
+namespace Sauron.Formula.Approve
+{
+    public class ApproveFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // As per the rules, we do not calculate PNL for this function, so we return null.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = null
+            };
+        }
+    }
+}

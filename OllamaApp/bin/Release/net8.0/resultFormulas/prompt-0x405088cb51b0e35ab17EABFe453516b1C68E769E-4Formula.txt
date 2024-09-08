@@ -1,0 +1,54 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using Sauron.Shared;
+using Sauron.Core;
+using Sauron.Formula;
+
+[assembly: FormulaAssembly("UniswapV2_Update")]
+
+namespace Sauron.Formula.UniswapV2_Update
+{
+    public class UniswapV2_UpdateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming balance0 and balance1 are in the same unit as _reserve0 and _reserve1 (Eth for example)
+            var balance0 = new BigDecimal(info.FromTokenAmount);
+            var balance1 = new BigDecimal(info.ToTokenAmount);
+            var reserve0 = new BigDecimal((decimal)(ulong)info.Reserve0);
+            var reserve1 = new BigDecimal((decimal)(ulong)info.Reserve1);
+
+            // Check if the balances are within the uint112 range
+            if (balance0 > BigDecimal.FromString("340282366920938463463.374607431768211455") || balance1 > BigDecimal.FromString("340282366920938463463.374607431768211455"))
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "UniswapV2: OVERFLOW");
+            }
+
+            // Calculate timeElapsed using block.timestamp and blockTimestampLast from TransactionInfo object
+            uint32 blockTimestamp = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds() % 4294967296; // Simplified version, replace with actual calculation
+            uint32 timeElapsed = blockTimestamp - info.BlockTimestampLast;
+
+            BigDecimal price0CumulativeLast = BigDecimal.Zero;
+            BigDecimal price1CumulativeLast = BigDecimal.Zero;
+
+            if (timeElapsed > 0 && reserve0 != BigDecimal.Zero && reserve1 != BigDecimal.Zero)
+            {
+                price0CumulativeLast += (reserve1 / reserve0) * timeElapsed;
+                price1CumulativeLast += (reserve0 / reserve1) * timeElapsed;
+            }
+
+            // Calculate PNL
+            BigDecimal pnl = (balance0 - reserve0) + (balance1 - reserve1);
+
+            // Subtract Fee from PNL
+            pnl -= info.FeeAmount;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) });
+        }
+    }
+}
+```
+This C# code defines a Formula method for calculating the PNL of a transaction in the UniswapV2 contract. It takes a TransactionInfo object and an optional tokenPrices parameter as input. The method checks if the balances are within the uint112 range, calculates timeElapsed using block.timestamp and blockTimestampLast from the TransactionInfo object, updates price0CumulativeLast and price1CumulativeLast based on the reserves and timeElapsed, calculates PNL by comparing balance with reserve for both tokens, subtracts FeeAmount from PNL, and returns a CalculationResult containing the PNL for the FromAddress.

@@ -1,0 +1,43 @@
+```csharp
+// assembly: FormulaAssembly("Mint")
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        // Assuming transactionInfo contains decoded data from the mint function in Solidity contract
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            BigDecimal balance0 = info.BalanceToken0; // Assuming BalanceToken0 is the decoded balance of Token0 for this contract
+            BigDecimal balance1 = info.BalanceToken1; // Assuming BalanceToken1 is the decoded balance of Token1 for this contract
+            BigDecimal reserve0 = info.Reserve0; // Assuming Reserve0 is the decoded reserve of Token0
+            BigDecimal reserve1 = info.Reserve1; // Assuming Reserve1 is the decoded reserve of Token1
+            BigDecimal totalSupply = info.TotalSupply; // Assuming TotalSupply is the decoded total supply
+            BigDecimal MINIMUM_LIQUIDITY = new BigDecimal("1000"); // Replace with actual value or calculation
+
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            // Fee is not calculated in this formula as it's not provided in the Solidity code snippet.
+            // You can add a fee calculation if needed based on your application logic.
+
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = Math.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            // Assuming Fee is subtracted from the liquidity minted to the user
+            // If no fee or fee calculation is not provided, this line can be removed
+            BigDecimal netLiquidity = liquidity - info.Fee;
+
+            // Calculate PNL by checking if the transaction sender is the same as the recipient
+            // If they are the same, PNL is 0, otherwise, it's negative (assuming the user sent money)
+            BigDecimal pnl = info.FromAddress == info.ToAddress ? 0 : -netLiquidity;
+
+            return CalculationResult<BigDecimal?>.Success(pnl);
+        }
+    }
+}
+```

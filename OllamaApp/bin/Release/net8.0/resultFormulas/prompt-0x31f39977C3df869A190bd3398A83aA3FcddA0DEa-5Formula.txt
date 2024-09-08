@@ -1,0 +1,39 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var feeTo = (string)info.DecodedData[0]; // Assuming factory call is the first decoded data
+            var reserve0 = (BigDecimal)info.DecodedData[1];
+            var reserve1 = (BigDecimal)info.DecodedData[2];
+
+            if (feeTo == "0x0") return null; // Fee is off
+
+            var kLast = new BigDecimal(info.AdditionalData["kLast"]); // Assuming kLast is additional data
+            if (kLast != 0)
+            {
+                var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                var rootKLast = BigDecimal.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    var totalSupply = new BigDecimal(info.AdditionalData["totalSupply"]); // Assuming totalSupply is additional data
+                    var numerator = totalSupply * (rootK - rootKLast);
+                    var denominator = rootK * 5 + rootKLast;
+                    var liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(feeTo, liquidity - info.Fee) }); // Subtracting Fee
+                }
+            }
+
+            return null;
+        }
+    }
+}
+```

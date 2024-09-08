@@ -1,0 +1,48 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Interfaces;
+using Sauron.Core.Models;
+
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.DecodedData is null || !(info.DecodedData[0] is uint _reserve0) || !(info.DecodedData[1] is uint _reserve1))
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            string feeTo = info.AdditionalInfo["feeTo"]?.ToString(); // Assume feeTo is provided in AdditionalInfo
+
+            if (string.IsNullOrEmpty(feeTo) || feeTo == "0x0")
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            uint kLast = info.AdditionalInfo["kLast"] is null ? 0 : (uint)info.AdditionalInfo["kLast"];
+
+            if (kLast != 0)
+            {
+                BigInteger rootK = (BigInteger)Math.Sqrt((double)_reserve0 * _reserve1);
+                BigInteger rootKLast = (BigInteger)Math.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    BigInteger totalSupply = info.AdditionalInfo["totalSupply"] is null ? 0 : (BigInteger)info.AdditionalInfo["totalSupply"];
+                    BigInteger numerator = totalSupply * (rootK - rootKLast);
+                    BigInteger denominator = rootK * 5 + rootKLast;
+                    BigInteger liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(feeTo, -(BigDecimal)(decimal)liquidity / 1e18m) }); // assuming ETH price
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

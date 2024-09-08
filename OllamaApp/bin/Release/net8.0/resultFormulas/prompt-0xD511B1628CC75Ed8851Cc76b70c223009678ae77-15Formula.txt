@@ -1,0 +1,22 @@
+```csharp
+[assembly: FormulaAssembly("uqdiv")]
+
+namespace Sauron.Formula.uqdiv;
+
+using System.Numerics;
+
+public class uqdivFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // Assuming that the inputs x and y are available in the TransactionInfo object.
+        var x = (BigInteger)info.Input1;
+        var y = (BigInteger)info.Input2;
+
+        // Perform division of uint224 by uint112 using BigInteger for accurate results.
+        var z = new BigDecimal(x / new BigInteger(y));
+
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Successful(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>("result", z) });
+    }
+}
+```

@@ -1,0 +1,33 @@
+//Method to calculate PNL for each user in a transferFrom transaction
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        var pnlDict = new Dictionary<string, BigDecimal>();
+
+        //Add the sender's PNL (negative because they sent tokens)
+        if (!pnlDict.ContainsKey(info.FromAddress))
+            pnlDict[info.FromAddress] = BigDecimal.Zero;
+        pnlDict[info.FromAddress] -= CalculateTokenValue(info.Transfers, tokenPrices);
+
+        //Add the recipient's PNL (positive because they received tokens)
+        if (!pnlDict.ContainsKey(info.ToAddress))
+            pnlDict[info.ToAddress] = BigDecimal.Zero;
+        pnlDict[info.ToAddress] += CalculateTokenValue(info.Transfers, tokenPrices);
+
+        //Subtract the fee from the sender's PNL
+        if (pnlDict.ContainsKey(info.FeePayer))
+            pnlDict[info.FeePayer] -= info.Fee;
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDict);
+    }
+
+    //Method to calculate the total value of tokens transferred in a transaction
+    private BigDecimal CalculateTokenValue(List<TokenTransferInfo> transfers, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+    {
+        var totalValue = BigDecimal.Zero;
+        foreach (var transfer in transfers)
+        {
+            if (tokenPrices != null && tokenPrices.Any(t => t.Key == transfer.TokenInfo.Symbol))
+                totalValue += transfer.Amount * new BigDecimal(tokenPrices.First(t => t.Key == transfer.TokenInfo.Symbol).Value);
+        }
+        return totalValue;
+    }

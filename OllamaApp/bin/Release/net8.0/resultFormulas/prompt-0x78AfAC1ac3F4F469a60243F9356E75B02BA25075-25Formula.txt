@@ -1,0 +1,48 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction is a 'sync' operation by checking for relevant events or method calls
+            if (!IsSyncOperation(info))
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+
+            var token0Balance = info.GetTokenAmount(info.Transfers[0].TokenInfo);
+            var token1Balance = info.GetTokenAmount(info.Transfers[1].TokenInfo);
+
+            // Assuming reserve0 and reserve1 are stored in the contract's storage, they would need to be fetched from the transaction data or the blockchain state
+            var reserve0 = BigDecimal.Zero;  // Fetch actual value
+            var reserve1 = BigDecimal.Zero;  // Fetch actual value
+
+            var token0Price = GetTokenPrice(info.Transfers[0].TokenInfo, tokenPrices);
+            var token1Price = GetTokenPrice(info.Transfers[1].TokenInfo, tokenPrices);
+
+            var pnlToken0 = (token0Balance * token0Price) - reserve0;
+            var pnlToken1 = (token1Balance * token1Price) - reserve1;
+
+            var totalPnl = pnlToken0 + pnlToken1 - info.Fee;  // Subtract fee
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(info.FromAddress, totalPnl) });
+        }
+
+        private bool IsSyncOperation(TransactionInfo info)
+        {
+            // Implement the logic to determine if the transaction is a 'sync' operation
+            return false;  // Placeholder, implement actual logic
+        }
+
+        private decimal GetTokenPrice(TokenInfo token, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            var price = tokenPrices?.FirstOrDefault(p => p.Key == token.Symbol).Value;
+            return price ?? 0m;  // Use a default value if the price is not available
+        }
+    }
+}
+```

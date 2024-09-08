@@ -1,0 +1,46 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // Calculate PNL for UniswapV2 pool updates
+        // Based on the formula used to update the cumulative price in the provided Solidity contract method
+        // The PNL calculation here assumes that a swap operation occurred in the transaction, and the user's position in the pool was affected by this
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResult = new Dictionary<string, BigDecimal>();
+            var fee = info.GasPrice * info.GasUsed; // Fee for the transaction
+
+            if (tokenPrices == null || !tokenPrices.Any())
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Token prices not provided");
+            }
+
+            // Extracting relevant information from transaction info
+            var balance0 = info.DecodedData["balance0"];
+            var balance1 = info.DecodedData["balance1"];
+            var _reserve0 = (BigDecimal)info.DecodedData["_reserve0"];
+            var _reserve1 = (BigDecimal)info.DecodedData["_reserve1"];
+            var blockTimestampLast = (uint32)info.BlockTimestampLast;
+            var blockTimestampCurrent = (uint32)(info.BlockTimestamp % uint.MaxValue); // Assuming timestamp is a 32-bit value
+
+            // Calculate time elapsed and check for overflow
+            var timeElapsed = blockTimestampCurrent - blockTimestampLast;
+            if(timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0)
+            {
+                var price0CumulativeChange = BigDecimal.Multiply((BigDecimal)(_reserve1 / _reserve0), timeElapsed);
+                var price1CumulativeChange = BigDecimal.Multiply((BigDecimal)(_reserve0 / _reserve1), timeElapsed);
+
+                // Calculate PNL for user's position in the pool based on the cumulative price change and token prices
+                pnlResult[info.FromAddress] += (price0CumulativeChange * balance0) - fee; // Assuming from address was affected by this swap
+                pnlResult[info.ToAddress] += (price1CumulativeChange * balance1); // Assuming to address was also affected by this swap
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult, null);
+        }
+    }
+}
+```

@@ -1,0 +1,18 @@
+```csharp
+[assembly: FormulaAssembly("RenounceOwnership")]
+
+namespace Sauron.Formula.RenounceOwnership
+{
+    public class RenounceOwnershipFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Since the renounceOwnership function in Solidity does not involve any token transfers or changes in balances,
+            // it doesn't have a direct impact on PNL calculation.
+            // Therefore, we return an empty result to indicate no change in PNL for the user addresses involved in this transaction.
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+        }
+    }
+}
+```

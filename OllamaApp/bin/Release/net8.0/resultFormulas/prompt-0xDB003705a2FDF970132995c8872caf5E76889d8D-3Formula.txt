@@ -1,0 +1,14 @@
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+
+public class InitializeFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        // PNL calculation for Initialize method is not applicable since it's a setup method and doesn't involve any transfer of tokens or Ether.
+        // Therefore, the formula will always return an empty result.
+
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+    }
+}

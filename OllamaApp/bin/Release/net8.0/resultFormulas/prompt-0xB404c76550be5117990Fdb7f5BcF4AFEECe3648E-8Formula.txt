@@ -1,0 +1,38 @@
+```csharp
+// Assembly Info
+[assembly: System.Reflection.AssemblyTitle("PNL Calculation")]
+[assembly: System.Reflection.AssemblyVersion("1.0.*")]
+
+using System;
+
+public class PNLCalculator
+{
+    // Assume reserveData and amountData are pre-calculated based on the Solidity contract
+    private decimal _reserve0, _reserve1, amount0Out, amount1Out, fee = 0.003M; // Fee is 0.3% of transaction value
+
+    public PNLCalculator(decimal reserve0, decimal reserve1, decimal amount0Out, decimal amount1Out)
+    {
+        _reserve0 = reserve0;
+        _reserve1 = reserve1;
+        this.amount0Out = amount0Out;
+        this.amount1Out = amount1Out;
+    }
+
+    public decimal CalculatePNL(decimal userBalanceBefore, decimal ethPrice)
+    {
+        // Calculate the new balance of the user after swap
+        decimal userBalanceAfter = userBalanceBefore - (amount0Out + amount1Out) * (1 + fee);
+
+        // Calculate the price impact due to the trade
+        decimal priceImpact = amount0Out / _reserve0 * amount1Out / _reserve1;
+
+        // The PNL is calculated as the difference between user's balance before and after the swap, adjusted for price impact
+        // Also consider that if user sent tokens to their own address, then no fees were applied
+        decimal pnl = (userBalanceAfter - userBalanceBefore) * ethPrice;
+        if(to != senderAddress) pnl -= (amount0Out + amount1Out) * fee * ethPrice; // Subtract fee only if it's a transfer to another address
+        pnl -= (amount0Out / _reserve0 - amount1Out / _reserve1) * priceImpact * ethPrice; // Adjust for price impact
+
+        return pnl;
+    }
+}
+```

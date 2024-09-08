@@ -1,0 +1,30 @@
+[assembly: FormulaAssembly("_transfer")]
+
+namespace Sauron.Formula._transfer
+{
+    public class _transferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (!result.ContainsKey(transfer.From))
+                    result[transfer.From] = BigDecimal.Zero;
+
+                if (!result.ContainsKey(transfer.To))
+                    result[transfer.To] = BigDecimal.Zero;
+
+                // Subtract the amount sent from the sender's balance and fee (if applicable)
+                result[transfer.From] -= transfer.Amount + info.Fee;
+
+                // Add the amount received to the recipient's balance
+                result[transfer.To] += transfer.Amount;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}

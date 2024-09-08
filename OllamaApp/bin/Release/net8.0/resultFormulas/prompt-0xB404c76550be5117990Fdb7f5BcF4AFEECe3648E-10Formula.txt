@@ -1,0 +1,34 @@
+//Method to get PNL for Uniswap V2 sync transaction
+
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.UniswapV2Sync
+{
+    public class UniswapV2SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Get unique tokens in transaction
+            var tokens = info.GetDistinctTokens();
+
+            //Initialize result dictionary
+            var results = new Dictionary<string, BigDecimal>();
+
+            foreach (var tokenInfo in tokens)
+            {
+                //Calculate balance of the token for contract address
+                var contractBalance = info.Transfers
+                    .Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol && t.ToAddress == info.FromAddress)
+                    .Sum(t => t.Amount);
+
+                //Calculate PNL for the token
+                var pnl = contractBalance * new BigDecimal((decimal?)tokenPrices?.FirstOrDefault(p => p.Key == tokenInfo.Symbol).Value ?? 0M) - info.Fee;
+
+                results[info.FromAddress] += pnl; //Add PNL to the result dictionary, if FromAddress exists then add it to existing value
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+    }
+}

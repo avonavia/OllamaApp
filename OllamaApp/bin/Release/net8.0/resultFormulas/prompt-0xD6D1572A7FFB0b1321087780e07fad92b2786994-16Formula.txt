@@ -1,0 +1,38 @@
+I have created a C# Formula method that calculates PNL based on the Solidity contract method `openTrading`. Please note that this is an estimate because we don't have access to actual transaction data, but it should give you a general idea of how to approach the problem.
+
+```csharp
+[assembly: FormulaAssembly("OpenTradingPNLFormula")]
+
+namespace Sauron.Formula.OpenTradingPNLFormula
+{
+    public class OpenTradingPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction is from the owner and for the openTrading method
+            if (info.FromAddress != info.ToAddress || info.MethodName != "openTrading")
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, 0);
+
+            // Get the balance of the sender before the transaction
+            var initialBalance = info.GetInitialBalance();
+
+            // Calculate the amount transferred to the contract (92% of the initial balance)
+            var transferredAmount = initialBalance * new BigDecimal(92, 2);
+
+            // Assume that the LP tokens are priced in ETH at the time of calculation
+            var lpTokenPrice = tokenPrices?.FirstOrDefault(x => x.Key == "LP_TOKEN").Value ?? 0;
+
+            // Calculate the value of the transferred amount in ETH
+            var transferredEthValue = transferredAmount * new BigDecimal((decimal)lpTokenPrice);
+
+            // Calculate PNL (assuming no fee for simplicity, adjust as needed)
+            var pnl = -transferredEthValue;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, (double)pnl);
+        }
+    }
+}
+```
+
+This code defines a `OpenTradingPNLFormula` class that implements the `IFormulaPlugin` interface and calculates the PNL based on the Solidity contract method `openTrading`. The calculation assumes that the LP tokens are priced in ETH at the time of calculation. It's also important to note that this is a simplified example, and the actual implementation may require additional considerations and error handling.

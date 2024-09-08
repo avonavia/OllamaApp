@@ -1,0 +1,13 @@
+//Method to remove limits on maximum transaction amount and wallet size
+    public void RemoveLimits()
+    {
+        //Check if caller is the owner of the contract
+        if (!info.IsCallerOwner())
+            throw new UnauthorizedAccessException("Only owner can call this method");
+
+        //Update maximum transaction amount to total supply
+        info._maxTxAmount = info._tTotal;
+
+        //Update maximum wallet size to total supply
+        info._maxWalletSize = info._tTotal;
+    }

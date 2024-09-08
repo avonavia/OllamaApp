@@ -1,0 +1,30 @@
+//Assembly name should be exactly as function name in Solidity contract (even if it starts with a lowercase letter)
+   [assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    using Nethereum.Hex.HexConvertors.Extensions;
+    using System.Numerics;
+
+    public class getReservesFormula : IFormulaPlugin
+    {
+        //CalculationResult must always be CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+        //PNL is calculated for user addresses, not tokens
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Reserves == null || !info.Reserves.Any()) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>().WithError("No reserves found in the transaction.");
+
+            var reserve0 = info.Reserves[0].HexToBigInteger();
+            var reserve1 = info.Reserves[1].HexToBigInteger();
+            var blockTimestampLast = (uint)info.BlockTimestamp; //Assuming BlockTimestamp is already in unix timestamp format
+
+            var result = new List<KeyValuePair<string, BigDecimal>> {
+                new KeyValuePair<string, BigDecimal>("reserve0", new BigDecimal(new BigInteger(reserve0))),
+                new KeyValuePair<string, BigDecimal>("reserve1", new BigDecimal(new BigInteger(reserve1))),
+                new KeyValuePair<string, BigDecimal>("blockTimestampLast", new BigDecimal((decimal)blockTimestampLast)) //Converting uint to decimal for compatibility with BigDecimal
+            };
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(result);
+        }
+    }
+}

@@ -1,0 +1,10 @@
+// This method will perform subtraction of two BigDecimal numbers
+   // Solidity's function 'sub' is translated into this C# method
+
+   private static BigDecimal Sub(BigDecimal a, BigDecimal b)
+   {
+       if (b > a)
+           throw new ArgumentException("Error: The second value cannot be greater than the first value.");
+
+       return a - b;
+   }

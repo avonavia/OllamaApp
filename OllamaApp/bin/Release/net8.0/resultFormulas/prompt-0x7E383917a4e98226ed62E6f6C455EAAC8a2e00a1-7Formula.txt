@@ -1,0 +1,43 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: System.Reflection.AssemblyTitle("Burn Formula")]
+[assembly: System.Reflection.AssemblyDescription("PNL Calculation for Burn method in UniswapV2 contract")]
+
+namespace Sauron.Formula.UniswapV2
+{
+    using System;
+    using System.Numerics;
+    using System.Collections.Generic;
+    using Sauron.Core.Types;
+
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Calculate PNL for Burn method in UniswapV2 contract
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get balances and liquidity from TransactionInfo object
+            BigDecimal balance0 = new BigDecimal(info.DecodedData["balance0"].ToString());
+            BigDecimal balance1 = new BigDecimal(info.DecodedData["balance1"].ToString());
+            BigDecimal liquidity = new BigDecimal(info.DecodedData["liquidity"].ToString());
+            BigDecimal totalSupply = new BigDecimal(info.DecodedData["totalSupply"].ToString());
+
+            // Calculate burned amounts of token0 and token1
+            BigDecimal amount0 = (liquidity * balance0) / totalSupply;
+            BigDecimal amount1 = (liquidity * balance1) / totalSupply;
+
+            // If recipient address is not the same as sender, calculate PNL in Eth using token prices
+            if (info.ToAddress != info.FromAddress && tokenPrices != null)
+            {
+                BigDecimal ethValue = amount0 * new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.DecodedData["token0"].ToString()).Value) +
+                                       amount1 * new BigDecimal(tokenPrices.FirstOrDefault(x => x.Key == info.DecodedData["token1"].ToString()).Value);
+                return CalculationResult<BigDecimal?>.Success(-ethValue, null); // PNL is negative if user sent money to someone else
+            }
+            else
+            {
+                // If recipient address is the same as sender or token prices are not provided, do not calculate PNL
+                return CalculationResult<BigDecimal?>.Success(null, null);
+            }
+        }
+    }
+}
+```

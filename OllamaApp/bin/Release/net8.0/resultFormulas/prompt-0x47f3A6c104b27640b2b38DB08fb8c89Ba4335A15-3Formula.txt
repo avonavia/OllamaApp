@@ -1,0 +1,56 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2_PNL
+{
+    public class UniswapV2_PNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction is a swap between two tokens
+            if (info.Transfers?.Count() >= 2 && info.Transfers.All(t => t.TokenInfo != null))
+            {
+                var userAddresses = info.ToAddresses.Concat(info.FromAddresses).Distinct().ToList();
+                var tokenPricesDict = tokenPrices?.ToDictionary(kvp => kvp.Key, kvp => (decimal)kvp.Value);
+                var pnlResults = new Dictionary<string, BigDecimal>();
+
+                // Iterate through each user address to calculate their PNL
+                foreach (var userAddress in userAddresses)
+                {
+                    var token0AmountSent = info.Transfers.Where(t => t.FromAddress == userAddress && t.TokenInfo.Symbol == "TOKEN0").Sum(t => t.Amount);
+                    var token1AmountSent = info.Transfers.Where(t => t.FromAddress == userAddress && t.TokenInfo.Symbol == "TOKEN1").Sum(t => t.Amount);
+
+                    var token0AmountReceived = info.Transfers.Where(t => t.ToAddress == userAddress && t.TokenInfo.Symbol == "TOKEN0").Sum(t => t.Amount);
+                    var token1AmountReceived = info.Transfers.Where(t => t.ToAddress == userAddress && t.TokenInfo.Symbol == "TOKEN1").Sum(t => t.Amount);
+
+                    // Calculate the net change in tokens for the user
+                    var token0NetChange = token0AmountReceived - token0AmountSent;
+                    var token1NetChange = token1AmountReceived - token1AmountSent;
+
+                    // Calculate the PNL in Eth
+                    if (tokenPricesDict != null)
+                    {
+                        if (tokenPricesDict.TryGetValue("TOKEN0", out decimal token0Price))
+                            pnlResults[userAddress] = (BigDecimal)(token0NetChange * new BigDecimal(token0Price));
+
+                        if (tokenPricesDict.TryGetValue("TOKEN1", out decimal token1Price))
+                            pnlResults[userAddress] += (BigDecimal)(token1NetChange * new BigDecimal(token1Price));
+                    }
+                }
+
+                // Subtract the fee from the PNL
+                foreach (var userAddress in pnlResults.Keys)
+                {
+                    var transactionFee = info.GasUsed * info.GasPrice;
+                    pnlResults[userAddress] -= transactionFee;
+                }
+
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+            }
+
+            // If the transaction is not a swap between two tokens, return null PNL
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+        }
+    }
+}
+```

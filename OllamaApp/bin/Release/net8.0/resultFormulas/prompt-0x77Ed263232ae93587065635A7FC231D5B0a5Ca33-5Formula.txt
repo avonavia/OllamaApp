@@ -1,0 +1,45 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var feeTo = info.AdditionalData["feeTo"]; // Assuming that the feeTo address is provided in AdditionalData
+            if (feeTo == "0x0") return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var reserve0 = info.AmountIn;
+            var reserve1 = info.AmountOut;
+            var totalSupply = info.AdditionalData["totalSupply"]; // Assuming that the totalSupply is provided in AdditionalData
+            var kLast = info.AdditionalData["kLast"]; // Assuming that the kLast value is provided in AdditionalData
+
+            if (kLast != 0)
+            {
+                var rootK = Math.Sqrt((decimal)reserve0 * reserve1);
+                var rootKLast = Math.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    var numerator = totalSupply * (rootK - rootKLast);
+                    var denominator = rootK * 5 + rootKLast;
+                    var liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                    {
+                        // Return PNL for feeTo address
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(feeTo, liquidity - info.Fee) });
+                    }
+                }
+            }
+            else if (kLast != 0)
+            {
+                kLast = 0; // Update the kLast value to 0 in your storage or data structure
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

@@ -1,0 +1,63 @@
+Here's a C# Formula method for the provided Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("Sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the balances of token0 and token1 in this contract
+            var token0Balance = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == "token0")?.Amount ?? 0;
+            var token1Balance = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == "token1")?.Amount ?? 0;
+
+            // Assuming reserve0 and reserve1 are stored in the contract's state variables
+            var reserve0 = GetReserve0FromContractState(info); // Implement this method to retrieve reserve0 from info
+            var reserve1 = GetReserve1FromContractState(info); // Implement this method to retrieve reserve1 from info
+
+            // Calculate PNL for each address in the transaction (simplified example)
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                if (transfer.TokenInfo.Symbol == "token0")
+                {
+                    var pnl = CalculatePNL(token0Balance, reserve0); // Implement this method to calculate PNL
+                    pnlResults.Add(new KeyValuePair<string, BigDecimal>(transfer.FromAddress, pnl));
+                }
+                else if (transfer.TokenInfo.Symbol == "token1")
+                {
+                    var pnl = CalculatePNL(token1Balance, reserve1); // Implement this method to calculate PNL
+                    pnlResults.Add(new KeyValuePair<string, BigDecimal>(transfer.FromAddress, pnl));
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults);
+        }
+
+        // Implement this method to retrieve reserve0 from the contract's state variables in info
+        private BigDecimal GetReserve0FromContractState(TransactionInfo info)
+        {
+            throw new NotImplementedException();
+        }
+
+        // Implement this method to retrieve reserve1 from the contract's state variables in info
+        private BigDecimal GetReserve1FromContractState(TransactionInfo info)
+        {
+            throw new NotImplementedException();
+        }
+
+        // Implement this method to calculate PNL based on token balance and reserve
+        private BigDecimal CalculatePNL(BigDecimal tokenBalance, BigDecimal reserve)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+```
+
+This code defines a C# Formula method for the `sync()` function in the provided Solidity contract. It retrieves the balances of `token0` and `token1`, calculates the PNL for each address involved in the transaction, and returns the results as a dictionary with addresses as keys and their corresponding PNLs as values.
+
+Please note that this code is a simplified example and may require additional adjustments or implementations based on your specific requirements and the actual logic of the `_update()` function in the Solidity contract.

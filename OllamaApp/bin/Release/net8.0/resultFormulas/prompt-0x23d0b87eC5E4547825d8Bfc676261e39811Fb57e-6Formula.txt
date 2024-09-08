@@ -1,0 +1,53 @@
+```csharp
+// Assembly info
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        // Mint formula calculation for UniswapV2 contract
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserves and balances from TransactionInfo object
+            BigDecimal reserve0 = info.Reserve0;
+            BigDecimal reserve1 = info.Reserve1;
+            BigDecimal balance0 = info.Balance0;
+            BigDecimal balance1 = info.Balance1;
+
+            // Calculate amounts
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            // Check if mint fee is on and calculate total supply
+            bool feeOn = _mintFee(reserve0, reserve1);
+            BigDecimal totalSupply = info.TotalSupply;
+
+            // Calculate liquidity based on the conditions
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            // Ensure liquidity is greater than zero
+            if (liquidity <= 0)
+                return new CalculationResult<BigDecimal?>("Error: Insufficient Liquidity Minted", null);
+
+            // Update PNL based on the fee and sender/receiver addresses
+            BigDecimal pnl = liquidity;
+            if (feeOn && info.ToAddress != info.FromAddress)
+                pnl -= FEE_AMOUNT;
+
+            return new CalculationResult<BigDecimal?>(null, pnl);
+        }
+
+        // Placeholder for _mintFee function as it's not provided in the Solidity code snippet
+        private bool _mintFee(BigDecimal reserve0, BigDecimal reserve1)
+        {
+            // Implementation of _mintFee function is needed based on the actual contract logic
+            throw new NotImplementedException();
+        }
+    }
+}
+```

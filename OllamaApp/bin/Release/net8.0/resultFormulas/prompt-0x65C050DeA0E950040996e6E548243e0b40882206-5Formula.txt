@@ -1,0 +1,52 @@
+Sure! Here's how you can implement the given Solidity function as a C# method based on the provided rules:
+
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserve0 and reserve1 from the transaction input data
+            var reserve0 = new BigDecimal(info.InputData[34..78], 0);
+            var reserve1 = new BigDecimal(info.InputData[90..134], 0);
+
+            var feeTo = info.FactoryAddress; // Assuming factory address is the feeTo address in your transaction data
+            bool feeOn = feeTo != "0x0";
+
+            var kLast = new BigDecimal(info.KLast, 0);
+
+            if (feeOn)
+            {
+                if (kLast != 0)
+                {
+                    var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                    var rootKLast = BigDecimal.Sqrt(kLast);
+
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = new BigDecimal(info.TotalSupply, 0);
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = rootK * 5 + rootKLast;
+                        var liquidity = numerator / denominator;
+
+                        if (liquidity > 0)
+                            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = new[] { new KeyValuePair<string, BigDecimal>(feeTo, -liquidity.Value) } }; // Subtract the fee from the user's balance
+                    }
+                }
+            }
+            else if (kLast != 0)
+            {
+                kLast = 0;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = null }; // Return null if no fee is minted
+        }
+    }
+}
+```
+
+This implementation assumes that the necessary data (reserve0, reserve1, factory address, total supply, and kLast) can be extracted from the `TransactionInfo` object. The PNL is calculated by subtracting the minted fee from the user's balance if a fee was minted to the feeTo address.

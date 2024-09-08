@@ -1,0 +1,49 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fetch reserve0 and reserve1 from the transaction data or previous state
+            // For simplicity, let's assume we have those values available directly from TransactionInfo object
+            BigDecimal _reserve0 = info.Reserve0;
+            BigDecimal _reserve1 = info.Reserve1;
+
+            // Calculate rootK and rootKLast
+            BigDecimal rootK = BigDecimal.Sqrt(_reserve0 * _reserve1);
+            BigDecimal rootKLast = BigDecimal.Sqrt(info.KLast);
+
+            bool feeOn = info.FeeTo != "0x0"; // Assuming FeeTo is already decoded and available in TransactionInfo object
+
+            if (feeOn && info.KLast != 0)
+            {
+                if (rootK > rootKLast)
+                {
+                    BigDecimal numerator = info.TotalSupply * (rootK - rootKLast);
+                    BigDecimal denominator = rootK * 5 + rootKLast;
+                    BigDecimal liquidity = numerator / denominator;
+
+                    if (liquidity > 0)
+                    {
+                        // Since PNL is calculated for user addresses, and we're minting to feeTo address here,
+                        // we assume that the feeTo address is not a user address, so it doesn't impact the user's PNL.
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+                    }
+                }
+            }
+            else if (info.KLast != 0)
+            {
+                // Since we're not minting any tokens in this case, there is no impact on the user's PNL.
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+
+            // If no fee was minted or if there was no need to calculate it, return null as well.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

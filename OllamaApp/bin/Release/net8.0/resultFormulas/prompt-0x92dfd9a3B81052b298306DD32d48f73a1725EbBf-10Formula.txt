@@ -1,0 +1,16 @@
+```csharp
+[assembly: FormulaAssembly("increaseAllowance")]
+namespace Sauron.Formula.IncreaseAllowance
+{
+    public class IncreaseAllowanceFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // PNL calculation for increaseAllowance is not applicable because it's a token approval transaction.
+            // Therefore, we return NULL as per the CalculationResult requirement.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

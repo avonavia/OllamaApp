@@ -1,0 +1,36 @@
+Here's a possible implementation of the PNL calculation method in C#:
+
+```csharp
+using System;
+using Nethereum.Hex.HexConvertors.Extensions;
+
+namespace YourNamespace
+{
+    public class PnlCalculator
+    {
+        // Calculate Profit and Loss for a swap transaction
+        public static decimal CalculatePnl(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal balance0, decimal balance1)
+        {
+            if (amount0Out == 0 && amount1Out == 0) throw new ArgumentException("INSUFFICIENT_OUTPUT_AMOUNT");
+            if (amount0Out >= reserve0 || amount1Out >= reserve1) throw new ArgumentException("INSUFFICIENT_LIQUIDITY");
+
+            // Calculate the amount of tokens that were actually sent to the contract
+            decimal amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0;
+            decimal amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0;
+
+            if (amount0In == 0 && amount1In == 0) throw new ArgumentException("INSUFFICIENT_INPUT_AMOUNT");
+
+            // Calculate the adjusted balances and check the invariant
+            decimal balance0Adjusted = balance0 * 1000 - amount0In * 3;
+            decimal balance1Adjusted = balance1 * 1000 - amount1In * 3;
+            if (balance0Adjusted * balance1Adjusted < reserve0 * reserve1 * 1000 * 1000) throw new ArgumentException("K");
+
+            // Calculate the PNL: the difference between the amount of tokens received and sent, in Eth
+            decimal ethPrice = GetEthPrice(); // You need to implement this method to get the current Eth price
+            decimal pnl = (amount1Out * ethPrice / reserve0 - amount0In) + (amount0Out / reserve1 - amount1In * ethPrice);
+
+            return pnl;
+        }
+    }
+}
+```

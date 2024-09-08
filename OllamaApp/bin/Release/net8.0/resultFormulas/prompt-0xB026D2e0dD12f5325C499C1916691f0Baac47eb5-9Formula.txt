@@ -1,0 +1,59 @@
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the distinct tokens in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null || !tokens.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // The fromAddress is assumed to be the user's address for PNL calculation
+            var fromAddress = info.FromAddress;
+
+            // Initialize a dictionary to hold the PNL for each address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                // Get the transfers involving this token and the user's address
+                var relevantTransfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol &&
+                                                                    (t.FromAddress == fromAddress || t.ToAddress == fromAddress));
+
+                if (relevantTransfers != null)
+                {
+                    // Calculate the net amount of this token transferred to or from the user's address
+                    var netAmount = relevantTransfers.Where(t => t.FromAddress == fromAddress).Sum(t => -t.Amount) +
+                                     relevantTransfers.Where(t => t.ToAddress == fromAddress).Sum(t => t.Amount);
+
+                    // If the user received tokens, calculate the PNL in Eth (assuming token prices are provided)
+                    if (netAmount > 0 && tokenPrices != null)
+                    {
+                        var price = tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value;
+                        if (price > 0)
+                        {
+                            var pnlInEth = netAmount * new BigDecimal(price);
+                            // Add the PNL to the dictionary or update it if already exists
+                            if (pnlDictionary.ContainsKey(fromAddress))
+                                pnlDictionary[fromAddress] += pnlInEth;
+                            else
+                                pnlDictionary[fromAddress] = pnlInEth;
+                        }
+                    }
+                }
+            }
+
+            // Subtract the Fee from the PNL (assuming it's in Eth)
+            if (pnlDictionary.ContainsKey(fromAddress))
+                pnlDictionary[fromAddress] -= info.Fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary.Select(kvp =>
+                   new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}

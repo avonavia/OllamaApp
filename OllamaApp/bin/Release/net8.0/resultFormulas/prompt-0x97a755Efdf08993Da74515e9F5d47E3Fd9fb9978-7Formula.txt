@@ -1,0 +1,47 @@
+```csharp
+// Sauron.Formula.UniswapV2Burn
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the method used is actually correct
+            if (info.Method != "burn")
+                return new CalculationResult<BigDecimal?>(null);
+
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+            var token0Balance = info.Token0Balance;
+            var token1Balance = info.Token1Balance;
+            var liquidity = info.Liquidity;
+            var totalSupply = info.TotalSupply;
+
+            BigDecimal amount0 = BigDecimal.Multiply(liquidity, token0Balance) / totalSupply;
+            BigDecimal amount1 = BigDecimal.Multiply(liquidity, token1Balance) / totalSupply;
+
+            var token0Price = tokenPrices?.FirstOrDefault(p => p.Key == info.Token0).Value ?? 1M;
+            var token1Price = tokenPrices?.FirstOrDefault(p => p.Key == info.Token1).Value ?? 1M;
+
+            BigDecimal pnl = amount0 * (decimal)token0Price + amount1 * (decimal)token1Price;
+
+            // Subtract Fee even if user sends something to themselves
+            var fee = GetFee(reserve0, reserve1);
+            pnl -= fee * (token0Price + token1Price);
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+
+        private BigDecimal GetFee(BigDecimal _reserve0, BigDecimal _reserve1)
+        {
+            // Implement your fee calculation here. This is a placeholder.
+            // Actual implementation depends on the specifics of the UniswapV2 contract.
+            return 0;
+        }
+    }
+}
+```

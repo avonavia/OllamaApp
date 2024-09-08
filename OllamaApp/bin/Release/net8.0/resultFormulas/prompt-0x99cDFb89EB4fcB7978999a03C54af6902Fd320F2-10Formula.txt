@@ -1,0 +1,31 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        // This formula calculates PNL for a Uniswap-like token swap contract that syncs its balances with an external reserve
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if there are at least two transfers (token0 and token1 balances)
+            var transfers = info.Transfers?.Take(2).ToList();
+            if (transfers == null || transfers.Count < 2)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Not enough transfers in the transaction");
+
+            // Get token prices or assume they are both 1 if not provided
+            var price0 = tokenPrices?.FirstOrDefault(t => t.Key == info.TokenInfo[transfers[0].TokenIndex].Symbol).Value ?? 1;
+            var price1 = tokenPrices?.FirstOrDefault(t => t.Key == info.TokenInfo[transfers[1].TokenIndex].Symbol).Value ?? 1;
+
+            // Calculate the PNL as the difference between the reserved tokens and the contract's current balances, in Eth
+            var pnl = (transfers[0].Amount * price0) - (info.ReserveTokens[transfers[0].TokenIndex] * price0) +
+                     (transfers[1].Amount * price1) - (info.ReserveTokens[transfers[1].TokenIndex] * price1);
+
+            // Return the PNL for each user address in the transaction, assuming all users share it equally
+            var result = info.Addresses.Select(address => new KeyValuePair<string, BigDecimal>(address, pnl / info.Addresses.Count));
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}
+```

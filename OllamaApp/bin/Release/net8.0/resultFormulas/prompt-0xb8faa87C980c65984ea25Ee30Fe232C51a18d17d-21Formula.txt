@@ -1,0 +1,63 @@
+Below is the requested C# method for calculating PNL based on the Solidity contract provided. The formula assumes that there's a 'Transfers' property in TransactionInfo which contains information about token transfers.
+
+```csharp
+[assembly: FormulaAssembly("_beforeTokenTransfer")] // this should be EXACTLY as function name in Solidity contract
+
+namespace Sauron.Formula._beforeTokenTransfer
+
+public class _beforeTokenTransferFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        var userAddresses = new HashSet<string>(info.From, StringComparer.OrdinalIgnoreCase);
+        if (!userAddresses.Contains(info.To)) // if the 'to' address is not the same as 'from', add it to user addresses
+            userAddresses.Add(info.To);
+
+        var pnl = new Dictionary<string, BigDecimal>();
+
+        foreach (var transfer in info.Transfers)
+        {
+            // if the token transfer was from a user's address to an external address or another user's address
+            if (userAddresses.Contains(transfer.From) && !userAddresses.Contains(transfer.To))
+                pnl[transfer.From] = SubtractIfExists(pnl, transfer.From, CalculateTokenValue(transfer, tokenPrices)); // subtract the value of tokens sent from user's PNL
+            else if (userAddresses.Contains(transfer.To) && !userAddresses.Contains(transfer.From))
+                pnl[transfer.To] = AddIfExists(pnl, transfer.To, CalculateTokenValue(transfer, tokenPrices)); // add the value of tokens received by user to their PNL
+        }
+
+        pnl[info.FeeAddress] = SubtractIfExists(pnl, info.FeeAddress, info.Fee); // subtract the transaction fee from the fee address's PNL
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+        {
+            Value = pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)),
+            IsSuccess = true // or false if there were any errors in calculating the PNL
+        };
+    }
+
+    private BigDecimal CalculateTokenValue(TokenTransferInfo transfer, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+    {
+        var price = 1m; // default price is 1 if not provided
+        if (tokenPrices != null && tokenPrices.TryGetValue(transfer.TokenSymbol, out var tokenPrice))
+            price = (decimal)tokenPrice;
+
+        return transfer.Amount * new BigDecimal((decimal)price); // calculate the total value of tokens in Eth
+    }
+
+    private BigDecimal SubtractIfExists(Dictionary<string, BigDecimal> dictionary, string key, BigDecimal valueToSubtract)
+    {
+        if (dictionary.ContainsKey(key))
+            return dictionary[key] -= valueToSubtract;
+        else
+            return -valueToSubtract;
+    }
+
+    private BigDecimal AddIfExists(Dictionary<string, BigDecimal> dictionary, string key, BigDecimal valueToAdd)
+    {
+        if (dictionary.ContainsKey(key))
+            return dictionary[key] += valueToAdd;
+        else
+            return valueToAdd;
+    }
+}
+```
+This C# code calculates the profit and loss for each user address involved in a token transfer based on transaction information, taking into account the fee. It uses token prices to convert token amounts into Ethereum (ETH) values before subtracting fees and updating the net position of users.

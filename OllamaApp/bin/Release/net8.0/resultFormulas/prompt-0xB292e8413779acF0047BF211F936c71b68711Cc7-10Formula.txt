@@ -1,0 +1,37 @@
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the addresses of this contract, token0 and token1
+            string thisAddress = info.ToAddress;
+            string token0Address = ((TokenTransferInfo)info.Transfers[0]).FromAddress;
+            string token1Address = ((TokenTransferInfo)info.Transfers[1]).FromAddress;
+
+            // Get the balances of token0 and token1 in this contract
+            BigDecimal balanceToken0 = IERC20(token0Address).BalanceOf(thisAddress);
+            BigDecimal balanceToken1 = IERC20(token1Address).BalanceOf(thisAddress);
+
+            // Get the reserve values for token0 and token1
+            BigDecimal reserve0 = info.Reserve0;
+            BigDecimal reserve1 = info.Reserve1;
+
+            // Calculate PNL by subtracting the initial balance of tokens from their final balance, multiplied by their prices
+            // This assumes that the price of each token is known and can be retrieved from the tokenPrices dictionary
+            decimal priceToken0 = tokenPrices.FirstOrDefault(p => p.Key == token0Address).Value;
+            decimal priceToken1 = tokenPrices.FirstOrDefault(p => p.Key == token1Address).Value;
+
+            BigDecimal initialBalanceEth = reserve0 * (decimal)priceToken0 + reserve1 * (decimal)priceToken1;
+            BigDecimal finalBalanceEth = balanceToken0 * (decimal)priceToken0 + balanceToken1 * (decimal)priceToken1;
+
+            BigDecimal pnl = finalBalanceEth - initialBalanceEth;
+
+            // Return the PNL as a KeyValuePair with this contract's address and the calculated PNL
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new[] { new KeyValuePair<string, BigDecimal>(thisAddress, pnl) });
+        }
+    }
+}

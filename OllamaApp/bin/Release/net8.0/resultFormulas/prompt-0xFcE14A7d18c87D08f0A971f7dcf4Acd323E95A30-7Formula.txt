@@ -1,0 +1,36 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Formula;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Method for calculating PNL for the burn function in a Solidity contract
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var userAddress = info.From;
+            var token0Amount = (BigDecimal)info.DecodedArguments[0]; // amount of token0 burned
+            var token1Amount = (BigDecimal)info.DecodedArguments[1]; // amount of token1 burned
+            BigDecimal fee = CalculateFee(token0Amount, token1Amount); // calculate transaction fee
+
+            // Check if the user sent tokens to themselves or another address
+            if (info.To == info.From)
+                return new CalculationResult<BigDecimal?>(-fee); // If so, PNL is only the fee subtracted
+            else
+            {
+                BigDecimal pnl = -token0Amount * tokenPrices[info.TokenAddress] - token1Amount * tokenPrices[info.ContractAddress] - fee;
+                return new CalculationResult<BigDecimal?>(pnl); // Otherwise, calculate PNL based on the tokens sent and their prices, then subtract the fee
+            }
+        }
+
+        // Method for calculating transaction fee (not shown in the Solidity contract but assumed to exist)
+        private BigDecimal CalculateFee(BigDecimal token0Amount, BigDecimal token1Amount)
+        {
+            // Calculate transaction fee based on a given formula or API call. This is left as an exercise for the reader :)
+        }
+    }
+}
+```

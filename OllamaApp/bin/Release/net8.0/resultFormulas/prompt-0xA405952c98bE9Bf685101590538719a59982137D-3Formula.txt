@@ -1,0 +1,59 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+[assembly: FormulaAssembly("_quoteSqrtPriceX96")]
+
+namespace Sauron.Formula._quoteSqrtPriceX96
+{
+    public class _quoteSqrtPriceX96Formula : IFormulaPlugin
+    {
+        // CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var realFromToken = GetRealToken(info.FromAddress);
+            var realToToken = GetRealToken(info.ToAddress);
+
+            if (realFromToken == realToToken)
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null); // No PNL for same tokens
+            }
+
+            var pool = GetPool(realFromToken, realToToken, info.FeeTier);
+            var sqrtPriceX96 = pool.SqrtPriceX96;
+
+            if (pool.Token0 == realToToken)
+            {
+                sqrtPriceX96 = (BigInteger)(1 << 192) / sqrtPriceX96;
+            }
+
+            // Calculate PNL
+            var pnl = CalculatePNL(info, sqrtPriceX96);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>("ETH_PNL", pnl) });
+        }
+
+        private string GetRealToken(string tokenAddress)
+        {
+            // Implementation of _getRealToken function is not provided in the given Solidity code.
+            // You should implement it according to your requirements.
+            throw new NotImplementedException();
+        }
+
+        private IPool GetPool(string realFromToken, string realToToken, uint24 feeTier)
+        {
+            // Implementation of getPool function is not provided in the given Solidity code.
+            // You should implement it according to your requirements.
+            throw new NotImplementedException();
+        }
+
+        private BigDecimal CalculatePNL(TransactionInfo info, uint160 sqrtPriceX96)
+        {
+            // Implementation of PNL calculation is not provided in the given Solidity code.
+            // You should implement it according to your requirements.
+            throw new NotImplementedException();
+        }
+    }
+}
+```

@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_PNL")]
+
+namespace Sauron.Formula.UniswapV2_PNL
+{
+    public class UniswapV2_PNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Ensure that the transaction is a UniswapV2 swap
+            if (info.MethodName != "_update")
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { ErrorMessage = "Transaction is not a UniswapV2 swap" };
+
+            // Retrieve the relevant data from the transaction info
+            var balance0 = info.DecodedData["balance0"];
+            var balance1 = info.DecodedData["balance1"];
+            var reserve0 = (BigDecimal)info.DecodedData["_reserve0"];
+            var reserve1 = (BigDecimal)info.DecodedData["_reserve1"];
+
+            // Calculate the price cumulative for both tokens based on the UniswapV2 formula
+            var timeElapsed = (uint)info.BlockTimestamp % 32 - info.LastBlockTimestamp;
+            if (timeElapsed > 0 && reserve0 != 0 && reserve1 != 0)
+            {
+                var priceCumulative0 = UQ112x112.Encode(reserve1).Uqdiv(reserve0) * timeElapsed;
+                var priceCumulative1 = UQ112x112.Encode(reserve0).Uqdiv(reserve1) * timeElapsed;
+            }
+
+            // Calculate the PNL for both tokens
+            var pnlToken0 = (BigDecimal)(balance0 - info.LastBalance0) * reserve1 / reserve0 - (BigDecimal)(info.LastReserve1 - reserve1);
+            var pnlToken1 = (BigDecimal)(balance1 - info.LastBalance1) * reserve0 / reserve1 - (BigDecimal)(info.LastReserve0 - reserve0);
+
+            // Subtract the fee from the PNL if the user is not sending tokens to themselves
+            if (info.ToAddress != info.FromAddress)
+            {
+                var totalInput = balance0 + balance1;
+                pnlToken0 -= totalInput * 0.003M; // Assuming a 0.3% fee
+                pnlToken1 -= totalInput * 0.003M; // Assuming a 0.3% fee
+            }
+
+            // Return the PNL for both tokens in Eth
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = new[]
+                {
+                    new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlToken0 / tokenPrices["ETH"]), // Convert PNL to Eth
+                    new KeyValuePair<string, BigDecimal>(info.ToAddress, pnlToken1 / tokenPrices["ETH"]) // Convert PNL to Eth
+                }
+            };
+        }
+    }
+}
+```

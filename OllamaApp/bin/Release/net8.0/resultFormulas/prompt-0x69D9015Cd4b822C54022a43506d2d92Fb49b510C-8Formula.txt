@@ -1,0 +1,37 @@
+Using the information provided in the Solidity contract method and the rules for returning an answer, I will create a C# formula method for calculating PNL without including any messages for the user.
+
+```csharp
+using System;
+
+public class PnlCalculator
+{
+    // Assembly info for PNL calculation
+    [assembly: System.Reflection.AssemblyTitle("PNL Calculation")]
+    [assembly: System.Reflection.AssemblyDescription("Formula method for calculating PNL based on UniswapV2 contract method")]
+
+    /// <summary>
+    /// Calculate the profit and loss (PNL) for a user in Ether (Eth).
+    /// </summary>
+    /// <param name="amount0Out">The amount of token 0 sent.</param>
+    /// <param name="amount1Out">The amount of token 1 sent.</param>
+    /// <param name="reserve0">The reserve of token 0 in the contract.</param>
+    /// <param name="reserve1">The reserve of token 1 in the contract.</param>
+    /// <param name="balance0AfterSwap">The balance of token 0 in the contract after the swap.</param>
+    /// <param name="balance1AfterSwap">The balance of token 1 in the contract after the swap.</param>
+    /// <param name="feePercentage">The fee percentage for the swap.</param>
+    /// <returns>Profit and loss (PNL) for the user in Eth.</returns>
+    public static decimal CalculatePnl(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal balance0AfterSwap, decimal balance1AfterSwap, decimal feePercentage)
+    {
+        // Calculate the initial value of tokens sent by the user
+        decimal initialValue = (amount0Out / reserve0) * reserve1 + (amount1Out / reserve1) * reserve0;
+
+        // Calculate the final value of tokens received by the user after considering fees
+        decimal finalValue = ((balance0AfterSwap - amount0Out * (feePercentage / 100)) / reserve0) * reserve1 + ((balance1AfterSwap - amount1Out * (feePercentage / 100)) / reserve1) * reserve0;
+
+        // Calculate the profit and loss for the user
+        decimal pnl = finalValue - initialValue;
+
+        return pnl;
+    }
+}
+```

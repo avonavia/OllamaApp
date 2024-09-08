@@ -1,0 +1,36 @@
+// CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    // This is a simple representation of the formula and does not include error handling or input validation. It assumes that all necessary data has been preprocessed and provided as input.
+
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        var pnlResult = new Dictionary<string, BigDecimal>();
+
+        // Check if the feeTo address is not zero (i.e., fees are enabled)
+        var feeTo = info.AdditionalInfo["feeTo"]?.ToString();
+        bool feeOn = !string.IsNullOrEmpty(feeTo);
+
+        if (feeOn && info.AdditionalInfo["kLast"] != null)
+        {
+            // Calculate the current reserve product and its square root
+            var reserve0 = new BigDecimal((decimal)info.AdditionalInfo["reserve0"]);
+            var reserve1 = new BigDecimal((decimal)info.AdditionalInfo["reserve1"]);
+            var rootK = BigDecimal.Sqrt(BigDecimal.Multiply(reserve0, reserve1));
+            var rootKLast = BigDecimal.Sqrt(new BigDecimal((decimal)info.AdditionalInfo["kLast"]));
+
+            if (rootK > rootKLast)
+            {
+                // Calculate the liquidity to be minted for fees
+                var totalSupply = new BigDecimal((decimal)info.AdditionalInfo["totalSupply"]);
+                var numerator = BigDecimal.Multiply(totalSupply, BigDecimal.Subtract(rootK, rootKLast));
+                var denominator = BigDecimal.Add(BigDecimal.Multiply(rootK, new BigDecimal(5)), rootKLast);
+                var liquidity = BigDecimal.Divide(numerator, denominator);
+
+                // If there is liquidity to be minted for fees, subtract it from the user's PNL
+                if (liquidity > new BigDecimal(0))
+                    pnlResult[info.FromAddress] = BigDecimal.Negate(BigDecimal.Multiply(liquidity, new BigDecimal((decimal)tokenPrices?.FirstOrDefault(p => p.Key == "TOKEN").Value ?? 1)));
+            }
+        }
+
+        // Return the PNL result for each address involved in the transaction
+        return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResult);
+    }

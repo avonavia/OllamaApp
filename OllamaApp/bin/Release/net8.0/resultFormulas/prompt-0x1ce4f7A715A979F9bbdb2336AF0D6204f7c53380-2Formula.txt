@@ -1,0 +1,29 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlCalculator = new PnLCalculator();
+
+            foreach (var transfer in info.Transfers)
+            {
+                // Check if the transfer is a safeTransfer from or to user's address
+                if (transfer.From == info.Address || transfer.To == info.Address)
+                {
+                    var tokenPrice = GetTokenPrice(tokenPrices, transfer.TokenInfo.Symbol);
+                    pnlCalculator.AddTransfer(transfer.Amount * BigDecimal.FromDecimal(tokenPrice), transfer.From == info.Address ? -1 : 1);
+                }
+            }
+
+            // Subtract fee from the PNL
+            var pnl = pnlCalculator.CalculatePNL() - info.Fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = new[] { new KeyValuePair<string, BigDecimal>(info.Address, pnl) } };
+        }
+    }
+}
+```
+This is a basic implementation of the SafeTransfer formula in C#. It creates a `PnLCalculator` instance and adds each transfer to it if the transfer is from or to the user's address. The PNL is then calculated by subtracting the transaction fee from the total PNL. Finally, the result is returned as an `IEnumerable<KeyValuePair<string, BigDecimal>>?`.

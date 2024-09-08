@@ -1,0 +1,46 @@
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.sync
+{
+    using Nethereum.RPC.Eth.DTOs;
+    using System.Collections.Generic;
+    using System.Numerics;
+
+    public class syncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var contractAddress = info.ToAddress; // Assuming the smart contract address is the 'to' address in the transaction
+            var token0Balance = BigDecimal.Zero;
+            var token1Balance = BigDecimal.Zero;
+
+            // Find the balances of token0 and token1 from the transfers list
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.FromAddress == contractAddress && !string.IsNullOrEmpty(transfer.TokenInfo?.Symbol))
+                {
+                    if (transfer.TokenInfo.Symbol == "token0") // Replace with actual token symbol
+                        token0Balance = transfer.Amount;
+                    else if (transfer.TokenInfo.Symbol == "token1") // Replace with actual token symbol
+                        token1Balance = transfer.Amount;
+                }
+            }
+
+            // Calculate PNL based on the balance changes and token prices
+            var pnl = CalculatePNL(token0Balance, token1Balance, info.Reserve0, info.Reserve1, tokenPrices);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>(contractAddress, pnl) });
+        }
+
+        private BigDecimal CalculatePNL(BigDecimal token0Balance, BigDecimal token1Balance, BigDecimal reserve0, BigDecimal reserve1, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            // Implement the PNL calculation logic based on the provided Solidity contract method and the rules in your system prompt
+            // This could involve complex mathematical operations and may require additional information not present in the given context
+            // Make sure to handle edge cases and potential errors appropriately
+
+            // Placeholder for PNL calculation logic
+            return BigDecimal.Zero;
+        }
+    }
+}

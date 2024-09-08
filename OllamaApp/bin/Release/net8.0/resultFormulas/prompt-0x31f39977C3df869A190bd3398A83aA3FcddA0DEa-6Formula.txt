@@ -1,0 +1,44 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        // Calculate the PNL for the mint transaction
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get relevant values from TransactionInfo object
+            BigDecimal balance0 = info.TokenAmounts[info.ContractAddress];
+            BigDecimal reserve0 = info.Reserves[0];
+            BigDecimal amount0 = balance0 - reserve0;
+
+            BigDecimal balance1 = info.TokenAmounts[info.ToAddress];
+            BigDecimal reserve1 = info.Reserves[1];
+            BigDecimal amount1 = balance1 - reserve1;
+
+            // Calculate liquidity and totalSupply as per the Solidity contract method
+            BigDecimal _totalSupply = info.TotalSupply;
+            BigDecimal liquidity = 0;
+            if (_totalSupply == 0)
+            {
+                liquidity = System.Math.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                liquidity = System.Math.Min(amount0 * _totalSupply / reserve0, amount1 * _totalSupply / reserve1);
+            }
+
+            // Check if the recipient is the same as the sender (for self-minting)
+            bool isSelfMint = info.ToAddress == info.FromAddress;
+
+            // Calculate PNL: PNL is negative when user sends money to another address, zero otherwise
+            BigDecimal pnl = isSelfMint ? 0 : -(liquidity * tokenPrices[info.ContractAddress]);
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

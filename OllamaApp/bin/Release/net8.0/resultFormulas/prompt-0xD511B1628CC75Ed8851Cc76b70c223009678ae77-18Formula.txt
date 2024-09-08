@@ -1,0 +1,19 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // The initialize method only sets the token0 and token1 addresses.
+        // Since this is an initial setup, there's no PNL calculation to be done.
+        // Therefore, we return null as per CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> requirement.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = null
+            };
+        }
+    }
+}
+```

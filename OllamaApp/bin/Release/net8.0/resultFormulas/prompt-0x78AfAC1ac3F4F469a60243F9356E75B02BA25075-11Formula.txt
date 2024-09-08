@@ -1,0 +1,42 @@
+// The following is a C# Formula method for the Solidity contract method `permit`
+   // This method calculates the profit or loss (PNL) of each user in the transaction, based on the UniswapV2 permit function
+
+   using Sauron.Formula;
+   using System.Collections.Generic;
+   using System.Numerics;
+
+   [assembly: FormulaAssembly("permit")]  // This must match exactly with the Solidity contract method name
+
+   namespace Sauron.Formula.Permit
+   {
+       public class PermitFormula : IFormulaPlugin
+       {
+           public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+               IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+           {
+               // Extract user addresses from the TransactionInfo object
+               var ownerAddress = info.From;
+               var spenderAddress = info.To;
+
+               // Get the amount of tokens transferred in this permit call
+               BigDecimal transferredAmount = new BigDecimal(info.Transfers[0].Value);  // Assuming that the first transfer is always the token transfer
+
+               // Calculate PNL based on the token price (if provided)
+               BigDecimal pnl = 0;
+               if (tokenPrices != null)
+               {
+                   var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == info.Transfers[0].TokenAddress).Value;
+                   if (tokenPrice > 0)
+                       pnl = transferredAmount * (decimal)tokenPrice;
+               }
+
+               // Subtract the fee from PNL, assuming that the fee is always in ETH
+               BigDecimal fee = new BigDecimal(info.Fee);
+               pnl -= fee;
+
+               // Return the result as a KeyValuePair of user address and corresponding PNL
+               var results = new[] { new KeyValuePair<string, BigDecimal>(ownerAddress, pnl) };
+               return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+           }
+       }
+   }

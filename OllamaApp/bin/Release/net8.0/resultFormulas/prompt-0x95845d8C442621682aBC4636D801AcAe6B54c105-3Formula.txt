@@ -1,0 +1,18 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // UniswapV2: Initialize does not generate any PNL for user addresses. Hence, return an empty result.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                (data: Enumerable.Empty<KeyValuePair<string, BigDecimal>>());
+        }
+    }
+}
+```
+This C# formula for the Solidity contract method `initialize` simply returns an empty result because initializing a UniswapV2 pair does not generate any PNL (Profit and Loss) for user addresses. It only sets the token0 and token1 addresses, but it doesn't involve any transactions that would generate PNL.

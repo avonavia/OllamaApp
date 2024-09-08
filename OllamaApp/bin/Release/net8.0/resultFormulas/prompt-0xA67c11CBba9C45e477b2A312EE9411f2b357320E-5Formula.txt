@@ -1,0 +1,45 @@
+// CalculationResult for transferFrom method, following all the rules provided
+    [assembly: FormulaAssembly("TransferFromPNL")]
+
+    namespace Sauron.Formula.TransferFromPNL
+    {
+        public class TransferFromPNLFormula : IFormulaPlugin
+        {
+            // Method to calculate PNL for transferFrom transaction
+            public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+            {
+                var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+                // If transaction has transfers
+                if (info.Transfers != null && info.Transfers.Any())
+                {
+                    foreach (var transfer in info.Transfers)
+                    {
+                        var fromAddress = transfer.From;
+                        var toAddress = transfer.To;
+                        var amount = transfer.Amount;
+
+                        // If token prices are available, calculate PNL in Eth by multiplying the amount with its price and subtracting fee if necessary
+                        if (tokenPrices != null && tokenPrices.Any(tp => tp.Key == transfer.TokenInfo.Symbol))
+                        {
+                            var tokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == transfer.TokenInfo.Symbol).Value;
+                            var pnlFrom = -amount * (decimal)tokenPrice; // PNL for sender is negative as tokens are being transferred out
+                            var pnlTo = amount * (decimal)tokenPrice; // PNL for recipient is positive as tokens are being received
+
+                            if (!pnlResults.Any(r => r.Key == fromAddress))
+                                pnlResults.Add(new KeyValuePair<string, BigDecimal>(fromAddress, new BigDecimal(pnlFrom)));
+                            else
+                                pnlResults[pnlResults.FindIndex(0, r => r.Key == fromAddress)] = new KeyValuePair<string, BigDecimal>(fromAddress, pnlResults[pnlResults.FindIndex(0, r => r.Key == fromAddress)].Value + new BigDecimal(pnlFrom));
+
+                            if (!pnlResults.Any(r => r.Key == toAddress))
+                                pnlResults.Add(new KeyValuePair<string, BigDecimal>(toAddress, new BigDecimal(pnlTo)));
+                            else
+                                pnlResults[pnlResults.FindIndex(0, r => r.Key == toAddress)] = new KeyValuePair<string, BigDecimal>(toAddress, pnlResults[pnlResults.FindIndex(0, r => r.Key == toAddress)].Value + new BigDecimal(pnlTo));
+                        }
+                    }
+                }
+
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlResults);
+            }
+        }
+    }

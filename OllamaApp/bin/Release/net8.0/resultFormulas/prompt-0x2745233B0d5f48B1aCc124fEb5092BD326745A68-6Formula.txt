@@ -1,0 +1,32 @@
+```csharp
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<decimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = info.TokenAmounts[info.FromAddress][0]; // Assuming token0 is the first one in the TokenAmounts dictionary
+            var balance1 = info.TokenAmounts[info.FromAddress][1]; // Assuming token1 is the second one in the TokenAmounts dictionary
+            var reserve0 = info.ContractState.Reserve0; // Assuming Reserve0 and Reserve1 are stored in the ContractState property of TransactionInfo object
+            var reserve1 = info.ContractState.Reserve1;
+            var totalSupply = info.ContractState.TotalSupply;
+            var fee = 0m; // Fee is not provided, assuming it's calculated elsewhere or constant for this method
+
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            decimal liquidity;
+            if (totalSupply == 0)
+                liquidity = Math.Sqrt(amount0 * amount1) - info.ContractState.MinimumLiquidity; // Assuming MinimumLiquidity is stored in the ContractState property of TransactionInfo object
+            else
+                liquidity = Math.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+
+            var pnl = liquidity - fee; // Subtracting fee to get PNL
+            return new CalculationResult<decimal?>(pnl);
+        }
+    }
+}
+```

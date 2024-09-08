@@ -1,0 +1,37 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get distinct tokens and their amounts in the transaction
+            var tokensWithAmounts = GetTokensWithAmounts(info.Transfers);
+
+            // Initialize a dictionary to store user PNL
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            foreach (var tokenWithAmount in tokensWithAmounts)
+            {
+                if (tokenWithAmount.Key.Address == info.ToAddress && !pnlResult.ContainsKey(info.FromAddress))
+                    // If the recipient is the same as 'to' address and it's not already in the dictionary, subtract the amount from PNL
+                    pnlResult[info.FromAddress] -= tokenWithAmount.Value;
+                else if (tokenWithAmount.Key.Address == info.FromAddress && !pnlResult.ContainsKey(info.ToAddress))
+                    // If the sender is the same as 'from' address and it's not already in the dictionary, add the amount to PNL
+                    pnlResult[info.ToAddress] += tokenWithAmount.Value;
+            }
+
+            // Subtract fee from sender's PNL if exists
+            if (pnlResult.ContainsKey(info.FromAddress))
+                pnlResult[info.FromAddress] -= info.Fee;
+
+            // Convert PNL to Eth and return the result
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Data = pnlResult.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value * tokenPrices?.FirstOrDefault(t => t.Key == kvp.Key.ToLower()).Value ?? 0)) };
+        }
+    }
+}
+```
+The C# code above defines a `SafeTransferFormula` class implementing the `IFormulaPlugin` interface, which calculates PNL for each user in the transaction according to the Solidity contract method described. The formula subtracts transferred amounts from sender's PNL and adds them to recipient's PNL. If recipient is the same as 'to' address or sender is the same as 'from' address, it adjusts the calculation accordingly. It also subtracts transaction fee from sender's PNL. Finally, it converts the PNL to Eth using provided token prices and returns the result.

@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer
+{
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assume "info" is a TransactionInfo object that contains necessary data about the transaction
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Go through each transfer in the transaction
+            foreach (var transfer in info.Transfers)
+            {
+                string fromAddress = info.From;
+                string toAddress = transfer.ToAddress;
+                TokenInfo tokenInfo = transfer.TokenInfo;
+                BigDecimal amount = transfer.Amount;
+
+                // If the sender is not the same as the recipient, the sender loses tokens' value in Eth
+                if (fromAddress != toAddress)
+                {
+                    decimal tokenPriceInEth = tokenPrices?.FirstOrDefault(p => p.Key == tokenInfo.Symbol).Value ?? 0;
+                    BigDecimal amountLostInEth = amount * new BigDecimal(tokenPriceInEth);
+                    if (pnlDictionary.ContainsKey(fromAddress))
+                        pnlDictionary[fromAddress] -= amountLostInEth;
+                    else
+                        pnlDictionary[fromAddress] = -amountLostInEth;
+                }
+
+                // The recipient gains tokens' value in Eth
+                decimal tokenPriceInEth = tokenPrices?.FirstOrDefault(p => p.Key == tokenInfo.Symbol).Value ?? 0;
+                BigDecimal amountGainedInEth = amount * new BigDecimal(tokenPriceInEth);
+                if (pnlDictionary.ContainsKey(toAddress))
+                    pnlDictionary[toAddress] += amountGainedInEth;
+                else
+                    pnlDictionary[toAddress] = amountGainedInEth;
+            }
+
+            // Subtract the fee from the sender's PNL
+            if (pnlDictionary.ContainsKey(info.From))
+                pnlDictionary[info.From] -= info.Fee;
+            else
+                pnlDictionary[info.From] = -info.Fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

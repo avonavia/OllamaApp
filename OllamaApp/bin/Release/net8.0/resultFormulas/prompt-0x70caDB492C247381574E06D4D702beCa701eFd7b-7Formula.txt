@@ -1,0 +1,38 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Interfaces;
+using Sauron.Formula.Common;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // Assuming that info object contains the required details like reserve0, reserve1, balance0, balance1, totalSupply and fee
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            BigDecimal _reserve0 = (BigDecimal)info.Logs[0].Data["_reserve0"];
+            BigDecimal _reserve1 = (BigDecimal)info.Logs[0].Data["_reserve1"];
+            BigDecimal balance0 = (BigDecimal)info.Logs[0].Data["balance0"];
+            BigDecimal balance1 = (BigDecimal)info.Logs[0].Data["balance1"];
+            BigDecimal liquidity = (BigDecimal)info.Logs[0].Data["liquidity"];
+            BigDecimal _totalSupply = (BigDecimal)info.Logs[0].Data["_totalSupply"];
+            bool feeOn = (bool)(info.Logs[0].Data["feeOn"]); // Assuming that this detail is available in the info object
+
+            // Calculate amount of tokens burned
+            BigDecimal amount0 = liquidity * balance0 / _totalSupply;
+            BigDecimal amount1 = liquidity * balance1 / _totalSupply;
+
+            // Check if user sent tokens to themselves. If yes, no fee is applicable. Else, calculate fee.
+            bool sentToSelf = info.To == info.From;
+            BigDecimal fee = !sentToSelf ? (amount0 + amount1) * FEE_PERCENTAGE : 0; // Assuming that FEE_PERCENTAGE is defined
+
+            // Calculate PNL for the user
+            BigDecimal pnl = -(amount0 * tokenPrices["token0"] + amount1 * tokenPrices["token1"]) - fee;
+
+            return new CalculationResult<BigDecimal?> { Result = pnl };
+        }
+    }
+}
+```

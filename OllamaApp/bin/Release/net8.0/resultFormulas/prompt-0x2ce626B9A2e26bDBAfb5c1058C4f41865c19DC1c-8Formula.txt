@@ -1,0 +1,54 @@
+```csharp
+using System;
+// This is the PNL calculation method for UniswapV2 contract swap function in C#
+namespace UniswapV2PNLCalculator
+{
+    public class PNLCalculator
+    {
+        // Method to calculate Profit and Loss (PNL)
+        public static decimal CalculatePNL(decimal reserve0, decimal reserve1, decimal amount0Out, decimal amount1Out, decimal feePercentage)
+        {
+            // Check if user sent tokens to themselves
+            bool isSelfTransfer = false;
+            if (amount0Out > 0 && amount1Out == 0 || amount0Out == 0 && amount1Out > 0)
+                isSelfTransfer = true;
+
+            decimal inputAmount, outputAmount, fee, pnl;
+
+            // Calculate input and output amounts based on the token with more output
+            if (amount0Out >= amount1Out)
+            {
+                inputAmount = calculateInputAmount(reserve0, amount0Out);
+                outputAmount = amount0Out;
+                fee = inputAmount * (feePercentage / 100M); // Fee is calculated on the input amount
+            }
+            else
+            {
+                inputAmount = calculateInputAmount(reserve1, amount1Out);
+                outputAmount = amount1Out;
+                fee = inputAmount * (feePercentage / 100M); // Fee is calculated on the input amount
+            }
+
+            // Subtract the fee from the input amount
+            inputAmount -= fee;
+
+            if (isSelfTransfer)
+            {
+                pnl = 0M; // If it's a self-transfer, PNL is zero as user didn't gain or lose anything
+            }
+            else
+            {
+                pnl = inputAmount - outputAmount; // Calculate PNL: Input amount - Output amount (after fee)
+            }
+
+            return pnl;
+        }
+
+        // Method to calculate input amount
+        private static decimal calculateInputAmount(decimal reserve, decimal amountOut)
+        {
+            return amountOut * (reserve + 1000M) / reserve;
+        }
+    }
+}
+```

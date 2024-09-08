@@ -1,0 +1,30 @@
+// Formula for getReserves() Solidity contract method in C#
+   // Assembly attribute defines the name of the formula as it appears in the Solidity contract
+   [assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        // Formula method signature matches the required format
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserves and block timestamp from TransactionInfo object
+            var reserve0 = new BigDecimal((decimal)info.Reserve0);  // Convert to BigDecimal
+            var reserve1 = new BigDecimal((decimal)info.Reserve1);  // Convert to BigDecimal
+            var blockTimestampLast = info.BlockTimestampLast;
+
+            // Create and return the result as a dictionary with appropriate keys
+            var result = new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>("Reserve0", reserve0),
+                new KeyValuePair<string, BigDecimal>("Reserve1", reserve1),
+                new KeyValuePair<string, BigDecimal>("BlockTimestampLast", new BigDecimal(blockTimestampLast))
+            };
+
+            // Return the result as CalculationResult object
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}

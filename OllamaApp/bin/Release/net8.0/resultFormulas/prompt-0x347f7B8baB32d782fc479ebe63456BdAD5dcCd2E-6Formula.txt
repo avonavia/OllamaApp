@@ -1,0 +1,39 @@
+```csharp
+// Assembly info for the formula
+[assembly: FormulaAssembly("MINT")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        // PNL calculation method for the mint function in Solidity contract
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            BigDecimal balance0 = (BigDecimal)info.GetProperty("balanceOfToken0");
+            BigDecimal balance1 = (BigDecimal)info.GetProperty("balanceOfToken1");
+            BigDecimal reserve0 = (BigDecimal)info.GetProperty("reserve0");
+            BigDecimal reserve1 = (BigDecimal)info.GetProperty("reserve1");
+            BigDecimal totalSupply = (BigDecimal)info.GetProperty("totalSupply");
+            bool feeOn = info.Fee > 0; // Assume fee is non-zero if _mintFee returned true in Solidity
+
+            BigDecimal amount0 = balance0 - reserve0;
+            BigDecimal amount1 = balance1 - reserve1;
+
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = Math.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY; // Define MINIMUM_LIQUIDITY as a constant
+            else
+                liquidity = BigDecimal.Min((amount0 * totalSupply / reserve0), (amount1 * totalSupply / reserve1));
+
+            BigDecimal pnl;
+            if (info.ToAddress == info.FromAddress) // Check if sending to self
+                pnl = -info.Fee; // If so, only fee is deducted
+            else
+                pnl = liquidity * tokenPrices["token0"] + liquidity * tokenPrices["token1"] - info.Fee; // Calculate PNL in Eth using token prices and fees
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

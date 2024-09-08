@@ -1,0 +1,30 @@
+// The provided Solidity function is used to remove addresses from a list of "bots". In the context of this formula, we are not calculating any profit or loss (PNL), so it's not possible to provide an exact equivalent C# method. However, if the goal was to track changes in bot ownership for other purposes, here's a rough representation:
+
+```csharp
+[assembly: FormulaAssembly("RemoveBots")]
+
+namespace Sauron.Formula.RemoveBots
+{
+    public class RemoveBotsFormula : IFormulaPlugin
+    {
+        // As we are not calculating PNL, the formula returns a list of addresses that were removed from the bot list.
+        public CalculationResult<IEnumerable<string>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // The 'notbot' array is expected to be included in the input data of the transaction. We extract it here:
+            var notBotAddresses = GetNotBotAddressesFromTransactionData(info);
+
+            return CalculationResult<IEnumerable<string>?>
+                .CreateSuccessfulResult(notBotAddresses)
+                .WithMessage("The following addresses were removed from the bot list.");
+        }
+
+        private IEnumerable<string>? GetNotBotAddressesFromTransactionData(TransactionInfo info)
+        {
+            // This is a placeholder method. The actual implementation depends on how the data is stored in the transaction and the specifics of the blockchain used.
+            // Here, we assume that the notbot array was encoded as part of the input data (info.Input) using an Ethereum-compatible ABI encoding.
+            // We then decode it to get the list of addresses.
+            return DecodeNotBotAddressesFromInputData(info.Input);
+        }
+    }
+}
+```

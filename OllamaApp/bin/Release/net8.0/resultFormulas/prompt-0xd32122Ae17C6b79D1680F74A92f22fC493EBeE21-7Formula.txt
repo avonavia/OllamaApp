@@ -1,0 +1,29 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Models;
+using Sauron.Formula.Common;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Assuming all the necessary variables are passed as parameters from TransactionInfo object
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, BigDecimal totalSupply, BigDecimal reserve0, BigDecimal reserve1, BigDecimal balance0, BigDecimal balance1, BigDecimal liquidity)
+        {
+            // Calculate the amounts of token0 and token1 burned
+            var amount0 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance0), totalSupply);
+            var amount1 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance1), totalSupply);
+
+            // Calculate the PNL
+            // If 'to' is the same as msg.sender, then it's effectively a burn operation and PNL should be negative
+            if (info.ToAddress == info.FromAddress)
+                return new CalculationResult<BigDecimal?>(-1 * (amount0 + amount1));
+
+            // If 'to' is different from msg.sender, then it's a transfer and PNL should be zero since no tokens are being burned
+            return new CalculationResult<BigDecimal?>(0);
+        }
+    }
+}
+```

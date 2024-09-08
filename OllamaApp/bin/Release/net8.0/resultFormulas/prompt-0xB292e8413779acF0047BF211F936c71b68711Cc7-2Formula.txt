@@ -1,0 +1,50 @@
+```csharp
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+{
+    public class _safeTransferFormula : IFormulaPlugin
+    {
+        // Method to calculate PNL for each address involved in the transaction
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize a dictionary to store PNL for each address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Calculate PNL for the sender of the tokens
+            if (info.FromAddress != null)
+            {
+                pnlDictionary[info.FromAddress] = CalculatePnl(info.Transfers, info.FromAddress, info.Fee);
+            }
+
+            // Calculate PNL for the recipient of the tokens
+            if (info.ToAddress != null && info.ToAddress != info.FromAddress)
+            {
+                pnlDictionary[info.ToAddress] = CalculatePnl(info.Transfers, info.ToAddress, BigDecimal.Zero);
+            }
+
+            // Convert the dictionary to a list of KeyValuePair and return it
+            var result = pnlDictionary.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)).ToList();
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+
+        // Helper method to calculate PNL for a given address
+        private BigDecimal CalculatePnl(List<TokenTransferInfo> transfers, string address, BigDecimal fee)
+        {
+            var tokensWithAmounts = GetTokensWithAmounts(transfers);
+            var pnl = BigDecimal.Zero;
+
+            foreach (var tokenAmount in tokensWithAmounts)
+            {
+                // If the transfer is from or to the given address, subtract the fee and add/subtract the value of tokens transferred
+                if ((tokenAmount.Key.Address == address && tokenAmount.Value > BigDecimal.Zero) || (address != null && address == transfers.FirstOrDefault(t => t.ToAddress == address)?.FromAddress))
+                    pnl -= fee + tokenAmount.Value * new BigDecimal((decimal)tokenPrices?.FirstOrDefault(tp => tp.Key == tokenAmount.Key.Symbol).Value ?? 1);
+            }
+
+            return pnl;
+        }
+    }
+}
+```

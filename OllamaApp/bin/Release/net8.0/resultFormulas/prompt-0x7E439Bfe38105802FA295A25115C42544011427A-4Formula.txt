@@ -1,0 +1,41 @@
+```csharp
+[assembly: FormulaAssembly("_mint")]
+
+namespace Sauron.Formula._mint
+{
+    public class _mintFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new Dictionary<string, BigDecimal>();
+
+            // Check if the transaction is a mint operation (from address is zero)
+            if (info.FromAddress == "0x0")
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    var toAddress = transfer.ToAddress;
+                    var amount = transfer.Amount;
+
+                    // Check if the transaction is a mint operation for the token symbol
+                    if (transfer.TokenInfo.Symbol == "_mint")
+                    {
+                        // Update balance for recipient address and subtract fee
+                        result[toAddress] = result.ContainsKey(toAddress) ? result[toAddress] + amount : amount;
+
+                        // Subtract transaction fee from sender's PNL (assuming sender is the miner)
+                        if (!result.ContainsKey(info.FromAddress))
+                        {
+                            result[info.FromAddress] = 0;
+                        }
+                        result[info.FromAddress] -= info.Fee;
+                    }
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}
+```

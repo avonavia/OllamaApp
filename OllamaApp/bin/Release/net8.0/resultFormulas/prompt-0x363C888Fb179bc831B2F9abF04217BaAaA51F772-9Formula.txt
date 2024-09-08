@@ -1,0 +1,61 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlPairs = new List<KeyValuePair<string, BigDecimal>>();
+
+            if (info.FromAddress == info.ToAddress)
+            {
+                // If the recipient is the same as the sender, return zero PNL
+                pnlPairs.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, BigDecimal.Zero));
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlPairs);
+            }
+
+            if (tokenPrices == null)
+            {
+                // If token prices are not provided, PNL cannot be calculated
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Token prices are required to calculate PNL.");
+            }
+
+            if (info.Transfers == null)
+            {
+                // If transfers are not provided, PNL cannot be calculated
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Transfer information is required to calculate PNL.");
+            }
+
+            var tokenPricesDict = tokenPrices.ToDictionary(kvp => kvp.Key, kvp => (decimal)kvp.Value);
+            var tokensInContract = info.Transfers.GetDistinctTokens();
+
+            if (tokensInContract == null || tokensInContract.Count() != 2)
+            {
+                // The contract should have exactly two tokens to calculate PNL
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "The contract does not contain the expected number of tokens.");
+            }
+
+            var token0 = tokensInContract.ElementAt(0);
+            var token1 = tokensInContract.ElementAt(1);
+
+            if (!tokenPricesDict.ContainsKey(token0.Symbol) || !tokenPricesDict.ContainsKey(token1.Symbol))
+            {
+                // If prices for both tokens are not provided, PNL cannot be calculated
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Prices for both tokens are required to calculate PNL.");
+            }
+
+            var token0Amount = info.Transfers.Where(t => t.TokenInfo.Symbol == token0.Symbol).Sum(t => t.Amount);
+            var token1Amount = info.Transfers.Where(t => t.TokenInfo.Symbol == token1.Symbol).Sum(t => t.Amount);
+
+            // Calculate PNL in Eth for the sender
+            var pnlInEth = (token0Amount * new BigDecimal(tokenPricesDict[token0.Symbol])) + (token1Amount * new BigDecimal(tokenPricesDict[token1.Symbol]));
+            pnlPairs.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, -pnlInEth));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlPairs);
+        }
+    }
+}
+```

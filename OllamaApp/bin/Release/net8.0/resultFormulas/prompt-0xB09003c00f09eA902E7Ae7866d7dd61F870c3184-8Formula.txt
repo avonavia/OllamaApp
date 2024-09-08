@@ -1,0 +1,42 @@
+```csharp
+// This is a C# method for calculating PNL (Profit & Loss) from a swap transaction in a UniswapV2-like contract
+using System;
+using System.Numerics;
+
+public class ProfitLossCalculator
+{
+    // Assembly Info
+    [assembly: System.Reflection.AssemblyTitle("UniswapV2 PNL Calculator")]
+    [assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+    /// <summary>
+    /// Calculate the Profit and Loss for a user in an Eth swap transaction
+    /// </summary>
+    /// <param name="amount0Out">Amount of token 0 sent</param>
+    /// <param name="amount1Out">Amount of token 1 sent</param>
+    /// <param name="reserve0">Reserve of token 0 in the pool</param>
+    /// <param name="reserve1">Reserve of token 1 in the pool</param>
+    /// <param name="userBalance0">User's balance of token 0 before the swap</param>
+    /// <param name="userBalance1">User's balance of token 1 before the swap</param>
+    /// <returns>Profit and Loss in Eth</returns>
+    public static BigInteger CalculatePNL(BigInteger amount0Out, BigInteger amount1Out, BigInteger reserve0, BigInteger reserve1, BigInteger userBalance0, BigInteger userBalance1)
+    {
+        // Ensure swap amounts are valid
+        if (amount0Out <= 0 && amount1Out <= 0) throw new ArgumentException("INSufficient_OUTPUT_AMOUNT");
+        if (amount0Out >= reserve0 || amount1Out >= reserve1) throw new InvalidOperationException("INSUFFICIENT_LIQUIDITY");
+
+        // Calculate user's balance after swap
+        BigInteger finalBalance0 = userBalance0 - amount0Out;
+        BigInteger finalBalance1 = userBalance1 - amount1Out;
+
+        // Calculate the price impact of the swap
+        BigInteger priceImpact0 = (reserve0 * amount0Out) / ((reserve0 - amount0Out) * 1000);
+        BigInteger priceImpact1 = (reserve1 * amount1Out) / ((reserve1 - amount1Out) * 1000);
+
+        // Calculate the PNL in Eth
+        BigInteger pnl = (priceImpact0 * finalBalance1 + priceImpact1 * finalBalance0) - (amount0Out + amount1Out);
+
+        return pnl;
+    }
+}
+```

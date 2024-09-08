@@ -1,0 +1,14 @@
+```csharp
+//Method to calculate PNL when ETH is sent to fee wallet
+public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+{
+    //Calculate the amount of ETH sent to the fee wallet
+    var ethSentToFee = info.Transfers.Where(t => t.TokenInfo.Symbol == "ETH" && t.ToAddress.ToLower() == info.TaxWallet.ToLower()).Sum(t => t.Amount);
+
+    //Calculate PNL as negative of the ETH sent to fee wallet (assuming user loses money by sending it)
+    var pnl = -ethSentToFee;
+
+    //Return the result
+    return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) } };
+}
+```

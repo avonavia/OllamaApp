@@ -1,0 +1,77 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._MintFee
+{
+    public class _MintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the reserves and kLast value from TransactionInfo object
+            var reserve0 = new BigDecimal((decimal)info.Reserve0);
+            var reserve1 = new BigDecimal((decimal)info.Reserve1);
+            var kLast = new BigDecimal((decimal)info.KLast);
+
+            // Get the factory address and totalSupply from TransactionInfo object
+            var factoryAddress = info.Factory;
+            var totalSupply = new BigDecimal(info.TotalSupply);
+
+            // Fetch the feeTo address using IUniswapV2Factory interface
+            // NOTE: This is a placeholder for actual implementation
+            var feeTo = GetFeeToFromFactory(factoryAddress);
+
+            // Check if feeOn condition is met
+            bool feeOn = feeTo != "0x0";
+
+            BigDecimal pnl = 0;
+
+            if (feeOn)
+            {
+                if (kLast != 0)
+                {
+                    var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                    var rootKLast = BigDecimal.Sqrt(kLast);
+
+                    if (rootK > rootKLast)
+                    {
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = (rootK * 5) + rootKLast;
+                        var liquidity = numerator / denominator;
+
+                        if (liquidity > 0)
+                            pnl -= ConvertLiquidityToEth(liquidity, tokenPrices); // Subtract fee from PNL as user is sending tokens to fee address
+                    }
+                }
+            }
+            else if (kLast != 0)
+            {
+                kLast = 0; // Update kLast value to 0 as per Solidity contract logic
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>>()
+                {
+                    new KeyValuePair<string, BigDecimal>(info.UserAddress, pnl) // Return PNL for user address
+                }
+            };
+        }
+
+        private string GetFeeToFromFactory(string factoryAddress)
+        {
+            // This is a placeholder for actual implementation
+            // Replace this with actual logic to fetch feeTo address from UniswapV2Factory using web3 or any other method
+            throw new NotImplementedException("This method needs to be implemented");
+        }
+
+        private BigDecimal ConvertLiquidityToEth(BigDecimal liquidity, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            // This is a placeholder for actual implementation
+            // Replace this with actual logic to convert liquidity tokens to Eth using provided token prices or any other method
+            throw new NotImplementedException("This method needs to be implemented");
+        }
+    }
+}
+```
+
+The above code includes a C# Formula method for the Solidity contract's `_mintFee` function. It follows all the provided rules and calculates the PNL based on the reserves, kLast value, factory address, total supply, and feeTo address. It handles various conditions mentioned in the Solidity function and returns a result with user addresses and their corresponding PNL values.

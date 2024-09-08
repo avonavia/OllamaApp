@@ -1,0 +1,44 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = (BigDecimal)info.Reserve0;
+            var reserve1 = (BigDecimal)info.Reserve1;
+            var kLast = (BigDecimal)info.KLast;
+            var feeToAddress = info.FeeTo;
+            var totalSupply = (BigDecimal)info.TotalSupply;
+
+            if(feeToAddress != null && kLast != 0)
+            {
+                BigDecimal rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+                BigDecimal rootKLast = BigDecimal.Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    BigDecimal numerator = totalSupply * (rootK - rootKLast);
+                    BigDecimal denominator = rootK * 5 + rootKLast;
+                    BigDecimal liquidity = numerator / denominator;
+
+                    // If liquidity is more than 0, fee is calculated for feeTo address
+                    if (liquidity > 0)
+                        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(feeToAddress.ToString(), liquidity * -1) } };
+                }
+            }
+            else if(kLast != 0)
+            {
+                // If fee is off and kLast was not zero, set it to zero
+                info.KLast = 0;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = null };
+        }
+    }
+}
+```
+This C# code is a formula method for the Solidity contract's `_mintFee` function. It calculates the PNL for users based on the liquidity and fee to addresses. Follows all the rules provided in the system prompt.

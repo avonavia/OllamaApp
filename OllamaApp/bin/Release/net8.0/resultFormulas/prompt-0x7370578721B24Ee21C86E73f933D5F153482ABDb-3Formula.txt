@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // This formula assumes that tokens are transferred as part of the transaction and their PNL is calculated accordingly
+        // Since this contract method only initializes tokens, it doesn't affect user's profit/loss directly. Hence, we return an empty result.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // No PNL calculation is performed in this method as it only sets the contract's state.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = Enumerable.Empty<KeyValuePair<string, BigDecimal>>()
+            };
+        }
+    }
+}
+```

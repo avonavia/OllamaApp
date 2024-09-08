@@ -1,0 +1,45 @@
+```csharp
+using System;
+using System.Numerics;
+using System.Collections.Generic;
+using Sauron.Core.Formulas;
+using Sauron.Core.Models;
+using Nethereum.Hex.HexConvertors.Extensions;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.DecodedCallInputParameters == null || !info.DecodedCallInputParameters.ContainsKey("to"))
+                return new CalculationResult<BigDecimal?>((BigDecimal?)null);
+
+            // Assuming that 'getReserves()', 'token0' and 'token1' are stored in some class or service and can be retrieved
+            var reserve0 = RetrieveReserve0();
+            var reserve1 = RetrieveReserve1();
+            var token0Address = RetrieveToken0Address();
+            var token1Address = RetrieveToken1Address();
+
+            var totalSupply = RetrieveTotalSupply();
+
+            // Assuming that token balances are retrievable and 'balanceOf' is a method or property in your service/class
+            var balance0 = RetrieveBalance(token0Address);
+            var balance1 = RetrieveBalance(token1Address);
+            var liquidity = RetrieveLiquidity();
+
+            // PNL calculation for user addresses
+            var amount0 = BigDecimal.Multiply(liquidity, BigDecimal.Divide(balance0, totalSupply));
+            var amount1 = BigDecimal.Multiply(liquidity, BigDecimal.Divide(balance1, totalSupply));
+
+            // User sent tokens to another address, calculate PNL accordingly
+            if (info.DecodedCallInputParameters["to"].ToString().HexToAddress() != info.From)
+                return new CalculationResult<BigDecimal?>(-(amount0 * tokenPrices[token0Address].Value + amount1 * tokenPrices[token1Address].Value));
+
+            // User burned tokens on their own address, no PNL change
+            return new CalculationResult<BigDecimal?>((BigDecimal?)null);
+        }
+    }
+}
+```

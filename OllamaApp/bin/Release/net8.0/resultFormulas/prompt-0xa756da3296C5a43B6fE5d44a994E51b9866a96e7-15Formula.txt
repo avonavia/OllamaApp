@@ -1,0 +1,23 @@
+Since the provided Solidity function adds bots to an array of addresses, and this operation doesn't generate any value or affect the balance of tokens, it doesn't make sense to calculate PNL for this transaction. However, I can provide a C# method that represents what the Solidity function does.
+
+Assuming that you have a `HashSet<string>` property called `Bots` in your `TransactionInfo` class and you want to add new bots to it:
+
+```csharp
+[assembly: FormulaAssembly("AddBots")]
+
+namespace Sauron.Formula.AddBots
+{
+    public class AddBotsFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Add bots to the HashSet of Bots in TransactionInfo object
+            foreach (var botAddress in info.BotsToAdd)
+                info.Bots.Add(botAddress);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = null };
+        }
+    }
+}
+```

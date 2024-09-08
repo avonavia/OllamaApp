@@ -1,0 +1,18 @@
+// This is a simple representation of the calculation without including all possible edge cases or error checking.
+   // The formula used for calculating PNL assumes that there's no fee for the swap operation.
+   // The formula is: PNL = (amountOut - amountIn) * price, where price is calculated as reserveBefore / reserveAfter
+   // This calculation assumes that amountIn and amountOut are in terms of token0
+
+using System;
+
+public class SwapCalculator
+{
+    public static decimal CalculatePNL(decimal amountOut, decimal amountIn, decimal reserveBeforeSwap, decimal reserveAfterSwap)
+    {
+        if (amountOut <= 0 || reserveBeforeSwap - amountOut <= 0) return 0; // no profit if output amount is invalid or same as the reserve before swap
+        if (reserveAfterSwap == 0M) throw new DivideByZeroException("Reserve after swap cannot be zero");
+
+        decimal price = reserveBeforeSwap / reserveAfterSwap;
+        return (amountOut - amountIn) * price;
+    }
+}

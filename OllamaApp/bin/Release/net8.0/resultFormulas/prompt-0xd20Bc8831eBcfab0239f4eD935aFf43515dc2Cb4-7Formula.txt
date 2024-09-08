@@ -1,0 +1,45 @@
+```csharp
+// Assembly Information
+[assembly: System.Reflection.AssemblyTitle("BurnFormula")]
+[assembly: System.Reflection.AssemblyDescription("PNL Calculation for Burn method in UniswapV2 contract")]
+
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Models;
+using Sauron.FormulaEngine;
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get reserves and balances
+            var reserve0 = (BigDecimal)info.FunctionData["_reserve0"];
+            var reserve1 = (BigDecimal)info.FunctionData["_reserve1"];
+            var balance0 = (BigDecimal)info.FunctionData["balance0"];
+            var balance1 = (BigDecimal)info.FunctionData["balance1"];
+            var totalSupply = (BigDecimal)info.ContractInfo["totalSupply"];
+            var liquidity = (BigDecimal)info.UserBalance;
+
+            // Calculate burned amounts
+            BigDecimal amount0 = liquidity * balance0 / totalSupply;
+            BigDecimal amount1 = liquidity * balance1 / totalSupply;
+
+            // Check if toAddress is the same as fromAddress
+            bool isSelfBurn = info.ToAddress == info.FromAddress;
+
+            // Calculate PNL
+            BigDecimal pnl = 0;
+            if (!isSelfBurn)
+            {
+                // If not a self-burn, user sent tokens to another address, so they lost the value of those tokens
+                pnl -= (amount0 * tokenPrices["token0"] + amount1 * tokenPrices["token1"]);
+            }
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

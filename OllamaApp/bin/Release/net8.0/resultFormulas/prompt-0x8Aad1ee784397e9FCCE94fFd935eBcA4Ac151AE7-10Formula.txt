@@ -1,0 +1,57 @@
+```csharp
+[assembly: FormulaAssembly("Sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the addresses for token0 and token1 from the transaction's Transfers object
+            string token0Address = info.Transfers[0].TokenInfo.Symbol;
+            string token1Address = info.Transfers[1].TokenInfo.Symbol;
+
+            // Get the contract's address
+            string thisAddress = info.ToAddress;
+
+            // Calculate the balances of token0 and token1 in the contract
+            BigDecimal balanceToken0 = GetBalance(info, token0Address);
+            BigDecimal balanceToken1 = GetBalance(info, token1Address);
+
+            // Assume reserve0 and reserve1 are known or can be obtained from the transaction's data
+            BigDecimal reserve0 = new BigDecimal("RESERVE_0");
+            BigDecimal reserve1 = new BigDecimal("RESERVE_1");
+
+            // Calculate PNL for token0 and token1 using the update function logic
+            BigDecimal pnlToken0 = CalculatePNL(balanceToken0, reserve0);
+            BigDecimal pnlToken1 = CalculatePNL(balanceToken1, reserve1);
+
+            // Convert PNL to Eth if necessary (depending on token prices)
+            // This part might need adjustment based on the exact logic of the Solidity contract
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                {
+                    Result = new[]
+                    {
+                        new KeyValuePair<string, BigDecimal>(token0Address, pnlToken0),
+                        new KeyValuePair<string, BigDecimal>(token1Address, pnlToken1)
+                    }
+                };
+        }
+
+        private static BigDecimal GetBalance(TransactionInfo info, string tokenAddress)
+        {
+            return info.Transfers
+                .Where(t => t.TokenInfo.Symbol == tokenAddress && t.ToAddress == info.ToAddress)
+                .Sum(t => t.Amount);
+        }
+
+        private static BigDecimal CalculatePNL(BigDecimal balance, BigDecimal reserve)
+        {
+            // Assuming the PNL calculation logic from the Solidity contract's _update function
+            return (balance * reserve * new BigDecimal("2")) - balance.Pow(2);
+        }
+    }
+}
+```

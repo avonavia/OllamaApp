@@ -1,0 +1,17 @@
+```csharp
+//Assembly info for PNL calculation without messages for user
+[assembly: FormulaAssembly("addBots")]
+
+namespace Sauron.Formula.AddBots
+{
+    public class AddBotsFormula : IFormulaPlugin
+    {
+        //Calculate the PNL for a transaction that adds bots to the system. Since adding bots does not directly impact PNL, this method will always return an empty sequence.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //The transaction does not directly impact PNL, so we return an empty sequence.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = Enumerable.Empty<KeyValuePair<string, BigDecimal>>() };
+        }
+    }
+}
+```

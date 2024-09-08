@@ -1,0 +1,62 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.skim
+{
+    public class skimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+            var fromAddress = info.FromAddress;
+
+            // Get the balance of each token in the contract before the transaction
+            var reserve0Before = BigDecimal.Zero;
+            var reserve1Before = BigDecimal.Zero;
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.TokenInfo.Symbol == "TOKEN0")
+                    reserve0Before += transfer.Amount;
+                else if (transfer.TokenInfo.Symbol == "TOKEN1")
+                    reserve1Before += transfer.Amount;
+            }
+
+            // Calculate the amount of each token sent to 'to' address
+            var skimmedToken0 = BigDecimal.Zero;
+            var skimmedToken1 = BigDecimal.Zero;
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.ToAddress == fromAddress && transfer.FromAddress != fromAddress)
+                {
+                    // Add the amount to the corresponding token's total skimmed
+                    if (transfer.TokenInfo.Symbol == "TOKEN0")
+                        skimmedToken0 += transfer.Amount;
+                    else if (transfer.TokenInfo.Symbol == "TOKEN1")
+                        skimmedToken1 += transfer.Amount;
+                }
+            }
+
+            // Calculate the PNL for each token considering their prices
+            var pnlToken0 = BigDecimal.Zero;
+            var pnlToken1 = BigDecimal.Zero;
+            if (tokenPrices != null)
+            {
+                var priceOfToken0 = tokenPrices.FirstOrDefault(p => p.Key == "TOKEN0").Value;
+                var priceOfToken1 = tokenPrices.FirstOrDefault(p => p.Key == "TOKEN1").Value;
+                if (priceOfToken0 > 0)
+                    pnlToken0 = skimmedToken0 * new BigDecimal((decimal)priceOfToken0);
+                if (priceOfToken1 > 0)
+                    pnlToken1 = skimmedToken1 * new BigDecimal((decimal)priceOfToken1);
+            }
+
+            // Calculate the total PNL by adding both tokens' PNLs and subtracting fees
+            var totalPnl = pnlToken0 + pnlToken1 - info.Fee;
+
+            results.Add(new KeyValuePair<string, BigDecimal>(fromAddress, totalPnl));
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results);
+        }
+    }
+}
+```

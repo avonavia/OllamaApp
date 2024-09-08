@@ -1,0 +1,50 @@
+[assembly: FormulaAssembly("openTrading")]
+
+using Nethereum.RPC.Eth.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.OpenTrading
+{
+    public class OpenTradingFormula : IFormulaPlugin
+    {
+        // CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula signature will be the same for all methods
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // In Solidity contract, owner adds liquidity to Uniswap V2 pool with ETH and tokens
+            // To calculate PNL for this transaction, we need to know the price of tokens at the time of adding liquidity
+            // This information can be obtained from tokenPrices parameter or from an external source (e.g. CoinGecko API)
+
+            var pnlResults = new List<KeyValuePair<string, BigDecimal>>();
+
+            // We assume that only owner can call this method and we know his address
+            var ownerAddress = "0xOwnerAddress";
+
+            // Get the amount of tokens that were added to the pool by the owner
+            var tokenAmountAdded = info.Transfers.Find(t => t.To == "UniswapV2PairAddress" && t.From == ownerAddress).Value;
+
+            // Get the amount of ETH that was used to add tokens to the pool by the owner
+            var ethAmountAdded = BigDecimal.FromDecimal((decimal)info.Value);
+
+            // Calculate the price of added tokens in ETH at the time of adding liquidity
+            var tokenPriceInEth = ethAmountAdded / tokenAmountAdded;
+
+            // Get the current price of tokens from tokenPrices parameter or external source
+            var currentTokenPrice = BigDecimal.FromDecimal(tokenPrices?.FirstOrDefault(p => p.Key == "TokenAddress").Value ?? 0);
+
+            // Calculate PNL for owner as a difference between current and initial prices multiplied by the amount of tokens added to the pool
+            var pnl = (currentTokenPrice - tokenPriceInEth) * tokenAmountAdded;
+
+            // Subtract fee from PNL. We assume that fee is 0.3% of the total value of tokens added to the pool in ETH
+            var fee = ethAmountAdded * 0.003m;
+            pnl -= fee;
+
+            // Add owner address and PNL to the results
+            pnlResults.Add(new KeyValuePair<string, BigDecimal>(ownerAddress, pnl));
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>() { Result = pnlResults };
+        }
+    }
+}

@@ -1,0 +1,23 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+namespace Sauron.Formula.initialize
+{
+    public class initializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize PNL dictionary with user addresses and their corresponding profit/loss
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            if (info.FromAddress != null && !pnlDictionary.ContainsKey(info.FromAddress))
+            {
+                pnlDictionary[info.FromAddress] = BigDecimal.Zero;
+            }
+
+            // No PNL changes for this method as it only initializes the contract and does not involve any transactions
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>.Success(pnlDictionary);
+        }
+    }
+}
+```

@@ -1,0 +1,32 @@
+//C# Formula method for Solidity contract method "_transferOwnership"
+
+using System;
+using System.Numerics;
+using System.Collections.Generic;
+using Sauron.Core.Formula;
+
+namespace Sauron.Formula.OwnershipTransferred
+{
+    public class OwnershipTransferredFormula : IFormulaPlugin
+    {
+        //This formula doesn't calculate any PNL as it's about ownership transfer, not token transfers
+        //Therefore, the method will return null for PNL calculation and a message about the ownership change
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Getting oldOwner and newOwner from input data (assuming it's present in TransactionInfo object)
+            string oldOwner = info.OldOwner;
+            string newOwner = info.NewOwner;
+
+            //Preparing the message about ownership change
+            string message = $"Ownership has been transferred from {oldOwner} to {newOwner}";
+
+            //As per the rules, returning null for PNL calculation and the ownership transfer message
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Data = null,
+                Message = message
+            };
+        }
+    }
+}

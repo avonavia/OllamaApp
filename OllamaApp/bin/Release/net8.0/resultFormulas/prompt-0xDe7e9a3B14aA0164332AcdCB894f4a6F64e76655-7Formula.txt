@@ -1,0 +1,37 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: Plugin(typeof(Sauron.Formula.Burn.BurnFormula), "Burn")]
+
+namespace Sauron.Formula.Burn
+{
+    using System;
+    using System.Collections.Generic;
+    using Nethereum.Util;
+
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<decimal?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get balances and liquidity
+            var balance0 = (decimal)info.Read["balance0"];
+            var balance1 = (decimal)info.Read["balance1"];
+            var totalSupply = (decimal)info.Read["totalSupply"];
+            var liquidity = (decimal)info.Read["liquidity"];
+
+            // Calculate amount of tokens burned
+            var amount0 = Math.Round(liquidity * balance0 / totalSupply, 18);
+            var amount1 = Math.Round(liquidity * balance1 / totalSupply, 18);
+
+            // Fetch token prices
+            decimal price0 = tokenPrices?.FirstOrDefault(t => t.Key == info.Read["token0"].ToString()).Value ?? 0;
+            decimal price1 = tokenPrices?.FirstOrDefault(t => t.Key == info.Read["token1"].ToString()).Value ?? 0;
+
+            // Calculate PNL in Eth
+            var pnl = amount0 * price0 + amount1 * price1 - info.Fee;
+
+            return new CalculationResult<decimal?> { Result = pnl };
+        }
+    }
+}
+```

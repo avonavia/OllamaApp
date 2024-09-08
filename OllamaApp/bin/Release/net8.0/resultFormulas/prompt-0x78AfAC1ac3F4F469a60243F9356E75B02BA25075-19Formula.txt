@@ -1,0 +1,48 @@
+Here is the C# Formula method for the Solidity contract method:
+
+```csharp
+[assembly: FormulaAssembly("UniswapV2_Update")]
+
+namespace Sauron.Formula.UniswapV2_Update
+{
+    public class UniswapV2_UpdateFormula : IFormulaPlugin
+    {
+        private uint blockTimestampLast = 0;
+        private BigDecimal price0CumulativeLast = BigDecimal.Zero;
+        private BigDecimal price1CumulativeLast = BigDecimal.Zero;
+        private BigDecimal reserve0 = BigDecimal.Zero;
+        private BigDecimal reserve1 = BigDecimal.Zero;
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = info.GetTokenBalance("Token0"); // replace "Token0" with the actual token symbol
+            var balance1 = info.GetTokenBalance("Token1"); // replace "Token1" with the actual token symbol
+
+            if (balance0 > BigDecimal.FromUInt(uint.MaxValue) || balance1 > BigDecimal.FromUInt(uint.MaxValue))
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "UniswapV2: OVERFLOW");
+
+            var _reserve0 = BigDecimal.Min(balance0, BigDecimal.FromUInt((uint)uint.MaxValue));
+            var _reserve1 = BigDecimal.Min(balance1, BigDecimal.FromUInt((uint)uint.MaxValue));
+
+            uint blockTimestamp = (uint)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % (2UL * 32));
+            uint timeElapsed = (blockTimestamp - blockTimestampLast) % (2UL * 32); // overflow is desired
+
+            if (timeElapsed > 0 && _reserve0 != BigDecimal.Zero && _reserve1 != BigDecimal.Zero)
+            {
+                price0CumulativeLast += (_reserve1 / _reserve0) * timeElapsed;
+                price1CumulativeLast += (_reserve0 / _reserve1) * timeElapsed;
+            }
+
+            reserve0 = _reserve0;
+            reserve1 = _reserve1;
+            blockTimestampLast = blockTimestamp;
+
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+            result.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, BigDecimal.Zero - info.Fee)); // Subtract Fee and assume it's in ETH
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```
+Please replace "Token0" and "Token1" with the actual token symbols. This code assumes that the Token balances are already decoded in `info` object and fee is in ETH. The formula calculates the PNL for user addresses, not tokens.

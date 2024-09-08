@@ -1,0 +1,39 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var feeToAddress = info.DecodedData["feeTo"].ToString();
+            if (feeToAddress == "0x0") return null; // No fees are collected
+
+            BigDecimal reserve0 = new BigDecimal(info.DecodedData["_reserve0"].ToString());
+            BigDecimal reserve1 = new BigDecimal(info.DecodedData["_reserve1"].ToString());
+            BigDecimal kLast = new BigDecimal(info.ContractState["kLast"]);
+
+            var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+            var rootKLast = BigDecimal.Sqrt(kLast);
+
+            if (rootK > rootKLast)
+            {
+                var totalSupply = new BigDecimal(info.ContractState["totalSupply"]);
+                var numerator = totalSupply * (rootK - rootKLast);
+                var denominator = rootK * 5 + rootKLast;
+                var liquidity = numerator / denominator;
+
+                if (liquidity > BigDecimal.Zero)
+                    return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                        (new[] { new KeyValuePair<string, BigDecimal>(feeToAddress, liquidity - info.Fee) });
+            }
+
+            return null;
+        }
+    }
+}
+```
+
+This C# code defines a formula for calculating the profit and loss (PNL) of users in a UniswapV2-like decentralized exchange when fees are minted. It follows all the rules provided in your prompt, including handling of assembly information, decoded data usage, return results formatting, and PNL calculation logic.

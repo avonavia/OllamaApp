@@ -1,0 +1,43 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Types;
+using Sauron.Formula;
+
+// Assembly info for PNL calculation formula
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        // Method for calculating PNL based on the given transaction info and token prices
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decoded information from the transaction input data
+            var toAddress = info.To;
+            var reserve0 = new BigInteger(info.DecodedInput["_reserve0"]);
+            var reserve1 = new BigInteger(info.DecodedInput["_reserve1"]);
+            var balance0 = new BigInteger(info.TokenBalances[info.DecodedInput["token0"]]);
+            var balance1 = new BigInteger(info.TokenBalances[info.DecodedInput["token1"]]);
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+            var totalSupply = new BigInteger(info.ContractData["totalSupply"]);
+
+            // Calculate liquidity minted
+            BigInteger liquidityMinted;
+            if (totalSupply == 0)
+                liquidityMinted = BigInteger.Sqrt(amount0 * amount1) - 1_000; // MINIMUM_LIQUIDITY is assumed to be 1_000
+            else
+                liquidityMinted = BigInteger.Min((amount0 * totalSupply) / reserve0, (amount1 * totalSupply) / reserve1);
+
+            // Check if sender is the recipient and calculate PNL accordingly
+            var pnl = toAddress == info.From ? -info.Fee : 0;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+        }
+    }
+}
+```

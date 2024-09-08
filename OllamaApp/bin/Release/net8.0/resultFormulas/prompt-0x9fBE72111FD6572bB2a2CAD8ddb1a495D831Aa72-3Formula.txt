@@ -1,0 +1,61 @@
+```csharp
+[assembly: FormulaAssembly("InitializePNL")]
+
+namespace Sauron.Formula.InitializePNL
+{
+    public class InitializePNLFormula : IFormulaPlugin
+    {
+        // Method to calculate PNL for each address based on UniswapV2 initialize method
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize a dictionary to store address PNL
+            var pnlByAddress = new Dictionary<string, BigDecimal>();
+
+            // Check if the transaction has transfers
+            if (info.Transfers == null || !info.Transfers.Any())
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+
+            // Loop through each transfer to calculate PNL
+            foreach (var transfer in info.Transfers)
+            {
+                var fromAddress = transfer.From;
+                var toAddress = transfer.To;
+
+                // Calculate PNL only for addresses that are involved in the transaction
+                if (!pnlByAddress.ContainsKey(fromAddress))
+                    pnlByAddress[fromAddress] = BigDecimal.Zero;
+
+                if (!pnlByAddress.ContainsKey(toAddress))
+                    pnlByAddress[toAddress] = BigDecimal.Zero;
+
+                // No PNL change for the UniswapV2 factory address as it initializes the pool
+            }
+
+            // Subtract fee from sender's PNL (if any)
+            var feeAmount = info.Fee ?? BigDecimal.Zero;
+            if (info.From != null && pnlByAddress.ContainsKey(info.From))
+                pnlByAddress[info.From] -= feeAmount;
+
+            // Convert PNL to Eth using token prices if provided
+            if (tokenPrices != null)
+                ConvertPnlToEth(pnlByAddress, tokenPrices);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlByAddress.Select(pair => new KeyValuePair<string, BigDecimal>(pair.Key, pair.Value)));
+        }
+
+        // Helper method to convert PNL from token amount to Eth
+        private void ConvertPnlToEth(Dictionary<string, BigDecimal> pnlByAddress, IEnumerable<KeyValuePair<string, decimal>> tokenPrices)
+        {
+            foreach (var pair in pnlByAddress)
+            {
+                var tokenSymbol = pair.Key; // Assume token symbol is the same as address for simplicity
+                if (tokenPrices.TryGetValue(tokenSymbol, out var price))
+                    pnlByAddress[pair.Key] *= new BigDecimal((decimal)price);
+            }
+        }
+    }
+}
+```

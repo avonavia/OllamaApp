@@ -1,0 +1,45 @@
+```csharp
+// PNL Calculation Method for UniswapV2 Swap function
+using System;
+
+namespace PnlCalculator
+{
+    public class PnlCalculator
+    {
+        // Method to calculate profit and loss (PNL)
+        public static decimal CalculatePnl(decimal reserve0, decimal reserve1, decimal amount0Out, decimal amount1Out, decimal feePercentage)
+        {
+            // Check if user sent tokens to themselves
+            bool isSelfSwap = amount0Out > 0 && amount1Out == 0;
+
+            decimal pnl = 0m;
+
+            // Calculate PNL for token0
+            if (amount0Out > 0)
+            {
+                decimal priceImpact = (amount0Out / reserve0) * 100;
+                decimal fee = amount0Out * (feePercentage / 100);
+                pnl -= amount0Out - fee; // subtract fee
+                pnl += reserve0 * (priceImpact / 100);
+            }
+
+            // Calculate PNL for token1
+            if (amount1Out > 0)
+            {
+                decimal priceImpact = (amount1Out / reserve1) * 100;
+                decimal fee = amount1Out * (feePercentage / 100);
+                pnl -= amount1Out - fee; // subtract fee
+                pnl += reserve1 * (priceImpact / 100);
+            }
+
+            // Adjust PNL if it's a self-swap
+            if (isSelfSwap)
+            {
+                pnl = Math.Min(pnl, 0m);
+            }
+
+            return pnl;
+        }
+    }
+}
+```

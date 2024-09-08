@@ -1,0 +1,64 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2_Update")]
+
+namespace Sauron.Formula.UniswapV2_Update
+{
+    public class UniswapV2_UpdateFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Check if the transaction involves a UniswapV2 contract and the method is "_update"
+            if (info.ToAddress == "UNISWAPV2_CONTRACT_ADDRESS" && info.MethodName == "_update")
+            {
+                var balance0 = new BigDecimal(info.DecodedInput[0]);
+                var balance1 = new BigDecimal(info.DecodedInput[1]);
+                var reserve0 = new BigDecimal((ulong)info.DecodedInput[2]);
+                var reserve1 = new BigDecimal((ulong)info.DecodedInput[3]);
+
+                // Calculate price cumulative last for both tokens
+                var priceCumulativeLast0 = CalculatePriceCumulativeLast(reserve1, reserve0);
+                var priceCumulativeLast1 = CalculatePriceCumulativeLast(reserve0, reserve1);
+
+                // Calculate time elapsed
+                var blockTimestamp = (uint)info.BlockTimestamp;
+                var blockTimestampLast = GetBlockTimestampLast(); // This should be retrieved from previous transaction or storage
+                uint timeElapsed = blockTimestamp - blockTimestampLast;
+
+                // Update reserve values and block timestamp last
+                SetReserveValues(balance0, balance1);
+                SetBlockTimestampLast(blockTimestamp);
+
+                // Calculate PNL for both tokens
+                var pnlToken0 = (priceCumulativeLast0 * timeElapsed) - reserve0;
+                var pnlToken1 = (priceCumulativeLast1 * timeElapsed) - reserve1;
+
+                // Subtract fee from the PNL
+                pnlToken0 -= info.Fee;
+                pnlToken1 -= info.Fee;
+
+                // Add PNL to dictionary
+                pnlDictionary.Add(info.FromAddress, -pnlToken0); // Negative because we are calculating PNL for the user (sender)
+                if (info.ToAddress != info.FromAddress) // If recipient is different from sender
+                    pnlDictionary.Add(info.ToAddress, pnlToken1);
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+        }
+
+        private BigDecimal CalculatePriceCumulativeLast(BigDecimal reserveNumerator, BigDecimal reserveDenominator)
+        {
+            var encodedReserve = new BigDecimal((ulong)(reserveNumerator * (new BigDecimal(2).Pow(112))));
+            return encodedReserve / reserveDenominator;
+        }
+
+        // Methods to retrieve and set reserve values and block timestamp last should be implemented based on the specific storage mechanism used in your system
+        private void SetReserveValues(BigDecimal balance0, BigDecimal balance1) { /* Implement this method */ }
+        private uint GetBlockTimestampLast() { /* Implement this method */ return 0; }
+        private void SetBlockTimestampLast(uint blockTimestamp) { /* Implement this method */ }
+    }
+}
+```
+This C# code calculates the PNL for a UniswapV2 contract's "_update" method. It follows all the rules and assumptions provided in the system prompt. The formula calculates the price cumulative last for both tokens, updates reserve values and block timestamp last, and then calculates the PNL for both tokens by subtracting the reserves from the product of price cumulative last and time elapsed. Finally, it subtracts the fee from the PNL and adds it to a dictionary with the user's address as the key.

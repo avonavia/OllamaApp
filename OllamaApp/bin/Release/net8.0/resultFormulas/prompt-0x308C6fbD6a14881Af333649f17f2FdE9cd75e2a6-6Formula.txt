@@ -1,0 +1,72 @@
+```csharp
+using Sauron.Formula.MINT;
+using Nethereum.ABI.FunctionEncoding.Attributes;
+using Nethereum.Hex.HexConvertors.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decode the input data to get the `to` address
+            var decodedInput = FunctionParameterDecoder.DecodeFunctionParameters<MintFunction>("mint", info.Data);
+            var toAddress = decodedInput[0];
+
+            // Retrieve token balances and reserves from TransactionInfo object
+            var balance0 = info.Tokens.FirstOrDefault(t => t.Key == "token0")?.Value ?? 0;
+            var balance1 = info.Tokens.FirstOrDefault(t => t.Key == "token1")?.Value ?? 0;
+            var reserve0 = (uint)info.Reserves[0];
+            var reserve1 = (uint)info.Reserves[1];
+
+            // Calculate the amount of tokens to be minted
+            uint amount0 = balance0 - reserve0;
+            uint amount1 = balance1 - reserve1;
+
+            // Check if fee is applicable and calculate liquidity
+            bool feeOn = _mintFee(reserve0, reserve1);
+            var totalSupply = info.TotalSupply;
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+            {
+                liquidity = (BigDecimal)Math.Sqrt((double)(amount0 * amount1)) - MinimumLiquidity;
+            }
+            else
+            {
+                liquidity = BigDecimal.Min(
+                    (BigDecimal)(amount0 * totalSupply / reserve0),
+                    (BigDecimal)(amount1 * totalSupply / reserve1)
+                );
+            }
+
+            // Calculate PNL for user addresses, not tokens
+            if (toAddress == info.From || toAddress == info.To)
+            {
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(BigDecimal.Zero);
+            }
+            else
+            {
+                var token0Price = tokenPrices?.FirstOrDefault(t => t.Key == "token0")?.Value ?? 1;
+                var token1Price = tokenPrices?.FirstOrDefault(t => t.Key == "token1")?.Value ?? 1;
+                var pnlEth = (amount0 * token0Price + amount1 * token1Price) - liquidity * (token0Price + token1Price);
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlEth);
+            }
+        }
+
+        private const uint MinimumLiquidity = 1000; // Define the minimum liquidity constant as per your contract
+
+        [Function("mint", "address")]
+        public class MintFunction : IFunctionOutputDTO
+        {
+            [Parameter("to", "address", 1, order: 1)]
+            public virtual string ToAddress { get; set; }
+        }
+    }
+}
+```

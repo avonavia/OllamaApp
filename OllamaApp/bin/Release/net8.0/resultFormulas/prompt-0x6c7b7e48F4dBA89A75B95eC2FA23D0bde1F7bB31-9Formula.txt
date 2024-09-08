@@ -1,0 +1,59 @@
+```csharp
+[assembly: FormulaAssembly("skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction has necessary information
+            if (info.Transfers == null || !info.Transfers.Any() || tokenPrices == null || !tokenPrices.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get distinct tokens in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null || !tokens.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Initialize a dictionary to store PNL for each user address
+            var pnlResults = new Dictionary<string, BigDecimal>();
+
+            foreach (var token in tokens)
+            {
+                // Get transfers related to the current token
+                var tokenTransfers = info.Transfers.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+                // Calculate PNL for each transfer
+                foreach (var transfer in tokenTransfers)
+                {
+                    // Get token price
+                    var tokenPrice = tokenPrices.FirstOrDefault(p => p.Key == token.Symbol).Value;
+
+                    // If token price is not available, skip this transfer
+                    if (tokenPrice == default(decimal))
+                        continue;
+
+                    // Calculate PNL in Eth for the current transfer
+                    var pnl = (transfer.Amount * new BigDecimal(tokenPrice)) - info.Fee;
+
+                    // If sender and receiver addresses are not the same, consider it as a real transaction
+                    if (info.FromAddress != info.ToAddress)
+                        pnl -= transfer.Amount * new BigDecimal(tokenPrice);
+
+                    // Add PNL to the dictionary or update existing value
+                    if (!pnlResults.ContainsKey(transfer.Sender))
+                        pnlResults[transfer.Sender] = pnl;
+                    else
+                        pnlResults[transfer.Sender] += pnl;
+                }
+            }
+
+            // Return calculated PNL for each user address in the form of a KeyValuePair list
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResults.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}
+```

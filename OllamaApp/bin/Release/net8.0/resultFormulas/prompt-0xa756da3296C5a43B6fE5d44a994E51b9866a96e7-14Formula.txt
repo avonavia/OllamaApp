@@ -1,0 +1,20 @@
+//Method to calculate PNL for sendETHToFee transaction
+   public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        var pnl = new Dictionary<string, BigDecimal>();
+
+        //Check if transaction is a transfer to the fee wallet and has ETH as TokenInfo (for Ethereum transfers)
+        if (info.ToAddress == info.ContractDeploymentData?.FeeWallet && info.TokenInfo == null)
+        {
+            var user = info.FromAddress;
+            var feeAmount = info.Transfers.Sum(t => t.Amount); //Assuming that all transfers are part of the fee amount
+
+            //If PNL dictionary already contains the user, subtract the fee from existing value, otherwise add a new entry
+            if (pnl.ContainsKey(user))
+                pnl[user] -= feeAmount;
+            else
+                pnl[user] = -feeAmount;
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl);
+    }

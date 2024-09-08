@@ -1,0 +1,45 @@
+//Method to calculate PNL for _safeTransfer method of Solidity contract
+
+[assembly: FormulaAssembly("SafeTransferPNL")]
+
+namespace Sauron.Formula.SafeTransferPNL
+{
+    public class SafeTransferPNLFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Get unique tokens and their amounts in the transaction
+            var tokensWithAmounts = GetTokensWithAmounts(info.Transfers);
+
+            //Create a dictionary to store user's PNL for each token
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            foreach (var pair in tokensWithAmounts)
+            {
+                var tokenSymbol = pair.Key.Symbol;
+                var amountTransferred = pair.Value;
+
+                //If there's no price for the token, we can't calculate PNL
+                if (!tokenPrices.Any(tp => tp.Key == tokenSymbol)) continue;
+
+                var tokenPrice = tokenPrices.First(tp => tp.Key == tokenSymbol).Value;
+
+                //Calculate the value of tokens transferred
+                var valueTransferred = amountTransferred * new BigDecimal((decimal)tokenPrice);
+
+                //Subtract fee from the value transferred (assuming fee is in ETH and already calculated)
+                var netValueTransferred = valueTransferred - info.Fee;
+
+                //If user sent tokens to themselves, PNL is 0
+                if (info.FromAddress == info.ToAddress)
+                    pnlResult[tokenSymbol] = BigDecimal.Zero;
+                else
+                    //Else, PNL is negative as user has sent money out
+                    pnlResult[tokenSymbol] = -netValueTransferred;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult.Select(kv => new KeyValuePair<string, BigDecimal>(kv.Key, kv.Value)));
+        }
+    }
+}

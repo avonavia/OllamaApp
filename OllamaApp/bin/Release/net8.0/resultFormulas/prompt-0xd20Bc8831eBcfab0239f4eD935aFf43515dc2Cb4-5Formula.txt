@@ -1,0 +1,55 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal(info.Arguments[0].Value);
+            var reserve1 = new BigDecimal(info.Arguments[1].Value);
+            var feeTo = info.FromAddress; // Assume that factory's feeTo method is not accessible in the TransactionInfo object and it returns info.FromAddress as a placeholder
+
+            if (feeTo != "0x0")
+            {
+                BigDecimal _kLast = new BigDecimal(info.ContractState["kLast"].Value);
+
+                if (_kLast != BigDecimal.Zero)
+                {
+                    BigDecimal rootK = Sqrt(reserve0 * reserve1);
+                    BigDecimal rootKLast = Sqrt(_kLast);
+
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = new BigDecimal(info.ContractState["totalSupply"].Value);
+                        BigDecimal numerator = totalSupply * (rootK - rootKLast);
+                        BigDecimal denominator = rootK * 5 + rootKLast;
+                        BigDecimal liquidity = numerator / denominator;
+
+                        if (liquidity > BigDecimal.Zero)
+                            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                                (new[] { new KeyValuePair<string, BigDecimal>(feeTo, liquidity - info.Fee) }); // Subtract Fee from PNL
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static BigDecimal Sqrt(BigDecimal n)
+        {
+            if (n == 0) return 0;
+            if (n < 0) throw new ArgumentOutOfRangeException();
+
+            var number = BigInteger.Parse(n.ToString());
+            var n1 = (number << 52) + (number << 1);
+            var result = n1 / 3 + (BigInteger.Pow(2, 64) * 4) / 3;
+            for (int i = 0; i < 6; i++)
+                result = ((result << 2) + n) / (result + BigInteger.One);
+
+            return new BigDecimal(result);
+        }
+    }
+}
+```

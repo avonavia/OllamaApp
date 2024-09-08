@@ -1,0 +1,29 @@
+Here's the C# Formula method to mirror the Solidity contract method `getReserves`:
+
+```csharp
+using System.Numerics;
+using Sauron.Core.Contracts.Models;
+using Sauron.Core.Formula;
+
+[assembly: FormulaAssembly("getReserves")] //This should be EXACTLY as function name in Solidity contract
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<Tuple<BigInteger, BigInteger, uint>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming that reserve0 and reserve1 are stored in the DecodedData dictionary of TransactionInfo object
+            var reserve0 = (BigInteger)info.DecodedData["reserve0"];
+            var reserve1 = (BigInteger)info.DecodedData["reserve1"];
+            var blockTimestampLast = (uint)info.DecodedData["blockTimestampLast"];
+
+            return new CalculationResult<Tuple<BigInteger, BigInteger, uint>>
+                { Result = Tuple.Create(reserve0, reserve1, blockTimestampLast), ErrorMessage = null };
+        }
+    }
+}
+```
+
+This code is a C# implementation of the `getReserves` function from a Solidity contract. It retrieves data stored in the TransactionInfo object (which is assumed to have been decoded beforehand) and returns it as a Tuple. The formula method always follows a specific structure and adheres to certain rules, such as calculating results without user messages, returning the correct PNL type, not trying to decode any data, and subtracting fees if necessary.

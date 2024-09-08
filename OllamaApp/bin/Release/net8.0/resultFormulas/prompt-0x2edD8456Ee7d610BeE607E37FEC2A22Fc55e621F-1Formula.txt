@@ -1,0 +1,35 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.GetReserves
+{
+    public class GetReservesFormula : IFormulaPlugin
+    {
+        // C# Formula method for Solidity getReserves()
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var result = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Get reserve0 and reserve1 values from TransactionInfo object.
+            // Assuming that reservedTokens is a Dictionary containing these tokens with their amounts in the transaction.
+            if (info.ReservedTokens?.TryGetValue("Token0", out var reserve0) == true &&
+                info.ReservedTokens.TryGetValue("Token1", out var reserve1) == true)
+            {
+                // Add reserve0 and reserve1 to the result list as KeyValuePair<string, BigDecimal>.
+                result.Add(new KeyValuePair<string, BigDecimal>("reserve0", (BigDecimal)reserve0));
+                result.Add(new KeyValuePair<string, BigDecimal>("reserve1", (BigDecimal)reserve1));
+            }
+
+            // Get blockTimestampLast value from TransactionInfo object.
+            if (info.BlockTimestampLast != null)
+            {
+                // Add blockTimestampLast to the result list as KeyValuePair<string, BigDecimal>.
+                result.Add(new KeyValuePair<string, BigDecimal>("blockTimestampLast", new BigDecimal((decimal)(uint)info.BlockTimestampLast)));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(result);
+        }
+    }
+}
+```

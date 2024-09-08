@@ -1,0 +1,46 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // This formula calculates PNL for UniswapV2 _update method based on the changes in reserves and user balances.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extracting required data from TransactionInfo
+            var balance0 = (BigDecimal)info.DecodedCallData["balance0"];
+            var balance1 = (BigDecimal)info.DecodedCallData["balance1"];
+            var reserve0 = (BigDecimal)(uint16)_info.DecodedStorage["reserve0"];
+            var reserve1 = (BigDecimal)(uint16)_info.DecodedStorage["reserve1"];
+            var blockTimestampLast = (ulong)_info.DecodedStorage["blockTimestampLast"];
+            var blockTimestamp = (ulong)info.BlockTimestamp;
+
+            // Calculating PNL based on the changes in reserves
+            BigDecimal price0CumulativeLast = _info.DecodedStorage["price0CumulativeLast"];
+            BigDecimal price1CumulativeLast = _info.DecodedStorage["price1CumulativeLast"];
+            uint32 timeElapsed = (uint)(blockTimestamp - blockTimestampLast); // overflow is desired
+
+            if (timeElapsed > 0 && reserve0 != 0 && reserve1 != 0)
+            {
+                price0CumulativeLast += ((reserve1 / reserve0) * timeElapsed).ToBigDecimal();
+                price1CumulativeLast += ((reserve0 / reserve1) * timeElapsed).ToBigDecimal();
+            }
+
+            BigDecimal pnl = (balance0 - reserve0) + (balance1 - reserve1);
+
+            // Subtracting Fee from PNL
+            var fee = info.Fee;
+            pnl -= fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+            {
+                Result = new List<KeyValuePair<string, BigDecimal>>
+                {
+                    new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl)
+                }
+            };
+        }
+    }
+}
+```

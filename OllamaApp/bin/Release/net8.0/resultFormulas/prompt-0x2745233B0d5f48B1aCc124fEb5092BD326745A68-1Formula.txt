@@ -1,0 +1,32 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        // This method will return reserves and the last block timestamp from a transaction on Uniswap V2-like exchange
+        // The returned value is an enumerable containing three key-value pairs: reserve0, reserve1, and blockTimestampLast
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserves = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Check if transaction has necessary data
+            if (info.Reserve0 != null && info.Reserve1 != null && info.BlockTimestampLast != null)
+            {
+                // Add reserve0 to the list
+                reserves.Add(new KeyValuePair<string, BigDecimal>("reserve0", info.Reserve0));
+
+                // Add reserve1 to the list
+                reserves.Add(new KeyValuePair<string, BigDecimal>("reserve1", info.Reserve1));
+
+                // Add blockTimestampLast to the list (converted from Unix timestamp to DateTime)
+                var lastBlockTimestamp = new DateTimeOffset(DateTime.UnixEpoch.AddSeconds((long)info.BlockTimestampLast)).UtcDateTime;
+                reserves.Add(new KeyValuePair<string, BigDecimal>("blockTimestampLast", (BigDecimal)lastBlockTimestamp));
+            }
+
+            // Return the result as a calculation result containing the list of reserves and block timestamp or null if data is missing
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(reserves.Count > 0 ? reserves : null);
+        }
+    }
+}
+```

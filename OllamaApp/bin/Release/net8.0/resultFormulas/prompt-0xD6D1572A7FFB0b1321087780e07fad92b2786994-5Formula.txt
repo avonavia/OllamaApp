@@ -1,0 +1,6 @@
+//Method to calculate PNL for renounceOwnership method of Solidity contract
+   public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+   {
+       //No tokens are transferred or used in this method, so no PNL can be calculated.
+       return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(){Result = null};
+   }

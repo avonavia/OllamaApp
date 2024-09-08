@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResult = new Dictionary<string, BigDecimal>();
+            var feeTo = info.FeeTo; // Fetch the feeTo address from TransactionInfo
+
+            if (feeTo != "0x0")
+            {
+                var _reserve0 = new BigDecimal(info.Reserve0);
+                var _reserve1 = new BigDecimal(info.Reserve1);
+                var kLast = new BigDecimal(info.KLast); // Assuming KLast is already stored in TransactionInfo
+
+                if (kLast != 0)
+                {
+                    var rootK = (_reserve0 * _reserve1).Sqrt();
+                    var rootKLast = kLast.Sqrt();
+
+                    if (rootK > rootKLast)
+                    {
+                        var totalSupply = new BigDecimal(info.TotalSupply); // Assuming TotalSupply is already stored in TransactionInfo
+                        var numerator = totalSupply * (rootK - rootKLast);
+                        var denominator = (rootK * 5) + rootKLast;
+                        var liquidity = numerator / denominator;
+
+                        if (liquidity > 0)
+                        {
+                            // Deduct the fee from the sender's PNL
+                            if (!pnlResult.ContainsKey(info.FromAddress))
+                                pnlResult[info.FromAddress] = BigDecimal.Zero;
+                            pnlResult[info.FromAddress] -= liquidity * new BigDecimal(tokenPrices?.FirstOrDefault(tp => tp.Key == info.TokenSymbol).Value ?? 1); // Assuming token price is provided in the parameters
+
+                            // Add the fee to the feeTo address's PNL
+                            if (!pnlResult.ContainsKey(feeTo))
+                                pnlResult[feeTo] = BigDecimal.Zero;
+                            pnlResult[feeTo] += liquidity * new BigDecimal(tokenPrices?.FirstOrDefault(tp => tp.Key == info.TokenSymbol).Value ?? 1); // Assuming token price is provided in the parameters
+                        }
+                    }
+                }
+            }
+
+            return pnlResult;
+        }
+    }
+}
+```

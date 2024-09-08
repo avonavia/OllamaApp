@@ -1,0 +1,45 @@
+```csharp
+// Assembly information
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get token balances and reserves
+            var balance0 = BigDecimal.Parse(info.TokenBalances[info.FromAddress].FirstOrDefault(t => t.Key == "token0").Value ?? "0");
+            var balance1 = BigDecimal.Parse(info.TokenBalances[info.FromAddress].FirstOrDefault(t => t.Key == "token1").Value ?? "0");
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+
+            // Calculate the amounts to be minted
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Check if fee is on and calculate liquidity
+            BigDecimal liquidity;
+            var totalSupply = info.TotalSupply;
+            if (totalSupply == 0)
+            {
+                const decimal MINIMUM_LIQUIDITY = 1m; // Replace with actual value
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            }
+            else
+            {
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+            }
+
+            // If toAddress is not the same as fromAddress, user has sent tokens, so PNL should be negative
+            var pnl = (info.ToAddress != info.FromAddress) ? -(amount0 + amount1) : 0;
+
+            // Subtract fee from PNL
+            if (info.Fee > 0)
+                pnl -= info.Fee;
+
+            return new CalculationResult<BigDecimal?> { Value = pnl };
+        }
+    }
+}
+```

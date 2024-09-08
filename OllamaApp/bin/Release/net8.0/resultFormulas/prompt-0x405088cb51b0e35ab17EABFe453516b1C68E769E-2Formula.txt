@@ -1,0 +1,59 @@
+//Assembly info
+[assembly: FormulaAssembly("UNISWAPV2_SAFETRANSFER")]
+
+namespace Sauron.Formula.UNISWAPV2_SAFETRANSFER
+{
+    public class UNISWAPV2_SAFETRANSFERFormula : IFormulaPlugin
+    {
+        //CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info) method implementation
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //Get the distinct tokens in transaction
+            var tokens = GetDistinctTokens(info.Transfers);
+
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            foreach (var token in tokens)
+            {
+                //Filter transfers for current token
+                var tokenTransfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+
+                if (tokenTransfers != null && tokenTransfers.Any())
+                {
+                    BigDecimal totalOutgoingAmount = 0;
+                    BigDecimal totalIncomingAmount = 0;
+
+                    foreach (var transfer in tokenTransfers)
+                    {
+                        //Check if the transfer is outgoing or incoming
+                        if (info.FromAddress == transfer.FromAddress)
+                            totalOutgoingAmount += transfer.Amount;
+                        else if (info.ToAddress == transfer.ToAddress)
+                            totalIncomingAmount += transfer.Amount;
+                    }
+
+                    //Subtract fee from outgoing amount
+                    var netOutgoingAmount = totalOutgoingAmount - info.Fee;
+
+                    //Calculate PNL (profit or loss) in Eth for current token
+                    BigDecimal pnlEth;
+                    if (tokenPrices != null && tokenPrices.Any(tp => tp.Key == token.Symbol))
+                        pnlEth = (totalIncomingAmount - netOutgoingAmount) * new BigDecimal(tokenPrices.First(tp => tp.Key == token.Symbol).Value);
+                    else
+                        continue; //If the price for current token is not provided, skip it
+
+                    results.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlEth));
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = results };
+        }
+
+        //Method to get DISTINCT tokens in transaction
+        public IEnumerable<TokenInfo>? GetDistinctTokens(List<TokenTransferInfo> transfers)
+        {
+            return transfers?.Select(t => t.TokenInfo).DistinctBy(t => t.Symbol);
+        }
+    }
+}

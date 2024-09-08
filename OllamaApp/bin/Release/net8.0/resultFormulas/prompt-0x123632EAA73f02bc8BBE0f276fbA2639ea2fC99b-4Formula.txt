@@ -1,0 +1,50 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Nethereum.Hex.BigEndian;
+using Sauron.Formula.Common;
+using Sauron.Types;
+
+// Assembly info for PNL calculation formula name
+[assembly: FormulaAssembly("UniswapV2PNL")]
+
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2PNL : IFormulaPlugin
+    {
+        // Calculation method for PNL based on the given Solidity contract method
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if transaction has a valid 'from' and 'to' address
+            if (info.FromAddress == null || info.ToAddress == null)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            var balance0 = info.Balance0;
+            var balance1 = info.Balance1;
+            var reserve0 = (uint)info.Reserve0;
+            var reserve1 = (uint)info.Reserve1;
+
+            // Calculate PNL using the provided Solidity contract method logic
+            if (balance0 <= uint.MaxValue && balance1 <= uint.MaxValue && reserve0 != 0 && reserve1 != 0)
+            {
+                BigDecimal price0 = new BigDecimal((BigInteger)reserve1).Divide(new BigDecimal((BigInteger)reserve0), MathContext.Decimals256);
+                BigDecimal price1 = new BigDecimal((BigInteger)reserve0).Divide(new BigDecimal((BigInteger)reserve1), MathContext.Decimals256);
+
+                // Subtract Fee if user sends something to themselves
+                if (fromAddress == toAddress)
+                    price0 = price0.Subtract(info.Fee);
+
+                BigDecimal pnl = balance0 * price0 - reserve0;
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(fromAddress.ToString(), pnl) });
+            }
+
+            // Return null if PNL calculation is not possible or an error occurred
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

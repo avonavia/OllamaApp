@@ -1,0 +1,46 @@
+```csharp
+using System;
+// Assembly information
+[assembly: System.Reflection.AssemblyTitle("PNL Calculation")]
+[assembly: System.Reflection.AssemblyDescription("Calculate PNL for a given transaction")]
+[assembly: System.Reflection.AssemblyConfiguration("")]
+[assembly: System.Reflection.AssemblyCompany("Your Company")]
+[assembly: System.Reflection.AssemblyProduct("PNL Calculator")]
+[assembly: System.Reflection.AssemblyCopyright("Copyright © Your Company 2023")]
+[assembly: System.Reflection.AssemblyTrademark("")]
+[assembly: System.Reflection.AssemblyCulture("")]
+[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+namespace PNLCalculation
+{
+    public class PnlCalculator
+    {
+        // Calculate PNL for a given transaction
+        public decimal CalculatePnl(decimal fromBalance, decimal toBalance, decimal amount)
+        {
+            if (fromBalance < amount)
+                throw new ArgumentException("Insufficient balance");
+
+            if (toBalance == fromBalance - amount)
+                return 0; // PNL is zero as no fees were incurred or no profit/loss was made
+
+            // Assuming that the fee was subtracted before transferring the funds to 'to' address,
+            // we calculate the net amount received by the user at the 'to' address after fees
+            decimal netAmount = toBalance - (fromBalance - amount);
+
+            // Convert the netAmount from token balance to Ethereum (ETH) value using current market price
+            // This step is skipped as per the instruction that PNL should be returned in Eth and not converted
+
+            // Calculate Profit & Loss (PNL) = Net Amount - Initial Investment
+            decimal pnl = netAmount - amount;
+
+            return pnl;
+        }
+    }
+}
+```
+This code provides a method to calculate the profit and loss (PNL) for a given transaction in Ethereum. The `CalculatePnl` function takes three parameters: the balance of the sender's address (`fromBalance`), the balance of the recipient's address (`toBalance`), and the amount transferred (`amount`). It calculates the net amount received by the user at the 'to' address after fees, and then calculates the PNL as the difference between this net amount and the initial investment.
+
+Please note that this is a basic implementation and may need to be adjusted based on your specific requirements or use case, such as handling cases where the recipient's balance is not simply the sender's balance minus the transferred amount (which could indicate other transactions taking place), or considering any additional fees or costs incurred during the transaction.
+
+Also note that the conversion from token balance to Ethereum value has been skipped as per your instruction, but would typically be necessary for accurately calculating PNL in a real-world scenario where tokens have a market value.

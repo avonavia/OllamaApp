@@ -1,0 +1,46 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Nethereum.Hex.BigEndian;
+    using Nethereum.Util;
+
+    public class _updateFormula : IFormulaPlugin
+    {
+        private decimal price0CumulativeLast = 0;
+        private decimal price1CumulativeLast = 0;
+        private uint reserve0 = 0;
+        private uint reserve1 = 0;
+        private uint blockTimestampLast = 0;
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Convert uint to decimal for calculations
+            decimal balance0 = (decimal)info.FromAmount;
+            decimal balance1 = (decimal)(tokenPrices?.FirstOrDefault(x => x.Key == info.ToAddress).Value ?? 0);
+
+            // Solidity's % operator works differently than C#'s, so we use Nethereum's Utilities for accurate conversion
+            uint blockTimestamp = (uint)BigEndianByteOrder.ConvertToUInt32(UnitConversionExtensions.ConvertFromHexToByteArray(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString("X8"))).GetBytes().Reverse().ToArray();
+            uint timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+
+            if (timeElapsed > 0 && reserve0 != 0 && reserve1 != 0)
+            {
+                price0CumulativeLast += ((decimal)reserve1 / reserve0) * timeElapsed;
+                price1CumulativeLast += ((decimal)reserve0 / reserve1) * timeElapsed;
+            }
+
+            reserve0 = (uint)balance0;
+            reserve1 = (uint)balance1;
+            blockTimestampLast = blockTimestamp;
+
+            // PNL is calculated for user addresses, not tokens. So we subtract the fees and calculate the difference in balance
+            var pnl = new BigDecimal(balance0 - info.FromAmount) + new BigDecimal(balance1 - (tokenPrices?.FirstOrDefault(x => x.Key == info.ToAddress).Value ?? 0));
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = new List<KeyValuePair<string, BigDecimal>> { new KeyValuePair<string, BigDecimal>(info.FromAddress, pnl) } };
+        }
+    }
+}
+```

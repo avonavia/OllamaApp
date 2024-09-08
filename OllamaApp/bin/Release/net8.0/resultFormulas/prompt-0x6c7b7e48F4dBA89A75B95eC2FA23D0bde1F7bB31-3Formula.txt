@@ -1,0 +1,20 @@
+```csharp
+[assembly: FormulaAssembly("initialize")]
+
+namespace Sauron.Formula.initialize
+{
+    public class initializeFormula : IFormulaPlugin
+    {
+        // This formula calculates PNL for a UniswapV2 initialization transaction. However, as the operation doesn't involve transfer of tokens or ether, there is no PNL to calculate. Therefore, this method always returns null.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction sender is a factory (as per the original Solidity contract)
+            if (info.FromAddress != info.FactoryAddress)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Transaction sender is not a factory");
+
+            // No PNL to calculate as no tokens are transferred in this transaction
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+        }
+    }
+}
+```

@@ -1,0 +1,25 @@
+// The formula to encode a uint112 value into uint224 as specified in Solidity contract
+[assembly: FormulaAssembly("Encode")]
+namespace Sauron.Formula.Encode
+{
+    public class EncodeFormula : IFormulaPlugin
+    {
+        private const decimal Q112 = 79228162514264337593543950336; // Value of 2^112
+
+        public CalculationResult<decimal>? Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Transfers != null && info.Transfers.Any())
+            {
+                // Assuming the amount to encode is stored in the first transfer's Amount property
+                var y = info.Transfers.First().Amount;
+
+                // Encode uint112 into uint224
+                var z = (decimal)y * Q112;
+
+                return new CalculationResult<decimal> { Data = z };
+            }
+
+            return null;
+        }
+    }
+}

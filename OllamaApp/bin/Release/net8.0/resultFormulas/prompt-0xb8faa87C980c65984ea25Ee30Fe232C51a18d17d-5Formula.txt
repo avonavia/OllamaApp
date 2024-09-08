@@ -1,0 +1,15 @@
+Here is a simple implementation of the Solidity contract method `trySub` in C#:
+
+```csharp
+public Tuple<bool, BigInteger> TrySub(BigInteger a, BigInteger b)
+{
+    if (b > a) return new Tuple<bool, BigInteger>(false, 0);
+    return new Tuple<bool, BigInteger>(true, a - b);
+}
+```
+
+This C# method accepts two `BigInteger` values as input, representing the `uint256` values from Solidity. It checks if `b` is greater than `a`. If true, it returns a tuple containing false and 0. Otherwise, it returns a tuple containing true and the result of `a - b`.
+
+Please note that in C#, there's no need for an unchecked block as there's no overflow checking when using the `-` operator with `BigInteger`. However, if you want to use the checked version, you can use the `Subtract` method instead of the `-` operator.
+
+As this is a simple utility function and not part of any specific formula or calculation, it doesn't fit into the context of your code rules for calculating PNL from transactions. If you need help with that, please provide more details about the transaction information and how to calculate PNL based on that.

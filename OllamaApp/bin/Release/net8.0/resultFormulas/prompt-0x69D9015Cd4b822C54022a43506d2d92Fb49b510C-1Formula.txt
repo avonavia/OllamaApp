@@ -1,0 +1,27 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            if (info.Reserve0 != null && info.Reserve1 != null && info.BlockTimestampLast != null)
+            {
+                var result = new List<KeyValuePair<string, BigDecimal>>
+                {
+                    new KeyValuePair<string, BigDecimal>("reserve0", info.Reserve0),
+                    new KeyValuePair<string, BigDecimal>("reserve1", info.Reserve1),
+                    new KeyValuePair<string, BigDecimal>("blockTimestampLast", new BigDecimal(info.BlockTimestampLast)) // assuming BlockTimestampLast is uint32 type in Solidity
+                };
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.CreateSuccessful(result);
+            }
+            else
+            {
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.CreateError("Reserve data is not available.");
+            }
+        }
+    }
+}
+```

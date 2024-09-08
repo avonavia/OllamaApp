@@ -1,0 +1,23 @@
+```csharp
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Get the addresses of tokens from Transfers object. Since this is an initialization function, we assume that there are only two transfers (for token0 and token1).
+            var addresses = info.Transfers?.Select(t => t.ToAddress).Distinct().ToList();
+
+            if (addresses == null || addresses.Count != 2)
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("Invalid number of token transfers.");
+
+            // PNL is not calculated in initialization function, so we just return an empty result.
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new List<KeyValuePair<string, BigDecimal>>());
+        }
+    }
+}
+```
+This C# code represents a formula for calculating profit and loss (PNL) in case of the initialization function from a Solidity contract. Since this is an initialization function, it doesn't perform any actions that would cause PNL changes. Therefore, we simply return an empty result as per the rules.

@@ -1,0 +1,37 @@
+[assembly: FormulaAssembly("Skim")]
+
+namespace Sauron.Formula.Skim
+{
+    public class SkimFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // The result is a dictionary of address-PNL pairs.
+            var results = new Dictionary<string, BigDecimal>();
+
+            // Get the tokens in this transaction.
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null) return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(null);
+
+            foreach (var tokenInfo in tokens)
+            {
+                // Get the total amount of this token that was transferred to the recipient.
+                var totalAmountTransferred = info.Transfers?.Where(t => t.TokenInfo.Symbol == tokenInfo.Symbol && t.ToAddress == info.ToAddress).Sum(t => t.Amount) ?? BigDecimal.Zero;
+
+                // Calculate PNL. If the transaction fee is subtracted from the total amount transferred, it means that the user has sent more tokens than they received.
+                var pnl = totalAmountTransferred - info.Fee;
+
+                // Update the results dictionary with the user's address and their PNL.
+                if (results.ContainsKey(info.FromAddress))
+                    results[info.FromAddress] += pnl;
+                else
+                    results[info.FromAddress] = pnl;
+            }
+
+            // Return the result as a CalculationResult object.
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+        }
+    }
+}

@@ -1,0 +1,34 @@
+```csharp
+// Assembly Information
+[assembly: FormulaAssembly("MINT")]
+
+namespace Sauron.Formula.MINT
+{
+    public class MINTFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var amount0 = info.BalanceBefore - info.Reserve0;
+            var amount1 = info.BalanceAfter - info.Reserve1;
+
+            BigDecimal liquidity;
+            if (info.TotalSupply == 0)
+                liquidity = System.Numerics.BigInteger.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * info.TotalSupply / info.Reserve0, amount1 * info.TotalSupply / info.Reserve1);
+
+            if (liquidity <= 0)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "INSUFFICIENT_LIQUIDITY_MINTED");
+
+            var pnl = liquidity; // Assuming liquidity is returned in Eth
+
+            if (info.ToAddress != info.FromAddress)
+                pnl -= Fee; // Subtracting fee only when sending tokens to a different address
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnl, null);
+        }
+    }
+}
+```
+The C# code above defines the `MINTFormula` class which implements the `IFormulaPlugin` interface. The `Formula` method calculates the PNL based on the transaction information provided in the `TransactionInfo` object. It subtracts the fee if the receiving address is different from the sender's address, and returns the PNL as a `CalculationResult`. Please ensure to replace `MINIMUM_LIQUIDITY` and `Fee` with appropriate values.

@@ -1,0 +1,53 @@
+```csharp
+// Assembly information is not necessary for this snippet as it's assumed that the surrounding project context provides it.
+
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core;
+using Sauron.Core.FormulaEngine;
+using Sauron.FormulaEngine;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Formula method for calculating PNL based on the burn function from the Solidity contract provided.
+        // This method assumes that TransactionInfo object contains necessary details, such as token balances before and after transaction.
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extracting relevant information from the TransactionInfo object.
+            var balance0BeforeBurn = new BigInteger(info.FromTokenBalance);
+            var balance1BeforeBurn = new BigInteger(info.ToTokenBalance);
+            var liquidity = new BigInteger(info.Liquidity);
+            var totalSupply = new BigInteger(info.TotalSupply);
+            var feeOn = info.FeeOn; // Assuming this information is available in the TransactionInfo object.
+
+            // Calculating burned amounts based on the provided Solidity contract method.
+            var amount0Burned = liquidity * balance0BeforeBurn / totalSupply;
+            var amount1Burned = liquidity * balance1BeforeBurn / totalSupply;
+
+            // Converting the calculated amounts to BigDecimal for further operations.
+            var amount0BurnedDecimal = new BigDecimal(amount0Burned);
+            var amount1BurnedDecimal = new BigDecimal(amount1Burned);
+
+            // Subtracting the burned amounts from their respective balances after the transaction to calculate the remaining balance.
+            var balance0AfterBurn = new BigDecimal(balance0BeforeBurn) - amount0BurnedDecimal;
+            var balance1AfterBurn = new BigDecimal(balance1BeforeBurn) - amount1BurnedDecimal;
+
+            // Calculating PNL based on the remaining balances and considering the fee.
+            // Assuming that user's PNL is the difference between total value of tokens before and after the transaction, taking into account token prices.
+            var pnl = (balance0AfterBurn * new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == "Token0").Value ?? 1) +
+                       balance1AfterBurn * new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == "Token1").Value ?? 1)) -
+                      (amount0BurnedDecimal * new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == "Token0").Value ?? 1) +
+                       amount1BurnedDecimal * new BigDecimal(tokenPrices?.FirstOrDefault(t => t.Key == "Token1").Value ?? 1));
+
+            // If fee is on, subtracting the fee from PNL.
+            if (feeOn)
+                pnl -= info.FeeAmount;
+
+            return new CalculationResult<BigDecimal>(pnl);
+        }
+    }
+}
+```

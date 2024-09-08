@@ -1,0 +1,45 @@
+Here is a simple interpretation of the provided Solidity contract's method "_safeTransfer" into a C# Formula method. This script calculates PNL based on transfers where the user is either the sender or the recipient.
+
+```csharp
+// Assembly name should be EXACTLY as function name in Solidity contract
+[assembly: FormulaAssembly("_safeTransfer")]
+
+namespace Sauron.Formula._safeTransfer
+
+public class _safeTransferFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        if (info.Transfers == null || !tokenPrices.Any())
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+        var pnlMap = new Dictionary<string, BigDecimal>();
+
+        // Get user addresses from transaction
+        var userAddresses = info.Transfers.Select(t => t.From).Distinct().ToList();
+        userAddresses.AddRange(info.Transfers.Select(t => t.To).Distinct());
+        userAddresses = userAddresses.Distinct().ToList();
+
+        foreach (var addr in userAddresses)
+        {
+            var transfersSentByUser = info.Transfers.Where(t => t.From == addr);
+            var totalSentValue = transfersSentByUser.Sum(t => t.Amount * GetTokenPrice(t.TokenInfo, tokenPrices));
+
+            var transfersReceivedByUser = info.Transfers.Where(t => t.To == addr);
+            var totalReceivedValue = transfersReceivedByUser.Sum(t => t.Amount * GetTokenPrice(t.TokenInfo, tokenPrices));
+
+            // Calculate PNL as (total received value - total sent value) - fee
+            pnlMap[addr] = totalReceivedValue - totalSentValue - info.Fee;
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlMap);
+    }
+
+    private decimal GetTokenPrice(TokenInfo token, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+    {
+        var price = tokenPrices.FirstOrDefault(tp => tp.Key == token.Symbol).Value;
+        return price > 0 ? price : 1m; // return 1 if no price is found
+    }
+}
+```

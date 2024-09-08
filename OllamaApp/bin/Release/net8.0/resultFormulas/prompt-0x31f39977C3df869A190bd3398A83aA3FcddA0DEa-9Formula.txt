@@ -1,0 +1,31 @@
+[assembly: FormulaAssembly("SKIM")]
+
+namespace Sauron.Formula.SKIM
+{
+    public class SKIMFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var toAddress = info.ToAddress;
+            var results = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.TokenInfo.Symbol == "TOKEN0" || transfer.TokenInfo.Symbol == "TOKEN1")
+                {
+                    // Subtract the fee from the amount sent to other addresses except when sending to itself
+                    var amount = transfer.Amount;
+                    if (toAddress != info.FromAddress)
+                        amount -= info.Fee;
+
+                    // Update or add the result for this address and token
+                    if (!results.ContainsKey(toAddress))
+                        results[toAddress] = BigDecimal.Zero;
+                    results[toAddress] += amount * new BigDecimal(tokenPrices?.FirstOrDefault(p => p.Key == transfer.TokenInfo.Symbol).Value ?? 1);
+                }
+            }
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(results.Select(r => new KeyValuePair<string, BigDecimal>(r.Key, r.Value)));
+        }
+    }
+}

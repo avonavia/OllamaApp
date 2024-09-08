@@ -1,0 +1,27 @@
+// This is the C# formula for calculating PNL based on _mintFee method of the Solidity contract provided.
+
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Domain.Transactions;
+using Sauron.Core.Interfaces.Formula;
+
+[assembly: FormulaAssembly("_mintFee")]  // This should be exactly as the function name in Solidity contract
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            // Fetch reserves and total supply from the transaction info object as per your data structure.
+            // For the sake of this example, let's assume we have these values:
+            var reserve0 = (BigDecimal)123456789;  // replace with actual value from transaction info
+            var reserve1 = (BigDecimal)987654321;  // replace with actual value from transaction info
+            var totalSupply = (BigDecimal)1000000;  // replace with actual value from transaction info
+
+            // Check if feeTo is non-zero. If so, calculate the PNL.
+            if(info.FeeTo != "0x0000000000000000000000000000000

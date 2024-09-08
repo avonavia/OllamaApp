@@ -1,0 +1,42 @@
+//C# Formula method for Solidity contract method: sub
+   //Assuming that this function is used to calculate profit/loss (PNL) in a financial transaction
+
+   namespace Sauron.Formula.SubtractionFormula
+
+   using System;
+   using System.Collections.Generic;
+   using System.Numerics;
+   using Sauron.Core.Interfaces;
+   using Sauron.Core.Models;
+
+   [assembly: FormulaAssembly("sub")]
+
+   public class SubtractionFormula : IFormulaPlugin
+   {
+       public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+           IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+       {
+           //Check if there are any transfers in the transaction
+           if (info.Transfers == null || !info.Transfers.Any())
+               return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                   ("No token transfers found in the transaction.");
+
+           //Initialize PNL dictionary for each address involved in the transaction
+           var pnlDictionary = info.Transfers.GroupBy(t => t.FromAddress).ToDictionary(g => g.Key, g => new BigDecimal(0));
+
+           //Calculate PNL for each address by subtracting the outgoing amount from the incoming amount
+           foreach (var transfer in info.Transfers)
+           {
+               pnlDictionary[transfer.FromAddress] -= transfer.Amount;
+               if (!pnlDictionary.ContainsKey(transfer.ToAddress))
+                   pnlDictionary[transfer.ToAddress] = new BigDecimal(0);
+               pnlDictionary[transfer.ToAddress] += transfer.Amount;
+           }
+
+           //Subtract the fee from the sender's PNL
+           if (info.Fee != null)
+               pnlDictionary[info.FromAddress] -= info.Fee;
+
+           return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+       }
+   }

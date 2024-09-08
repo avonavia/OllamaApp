@@ -1,0 +1,38 @@
+[assembly: FormulaAssembly("SKIM")]
+
+namespace Sauron.Formula.SKIM
+{
+    public class SKIMFormula : IFormulaPlugin
+    {
+        // Get token amounts from transfers objects in TransactionInfo
+        private BigDecimal GetTokenAmount(TransactionInfo info, string tokenAddress) =>
+            info.Transfers?.FirstOrDefault(t => t.TokenInfo.ContractAddress == tokenAddress).Amount ?? 0;
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var toAddress = info.ToAddress; // Receiver's address
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.GetDistinctTokens())
+            {
+                var tokenAmount = GetTokenAmount(info, transfer.ContractAddress);
+
+                // Calculate PNL for the receiver only if it's not a self-transfer
+                if (!string.Equals(toAddress, info.FromAddress))
+                {
+                    var tokenPrice = tokenPrices?.FirstOrDefault(t => t.Key == transfer.Symbol).Value ?? 0; // Token price in Eth
+                    pnlDictionary[toAddress] += tokenAmount * (decimal)tokenPrice; // Add PNL for the receiver
+                }
+            }
+
+            // Subtract Fee from PNL if it's a different address than the receiver
+            var fee = info.Fee;
+            if (!string.Equals(info.FromAddress, toAddress))
+            {
+                pnlDictionary[info.FromAddress] -= fee;
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+        }
+    }
+}

@@ -1,0 +1,52 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var reserve0 = new BigDecimal(info.DecodedInput[0]);
+            var reserve1 = new BigDecimal(info.DecodedInput[1]);
+            var feeTo = info.Calls[0].ToAddress; // Assuming factory call is the first call in TransactionInfo.Calls array
+
+            if (feeTo == "0x0") return null; // No fee to mint, so no PNL calculation needed
+
+            var kLast = new BigDecimal(info.StorageDataBefore["kLast"]);
+            var totalSupply = new BigDecimal(info.StorageDataBefore["totalSupply"]);
+
+            if (kLast != 0)
+            {
+                var rootK = reserve0 * reserve1;
+                var rootKLast = Sqrt(kLast);
+
+                if (rootK > rootKLast)
+                {
+                    var numerator = totalSupply * (rootK - rootKLast);
+                    var denominator = rootK * 5 + rootKLast;
+                    var liquidity = numerator / denominator;
+
+                    if (liquidity > 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = new[] { new KeyValuePair<string, BigDecimal>(feeTo, -liquidity * info.TokenPrice) } }; // Assuming PNL is calculated in ETH
+                }
+            }
+
+            return null;
+        }
+
+        private static BigDecimal Sqrt(BigDecimal n)
+        {
+            if (n == 0) return 0;
+            var z = n / 2;
+            while (true)
+            {
+                var y = (z + n / z) / 2;
+                if (y >= z) return y; // Return value when convergence is reached
+                z = y;
+            }
+        }
+    }
+}
+```
+This C# code implements the `_mintFee` method from a Solidity contract in a C# Formula for PNL calculation. It calculates the fee based on the reserves and updates the liquidity if necessary, then returns the PNL for the feeTo address. The code assumes that the factory call is the first call in TransactionInfo.Calls array and that PNL is calculated in ETH.

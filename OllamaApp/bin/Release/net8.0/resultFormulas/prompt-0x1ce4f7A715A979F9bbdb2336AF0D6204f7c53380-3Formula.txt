@@ -1,0 +1,28 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("Initialize")]
+
+namespace Sauron.Formula.Initialize
+{
+    public class InitializeFormula : IFormulaPlugin
+    {
+        // Method to calculate PNL based on UniswapV2 initialize method
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize PNL dictionary to store user addresses and their corresponding PNLs
+            var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+            // Check if the sender is a factory address
+            if (info.FromAddress != "FACTORY_ADDRESS")
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Error("UniswapV2: FORBIDDEN");
+
+            // Since we are only tracking user PNLs and not token PNLs, we don't calculate any direct PNL here.
+            // However, we still need to account for the fee paid by the sender (factory) as a negative PNL.
+            pnlDictionary[info.FromAddress] = -info.Fee;
+
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(pnlDictionary);
+        }
+    }
+}
+```

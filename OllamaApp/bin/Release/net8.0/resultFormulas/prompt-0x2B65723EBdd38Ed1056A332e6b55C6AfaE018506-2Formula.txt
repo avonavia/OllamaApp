@@ -1,0 +1,40 @@
+[assembly: FormulaAssembly("SafeTransfer")]
+
+namespace Sauron.Formula.SafeTransfer
+{
+    using Nethereum.Util;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Nethereum.Hex.HexConvertors.Extensions;
+
+    public class SafeTransferFormula : IFormulaPlugin
+    {
+        // UniswapV2's SELECTOR for transfer function
+        private const string TransferSelector = "0xa9059cbb";
+
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlPairs = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Filter out the relevant transfers using the transfer selector
+            var safeTransfers = info.Transfers?.Where(t => t.MethodID == TransferSelector).ToList() ?? new List<TokenTransferInfo>();
+
+            foreach (var address in info.Addresses)
+            {
+                // Calculate the PNL for each user address
+                var pnl = safeTransfers.Aggregate(BigDecimal.Zero, (accumulator, transfer) =>
+                    accumulator + (transfer.From == address ? -transfer.Amount : transfer.To == address ? transfer.Amount : BigDecimal.Zero));
+
+                // Subtract the fee if the sender is not the recipient
+                if (pnl != BigDecimal.Zero && info.Fee > 0)
+                    pnl -= new BigDecimal(info.Fee);
+
+                // If the PNL is non-zero, add it to the result
+                if (pnl != BigDecimal.Zero)
+                    pnlPairs.Add(new KeyValuePair<string, BigDecimal>(address, pnl));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlPairs);
+        }
+    }
+}

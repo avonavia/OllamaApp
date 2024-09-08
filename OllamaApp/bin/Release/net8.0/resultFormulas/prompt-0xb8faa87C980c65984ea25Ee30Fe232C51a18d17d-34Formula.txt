@@ -1,0 +1,61 @@
+//Method to calculate Profit/Loss for manualSwapBack function
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Check if the sender is the marketingWallet
+        if (info.FromAddress != "MARKETING_WALLET_ADDRESS")
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>
+                ("Sender is not the marketing wallet", null);
+
+        //Get all distinct tokens involved in the transaction
+        var tokens = GetDistinctTokens();
+        if (tokens == null)
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>("No transfers found", null);
+
+        Dictionary<string, BigDecimal> pnl = new Dictionary<string, BigDecimal>();
+        foreach (var token in tokens)
+        {
+            //Get all transfers related to the current token
+            var transfers = info.Transfers?.Where(t => t.TokenInfo.Symbol == token.Symbol);
+            if (transfers != null)
+            {
+                //Calculate total amount of the token transferred
+                var totalAmount = BigDecimal.Zero;
+                foreach (var transfer in transfers)
+                    totalAmount += transfer.Amount;
+
+                //If total amount is negative, it means tokens were swapped for ETH
+                if (totalAmount < BigDecimal.Zero)
+                {
+                    var ethReceived = -totalAmount * GetTokenPrice(tokenPrices, token.Symbol);
+                    AddToPnl(pnl, info.FromAddress, ethReceived);
+                }
+            }
+        }
+
+        //If there is ETH left in the contract after swapping, transfer it to the marketingWallet
+        if (info.Value > BigDecimal.Zero)
+        {
+            AddToPnl(pnl, info.FromAddress, -info.Value);
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, pnl.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)));
+    }
+
+    //Method to get the price of a token from tokenPrices dictionary
+    private decimal GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>>? tokenPrices, string symbol)
+    {
+        if (tokenPrices != null)
+            foreach (var pair in tokenPrices)
+                if (pair.Key == symbol)
+                    return pair.Value;
+        return 0;
+    }
+
+    //Method to add a value to the Profit/Loss dictionary for an address
+    private void AddToPnl(Dictionary<string, BigDecimal> pnl, string address, BigDecimal value)
+    {
+        if (pnl.ContainsKey(address))
+            pnl[address] += value;
+        else
+            pnl[address] = value;
+    }

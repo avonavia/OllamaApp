@@ -1,0 +1,34 @@
+```csharp
+// Assembly info
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if TransactionInfo is valid and contains necessary data
+            if (info == null || !info.Token0Balance.HasValue || !info.Token1Balance.HasValue || !info.Reserve0.HasValue || !info.Reserve1.HasValue)
+            {
+                return new CalculationResult<BigDecimal?>(null, "Invalid TransactionInfo");
+            }
+
+            BigDecimal amount0 = info.Token0Balance.Value - info.Reserve0.Value;
+            BigDecimal amount1 = info.Token1Balance.Value - info.Reserve1.Value;
+
+            // Assume that fee is already subtracted from the amounts
+            if (info.TotalSupply == 0)
+            {
+                var liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+                return new CalculationResult<BigDecimal?>(liquidity, null);
+            }
+            else
+            {
+                var liquidity = BigDecimal.Min((amount0 * info.TotalSupply) / info.Reserve0, (amount1 * info.TotalSupply) / info.Reserve1);
+                return new CalculationResult<BigDecimal?>(liquidity, null);
+            }
+        }
+    }
+}
+```

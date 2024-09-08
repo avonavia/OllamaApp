@@ -1,0 +1,44 @@
+```csharp
+[assembly: FormulaAssembly("sync")]
+
+namespace Sauron.Formula.Sync
+{
+    public class SyncFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fetch required information from TransactionInfo object
+            var token0 = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == "token0");
+            var token1 = info.Transfers?.FirstOrDefault(t => t.TokenInfo.Symbol == "token1");
+            var reserve0 = info.ReserveData["reserve0"]; // Assuming this information is available in TransactionInfo object
+            var reserve1 = info.ReserveData["reserve1"]; // Assuming this information is available in TransactionInfo object
+
+            // Calculate PNL for each user address involved in the transaction
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            if (token0 != null && token1 != null)
+            {
+                var deltaToken0 = token0.Amount - reserve0;
+                var deltaToken1 = token1.Amount - reserve1;
+
+                // Assuming that PNL is calculated as the change in value of token holdings
+                var pnl = (deltaToken0 * tokenPrices?.FirstOrDefault(p => p.Key == "token0").Value ?? 0) +
+                          (deltaToken1 * tokenPrices?.FirstOrDefault(p => p.Key == "token1").Value ?? 0);
+
+                // Update the PNL for user addresses involved in the transaction
+                if (!pnlResult.ContainsKey(token0.FromAddress))
+                    pnlResult[token0.FromAddress] = BigDecimal.Zero;
+                pnlResult[token0.FromAddress] += pnl;
+
+                if (!pnlResult.ContainsKey(token0.ToAddress))
+                    pnlResult[token0.ToAddress] = BigDecimal.Zero;
+                pnlResult[token0.ToAddress] -= pnl; // Subtract PNL from the recipient's account
+            }
+
+            // Return the PNL result for each user address involved in the transaction
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult.AsEnumerable());
+        }
+    }
+}
+```

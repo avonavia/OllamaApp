@@ -1,0 +1,38 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Model;
+using Sauron.Interfaces.Formula;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // PNL is calculated for the user who initiates the burn transaction
+        public CalculationResult<BigDecimal> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Decimal conversion from BigDecimal is already done beforehand
+            var balance0 = (decimal)info.TokenSentAmount;
+            var balance1 = (decimal)info.TokenReceivedAmount;
+
+            // Ensure that the transaction involves two tokens
+            if (!tokenPrices?.Skip(1).Any() ?? true)
+                return new CalculationResult<BigDecimal>(new BigDecimal(0));
+
+            // Get the prices of the two tokens
+            var token0Price = tokenPrices.First().Value;
+            var token1Price = tokenPrices.Skip(1).First().Value;
+
+            // Calculate the total value of the tokens burned
+            var totalBurnedValue = balance0 * token0Price + balance1 * token1Price;
+
+            // Calculate the PNL (assuming user sends tokens to someone else)
+            var pnl = -totalBurnedValue;
+
+            return new CalculationResult<BigDecimal>(new BigDecimal(pnl));
+        }
+    }
+}
+```

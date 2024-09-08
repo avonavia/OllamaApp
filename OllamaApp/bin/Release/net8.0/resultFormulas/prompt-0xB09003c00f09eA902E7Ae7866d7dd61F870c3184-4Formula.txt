@@ -1,0 +1,44 @@
+```csharp
+[assembly: FormulaAssembly("_update")]
+
+namespace Sauron.Formula._update
+{
+    public class _updateFormula : IFormulaPlugin
+    {
+        // Calculate PNL for UniswapV2 Swap operation, considering Fee and Time-weighted Average Price (TWAP)
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var results = new List<KeyValuePair<string, BigDecimal>>();
+
+            // Calculate TWAP for each trade
+            foreach (var trade in info.Trades)
+            {
+                if (trade.FromAddress != trade.ToAddress)
+                {
+                    var reserve0 = new BigDecimal(trade.Balance0);
+                    var reserve1 = new BigDecimal(trade.Balance1);
+
+                    // Calculate price0 and price1 TWAPs
+                    var price0TWAP = UQ112x112.Encode(reserve1).Uqdiv(reserve0);
+                    var price1TWAP = UQ112x112.Encode(reserve0).Uqdiv(reserve1);
+
+                    // Calculate PNL based on TWAP and traded amounts
+                    if (trade.FromAddress == info.UserAddress)
+                        results.Add(new KeyValuePair<string, BigDecimal>(info.UserAddress, -CalculatePNL(price0TWAP, trade.Amount0In, price1TWAP, trade.Amount1In, trade.Fee)));
+                    else if (trade.ToAddress == info.UserAddress)
+                        results.Add(new KeyValuePair<string, BigDecimal>(info.UserAddress, CalculatePNL(price1TWAP, trade.Amount1Out, price0TWAP, trade.Amount0Out, trade.Fee)));
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = results };
+        }
+
+        // Helper method to calculate PNL based on TWAP and traded amounts
+        private BigDecimal CalculatePNL(BigDecimal priceTWAPIn, BigDecimal amountIn, BigDecimal priceTWAPOut, BigDecimal amountOut, BigDecimal fee)
+        {
+            var pnl = (amountOut * priceTWAPOut - amountIn * priceTWAPIn) - fee;
+            return pnl;
+        }
+    }
+}
+```

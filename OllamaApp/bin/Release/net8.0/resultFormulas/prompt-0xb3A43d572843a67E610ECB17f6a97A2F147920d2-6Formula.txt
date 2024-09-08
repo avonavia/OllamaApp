@@ -1,0 +1,52 @@
+```csharp
+// Assembly info for PNL calculation
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Fetch the necessary data from TransactionInfo object
+            var reserve0 = (BigDecimal)info.InputData["_reserve0"];
+            var reserve1 = (BigDecimal)info.InputData["_reserve1"];
+            var balance0 = (BigDecimal)info.InputData["balance0"];
+            var balance1 = (BigDecimal)info.InputData["balance1"];
+            var totalSupply = (BigDecimal)info.InputData["totalSupply"];
+            var toAddress = info.ToAddress;
+            var fromAddress = info.FromAddress;
+
+            // Calculate amounts
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // Calculate liquidity
+            BigDecimal liquidity;
+            if (totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            else
+                liquidity = BigDecimal.Min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1);
+
+            // If the transaction was a mint to oneself, return PNL as 0
+            if (toAddress == fromAddress)
+                return new CalculationResult<BigDecimal?>(0m);
+
+            // Calculate price of liquidity in Eth using token prices
+            var ethPrice = tokenPrices?.FirstOrDefault(t => t.Key == "ETH").Value ?? throw new Exception("Eth price not found");
+            var token0Price = tokenPrices?.FirstOrDefault(t => t.Key == info.InputData["token0"]).Value ?? throw new Exception("Token 0 price not found");
+            var token1Price = tokenPrices?.FirstOrDefault(t => t.Key == info.InputData["token1"]).Value ?? throw new Exception("Token 1 price not found");
+            var liquidityEthPrice = (amount0 * token0Price + amount1 * token1Price) / liquidity;
+
+            // Calculate PNL in Eth
+            var pnl = liquidity * (ethPrice - liquidityEthPrice);
+
+            // Subtract fee from PNL, assuming a constant fee for simplicity
+            const decimal FEE_PERCENTAGE = 0.025m;
+            pnl -= pnl * FEE_PERCENTAGE;
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

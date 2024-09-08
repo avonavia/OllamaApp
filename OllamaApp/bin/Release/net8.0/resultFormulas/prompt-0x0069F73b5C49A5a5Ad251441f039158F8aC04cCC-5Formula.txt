@@ -1,0 +1,27 @@
+```csharp
+//Assembly name must be exact as function name in Solidity contract (even if it starts with a lowercase letter)
+[assembly: FormulaAssembly("_approve")]
+
+namespace Sauron.Formula._approve
+{
+    public class _approveFormula : IFormulaPlugin
+    {
+        //CalculationResult must always be CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>, having Address-PNL pairs in it or NULL.
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            //We assume that there is only one transfer object in the transaction for this method (_approve)
+            if (info.Transfers != null && info.Transfers.Count > 0)
+            {
+                var transfer = info.Transfers[0];
+                //The PNL in this case is zero as no actual token transfer takes place, only approval for future transfers.
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>(transfer.FromAddress, 0) });
+            }
+            else
+            {
+                //Return null if there is no transfer object in the transaction info
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null);
+            }
+        }
+    }
+}
+```

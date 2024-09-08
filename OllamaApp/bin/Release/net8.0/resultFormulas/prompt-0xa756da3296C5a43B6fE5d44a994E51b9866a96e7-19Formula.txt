@@ -1,0 +1,47 @@
+// This is the C# formula method for the Solidity contract's rescueERC20 function
+
+[assembly: FormulaAssembly("rescueERC20")]
+
+namespace Sauron.Formula.RescueERC20
+{
+    public class RescueERC20Formula : IFormulaPlugin
+    {
+        // Calculates the PNL for the user addresses based on the ERC20 token rescue operation
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize a dictionary to store the PNL for each user address
+            var pnlDict = new Dictionary<string, BigDecimal>();
+
+            // Iterate through all the transfers in the transaction info
+            foreach (var transfer in info.Transfers ?? Enumerable.Empty<TokenTransferInfo>())
+            {
+                // Check if the transfer is an ERC20 token and it's from this contract to _taxWallet
+                if (transfer.FromAddress == info.ToAddress && transfer.ToAddress == "_taxWallet")
+                {
+                    // Calculate the amount of tokens rescued based on the percent parameter
+                    var _amount = BigDecimal.Divide(BigDecimal.Multiply(transfer.Amount, new BigDecimal((decimal)info.Percent / 100)), 1);
+
+                    // Subtract the fee from the transferred amount
+                    _amount -= info.Fee;
+
+                    // Update the PNL for the user who initiated the transaction (fromAddress)
+                    if (pnlDict.ContainsKey(transfer.FromAddress))
+                        pnlDict[transfer.FromAddress] -= _amount;
+                    else
+                        pnlDict[transfer.FromAddress] = -_amount;
+
+                    // Update the PNL for the taxWallet (_taxWallet)
+                    if (pnlDict.ContainsKey("_taxWallet"))
+                        pnlDict["_taxWallet"] += _amount;
+                    else
+                        pnlDict["_taxWallet"] = _amount;
+                }
+            }
+
+            // Convert the dictionary to a list of KeyValuePairs and return it as the CalculationResult
+            var result = pnlDict.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value));
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(result);
+        }
+    }
+}

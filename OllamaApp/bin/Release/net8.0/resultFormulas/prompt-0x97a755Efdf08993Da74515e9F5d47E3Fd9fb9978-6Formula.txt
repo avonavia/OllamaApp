@@ -1,0 +1,52 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Cryptography;
+using Sauron.FormulaEngine.Result;
+using Sauron.FormulaEngine.Plugin;
+using System.Runtime.CompilerServices;
+
+[assembly: FormulaAssembly("Mint")]
+
+namespace Sauron.Formula.Mint
+{
+    public class MintFormula : IFormulaPlugin
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract relevant information from TransactionInfo object
+            var balance0 = info.TokenBalances[info.ContractAddress][0];
+            var balance1 = info.TokenBalances[info.ContractAddress][1];
+            var _reserve0 = info.GetReserves()[0];
+            var _reserve1 = info.GetReserves()[1];
+            var amount0 = BigDecimal.Subtract(balance0, _reserve0);
+            var amount1 = BigDecimal.Subtract(balance1, _reserve1);
+            var _totalSupply = info.TotalSupply;
+
+            // Calculate liquidity and perform checks
+            BigDecimal liquidity;
+            if (_totalSupply == 0)
+                liquidity = BigDecimal.Sqrt(BigDecimal.Multiply(amount0, amount1)) - new BigDecimal("1e3"); // MINIMUM_LIQUIDITY is assumed to be 10^3
+            else
+                liquidity = BigDecimal.Min(
+                    BigDecimal.Divide(BigDecimal.Multiply(amount0, _totalSupply), _reserve0),
+                    BigDecimal.Divide(BigDecimal.Multiply(amount1, _totalSupply), _reserve1));
+            if (liquidity <= 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(null); // INSUFFICIENT_LIQUIDITY_MINTED error
+
+            // Calculate PNL
+            var toAddress = info.ToAddress;
+            var fromAddress = info.FromAddress;
+            BigDecimal pnl;
+            if (toAddress != fromAddress)
+                pnl = -liquidity * new BigDecimal(tokenPrices[info.TokenSymbols[0]]); // Assuming PNL is calculated in Eth and token0's price is provided
+            else
+                pnl = BigDecimal.Zero; // No PNL change if user sends tokens to themselve
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>>(new[] { new KeyValuePair<string, BigDecimal>("PNL", pnl) });
+        }
+    }
+}
+```

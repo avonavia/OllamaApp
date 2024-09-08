@@ -1,0 +1,29 @@
+// Formula for renounceOwnership function of Solidity contract
+
+[assembly: FormulaAssembly("renounceOwnership")]
+
+namespace Sauron.Formula.RenounceOwnership
+{
+    public class RenounceOwnershipFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction sender is the current owner of the contract
+            string ownerAddress = info.ContractOwner;
+            string senderAddress = info.FromAddress;
+
+            if (ownerAddress == senderAddress)
+            {
+                // The ownership has been renounced, so there is no PNL change for any address
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+            }
+            else
+            {
+                // The transaction sender is not the current owner, so there should be an error message
+                string message = "Only the contract owner can renounce ownership.";
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, message);
+            }
+        }
+    }
+}

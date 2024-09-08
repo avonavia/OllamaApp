@@ -1,0 +1,62 @@
+Here's the C# Formula method for the provided Solidity contract method:
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Entities;
+using Sauron.Interfaces.Formulas;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // The formula for calculating PNL in the burn method of the UniswapV2 contract
+        public CalculationResult<BigInteger?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var fromAddress = info.FromAddress;
+            var toAddress = info.ToAddress;
+            var reserve0 = BigInteger.Parse(info.TokenReserve0);
+            var reserve1 = BigInteger.Parse(info.TokenReserve1);
+            var balance0 = BigInteger.Parse(info.Balance0);
+            var balance1 = BigInteger.Parse(info.Balance1);
+            var liquidity = BigInteger.Parse(info.Liquidity);
+            var totalSupply = BigInteger.Parse(info.TotalSupply);
+
+            // Calculate the amount of tokens burned
+            var amount0 = (liquidity * balance0) / totalSupply;
+            var amount1 = (liquidity * balance1) / totalSupply;
+
+            // Check if user sent something to themselves, if so, no PNL is calculated
+            if (fromAddress.Equals(toAddress))
+                return new CalculationResult<BigInteger?>(0);
+
+            // If the burn was successful and tokens were transferred to a different address, calculate PNL
+            var token0Price = GetTokenPrice(info.Token0Address, tokenPrices);
+            var token1Price = GetTokenPrice(info.Token1Address, tokenPrices);
+
+            if (token0Price == null || token1Price == null)
+                return new CalculationResult<BigInteger?>(null, "Unable to retrieve token prices");
+
+            // PNL is calculated in Eth, so we need to convert the burned tokens into Eth
+            var pnl = amount0 * token0Price.Value + amount1 * token1Price.Value;
+
+            return new CalculationResult<BigInteger?>(pnl);
+        }
+
+        private decimal? GetTokenPrice(string address, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices)
+        {
+            if (tokenPrices == null) return null;
+
+            foreach (var pair in tokenPrices)
+            {
+                if (pair.Key.Equals(address))
+                    return pair.Value;
+            }
+
+            return null;
+        }
+    }
+}
+```

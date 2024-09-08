@@ -1,0 +1,36 @@
+```csharp
+using System;
+
+public class PnlCalculator
+{
+    // Assembly info for PNL calculation formula
+    [assembly: System.Reflection.AssemblyTitle("PnlCalculator")]
+    [assembly: System.Reflection.AssemblyDescription("PNL Calculation Formula")]
+    [assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
+
+    // Method for PNL calculation in Eth
+    public static decimal CalculatePNL(decimal amount0Out, decimal amount1Out, decimal reserve0, decimal reserve1, decimal feePercentage)
+    {
+        // Check if the output amounts are valid
+        if (amount0Out <= 0 && amount1Out <= 0)
+            throw new ArgumentException("Insufficient output amount");
+
+        // Calculate input amounts
+        var amount0In = reserve0 - amount0Out;
+        var amount1In = reserve1 - amount1Out;
+
+        // Check if the input amounts are valid
+        if (amount0In <= 0 && amount1In <= 0)
+            throw new ArgumentException("Insufficient input amount");
+
+        // Calculate fees in Eth
+        var feeEth0 = amount0In * feePercentage / 100;
+        var feeEth1 = amount1In * feePercentage / 100;
+
+        // Calculate PNL in Eth
+        decimal pnl = (amount0Out - amount0In) + (amount1Out - amount1In) - (feeEth0 + feeEth1);
+
+        return pnl;
+    }
+}
+```

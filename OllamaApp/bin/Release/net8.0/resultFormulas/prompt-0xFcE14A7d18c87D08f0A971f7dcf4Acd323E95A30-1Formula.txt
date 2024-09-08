@@ -1,0 +1,37 @@
+[assembly: FormulaAssembly("getReserves")]
+
+using System;
+using System.Collections.Generic;
+using Nethereum.Hex.HexConvertors.Extensions;
+using BigDecimal = Nethereum.Util.UnitConversion.BigDecimal;
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if TransactionInfo contains necessary data
+            if (info.DecodedInput == null || !info.DecodedInput.TryGetValue("reserve0", out object reserve0Obj) || !info.DecodedInput.TryGetValue("reserve1", out object reserve1Obj))
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Failure("Insufficient data in TransactionInfo");
+
+            // Convert objects to appropriate types
+            var reserve0 = new BigDecimal(reserve0Obj.ToString().HexToByteArray());
+            var reserve1 = new BigDecimal(reserve1Obj.ToString().HexToByteArray());
+
+            // Get blockTimestampLast from TransactionInfo
+            if (!info.DecodedInput.TryGetValue("blockTimestampLast", out object blockTimestampLastObj))
+                return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Failure("Insufficient data in TransactionInfo");
+
+            var blockTimestampLast = uint.Parse(blockTimestampLastObj.ToString());
+
+            // Return the results as KeyValuePairs with appropriate names
+            return CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>.Success(new List<KeyValuePair<string, BigDecimal>>
+            {
+                new KeyValuePair<string, BigDecimal>("_reserve0", reserve0),
+                new KeyValuePair<string, BigDecimal>("_reserve1", reserve1),
+                new KeyValuePair<string, BigDecimal>("_blockTimestampLast", new BigDecimal(blockTimestampLast))
+            });
+        }
+    }
+}

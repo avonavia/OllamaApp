@@ -1,0 +1,21 @@
+// This formula does not calculate PNL for the openTrading method as it doesn't involve any direct financial transactions with external addresses.
+// However, if there are subsequent methods that do involve transactions (like buyTokens or sellTokens), this formula can be expanded to include those.
+
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.CSharpPluginFramework;
+using Sauron.Core.CSharpPluginFramework.Models;
+
+namespace Sauron.Formula.OpenTrading
+{
+    public class OpenTradingFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // As the openTrading method doesn't involve any direct financial transactions with external addresses, PNL is not calculated here.
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>((IEnumerable<KeyValuePair<string, BigDecimal>>?)null);
+        }
+    }
+}

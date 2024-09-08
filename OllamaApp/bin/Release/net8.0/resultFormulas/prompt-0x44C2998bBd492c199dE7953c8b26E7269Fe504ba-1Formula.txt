@@ -1,0 +1,22 @@
+```CSharp
+[assembly: FormulaAssembly("add")]
+
+namespace Sauron.Formula.Add
+{
+    public class AddFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var transfers = info.Transfers;
+            if (transfers == null || !transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get the sum of all token amounts in the transaction
+            var totalAmount = transfers.Aggregate(BigDecimal.Zero, (acc, transfer) => acc + transfer.Amount);
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[] { new KeyValuePair<string, BigDecimal>("PNL", totalAmount - info.Fee) });
+        }
+    }
+}
+```
+This C# code calculates the sum of all token amounts in a transaction and subtracts the transaction fee to get the profit or loss (PNL). The calculated PNL is then returned as part of the `CalculationResult` object.

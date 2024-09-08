@@ -1,0 +1,50 @@
+```csharp
+using Sauron.Core;
+using Sauron.Formula;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.BurnFormula
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigInteger?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Assuming reserve0 and reserve1 are already decoded from TransactionInfo object
+            var reserve0 = BigInteger.Parse(info["reserve0"]);
+            var reserve1 = BigInteger.Parse(info["reserve1"]);
+
+            var balance0 = BigInteger.Parse(info["balance0"]);
+            var balance1 = BigInteger.Parse(info["balance1"]);
+            var liquidity = BigInteger.Parse(info["liquidity"]);
+
+            // Assuming totalSupply is already decoded from TransactionInfo object
+            var totalSupply = BigInteger.Parse(info["totalSupply"]);
+
+            // Calculate the burned amounts for token0 and token1
+            var amount0 = liquidity * balance0 / totalSupply;
+            var amount1 = liquidity * balance1 / totalSupply;
+
+            // PNL is calculated based on the difference between the burned tokens' value and their current market price
+            BigInteger pnl = 0;
+            if (tokenPrices != null)
+            {
+                foreach(var tokenPrice in tokenPrices)
+                {
+                    if(tokenPrice.Key == info["token0"])
+                        pnl -= amount0 * (decimal)tokenPrice.Value;
+                    else if(tokenPrice.Key == info["token1"])
+                        pnl -= amount1 * (decimal)tokenPrice.Value;
+                }
+            }
+
+            // Adjust PNL if the burn is performed to own address (assuming 'to' is already decoded from TransactionInfo object)
+            if(info["to"] == info["from"])
+                pnl += (decimal)(amount0 + amount1); // assuming tokens are worth 1 ETH each
+
+            return new CalculationResult<BigInteger?> { Result = (BigInteger?)pnl };
+        }
+    }
+}
+```

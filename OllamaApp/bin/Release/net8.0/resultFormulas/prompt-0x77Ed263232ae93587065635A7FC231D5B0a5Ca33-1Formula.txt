@@ -1,0 +1,36 @@
+```csharp
+[assembly: FormulaAssembly("getReserves")]
+
+namespace Sauron.Formula.getReserves
+{
+    public class getReservesFormula : IFormulaPlugin
+    {
+        // Function to calculate reserves for the transaction, returns a KeyValuePair with reserve0, reserve1 and blockTimestampLast
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if the transaction has any transfers to calculate reserves from
+            if (info.Transfers == null || !info.Transfers.Any())
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Assuming that reserve0 and reserve1 are the amounts of tokens transferred to the first two distinct addresses in the transaction
+            var transfers = info.Transfers.OrderBy(t => t.ToAddress).DistinctBy(t => t.ToAddress).Take(2).ToList();
+
+            if (transfers.Count != 2)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Get the amounts of reserve0 and reserve1 in BigDecimal format
+            var reserve0 = transfers[0].Amount;
+            var reserve1 = transfers[1].Amount;
+
+            // Assume that blockTimestampLast is not directly available in TransactionInfo, so it's not included in the result
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new[]
+            {
+                new KeyValuePair<string, BigDecimal>("reserve0", reserve0),
+                new KeyValuePair<string, BigDecimal>("reserve1", reserve1)
+            });
+        }
+    }
+}
+```

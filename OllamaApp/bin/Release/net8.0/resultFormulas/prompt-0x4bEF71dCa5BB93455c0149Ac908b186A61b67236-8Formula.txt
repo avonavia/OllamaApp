@@ -1,0 +1,58 @@
+Here is a C# method for calculating PNL (Profit and Loss) based on the provided Solidity contract method. I've assumed that you have the reserve0, reserve1, amount0Out, amount1Out, feePercentage, msgSenderAddress, and toAddress as input parameters. This calculation doesn't include any messages for the user.
+
+```csharp
+using System;
+using System.Numerics;
+
+public class ProfitLossCalculator
+{
+    // Assembly information
+    [System.Reflection.AssemblyVersion("1.0.*")]
+
+    /// <summary>
+    /// Calculates the profit and loss for a swap transaction based on input parameters.
+    /// </summary>
+    /// <param name="reserve0">The reserve of token 0</param>
+    /// <param name="reserve1">The reserve of token 1</param>
+    /// <param name="amount0Out">Amount of token 0 to be swapped out</param>
+    /// <param name="amount1Out">Amount of token 1 to be swapped out</param>
+    /// <param name="feePercentage">The fee percentage for the swap transaction</param>
+    /// <param name="msgSenderAddress">The address of the message sender</param>
+    /// <param name="toAddress">The receiving address for the swapped tokens</param>
+    /// <returns>Profit and loss (in Eth) for the swap transaction</returns>
+    public static decimal CalculatePNL(decimal reserve0, decimal reserve1, decimal amount0Out, decimal amount1Out, decimal feePercentage, string msgSenderAddress, string toAddress)
+    {
+        // Check if amounts are greater than zero and reserves are sufficient
+        if (!(amount0Out > 0 || amount1Out > 0)) throw new ArgumentException("UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT");
+        if (!(amount0Out < reserve0 && amount1Out < reserve1)) throw new InvalidOperationException("UniswapV2: INSUFFICIENT_LIQUIDITY");
+
+        // Calculate amounts in based on the balance after transferring tokens out
+        decimal balance0 = reserve0 - amount0Out;
+        decimal balance1 = reserve1 - amount1Out;
+        decimal amount0In = reserve0 > balance0 ? reserve0 - balance0 : 0;
+        decimal amount1In = reserve1 > balance1 ? reserve1 - balance1 : 0;
+
+        // Check if there was a sufficient input amount for the swap transaction
+        if (!(amount0In > 0 || amount1In > 0)) throw new InvalidOperationException("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+
+        // Calculate adjusted balances to account for fees
+        decimal balance0Adjusted = balance0 * 1000 - amount0In * 3;
+        decimal balance1Adjusted = balance1 * 1000 - amount1In * 3;
+
+        // Check if the K constant invariant is maintained after the swap transaction
+        if (!(balance0Adjusted * balance1Adjusted >= reserve0 * reserve1 * Math.Pow(1000, 2))) throw new InvalidOperationException("UniswapV2: K");
+
+        // Calculate PNL (in Eth)
+        decimal totalAmountOut = amount0Out + amount1Out;
+        decimal fee = totalAmountOut * (feePercentage / 100);
+        decimal netAmountOut = totalAmountOut - fee;
+
+        if (msgSenderAddress == toAddress) return 0; // PNL is zero if sender and receiver addresses are the same
+
+        // Assume that the price of ETH in USD doesn't change during the swap transaction
+        // Calculate PNL based on the difference between input amount and output amount (ignoring fees for simplicity)
+        decimal totalAmountIn = amount0In + amount1In;
+        return netAmountOut - totalAmountIn; // PNL is negative if user sent money to another address, positive otherwise
+    }
+}
+```

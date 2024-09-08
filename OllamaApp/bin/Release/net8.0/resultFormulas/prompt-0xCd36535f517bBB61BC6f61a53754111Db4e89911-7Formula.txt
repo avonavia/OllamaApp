@@ -1,0 +1,36 @@
+```csharp
+// Sauron.Formula.UniswapV2Burn
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Sauron.Formula.UniswapV2Burn
+{
+    public class UniswapV2BurnFormula : IFormulaPlugin
+    {
+        // Calculate PNL for the burn method in UniswapV2 contract
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0BeforeBurn = info.TokenBalances[info.ContractAddresses["token0"]];
+            var balance1BeforeBurn = info.TokenBalances[info.ContractAddresses["token1"]];
+
+            // Calculate the amount of tokens burned based on liquidity and total supply
+            var liquidity = info.TokenBalances[info.UserAddress];
+            var totalSupply = BigDecimal.FromString(info.ExtraInfo["totalSupply"].ToString());
+            var amount0 = (liquidity * balance0BeforeBurn) / totalSupply;
+            var amount1 = (liquidity * balance1BeforeBurn) / totalSupply;
+
+            // Calculate the value of tokens burned in Eth by using token prices
+            var ethValueOfAmount0 = amount0 * BigDecimal.FromString(tokenPrices["token0"].ToString());
+            var ethValueOfAmount1 = amount1 * BigDecimal.FromString(tokenPrices["token1"].ToString());
+            var totalEthValueBurned = ethValueOfAmount0 + ethValueOfAmount1;
+
+            // Calculate PNL based on the value of tokens burned
+            // PNL is negative because user loses money by burning their liquidity tokens
+            var pnl = -totalEthValueBurned;
+
+            return new CalculationResult<BigDecimal?>(pnl, null);
+        }
+    }
+}
+```

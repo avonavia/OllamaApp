@@ -1,0 +1,36 @@
+```csharp
+[assembly: FormulaAssembly("_mintFee")]
+
+namespace Sauron.Formula._mintFee
+{
+    public class _mintFeeFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var feeTo = info.ContractInteractions[0].ReadData; // Assuming the feeto is stored in the first contract interaction's ReadData field
+            if (feeTo == "0x0") return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var reserve0 = info.Transfers[0].Amount; // Assuming the reserve0 is stored in the first transfer's Amount field
+            var reserve1 = info.Transfers[1].Amount; // Assuming the reserve1 is stored in the second transfer's Amount field
+            var kLast = new BigDecimal(info.ContractData["kLast"]); // Assuming kLast is stored in the ContractData with "kLast" as key
+
+            var rootK = BigDecimal.Sqrt(reserve0 * reserve1);
+            var rootKLast = BigDecimal.Sqrt(kLast);
+
+            if (rootK <= rootKLast) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            var totalSupply = new BigDecimal(info.ContractData["totalSupply"]); // Assuming totalSupply is stored in the ContractData with "totalSupply" as key
+            var numerator = totalSupply * (rootK - rootKLast);
+            var denominator = rootK * 5 + rootKLast;
+            var liquidity = numerator / denominator;
+
+            if (liquidity <= 0) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+            // Assuming the PNL is calculated as a difference between the amount received by feeto and the fee paid
+            var pnl = -(liquidity * tokenPrices.FirstOrDefault(x => x.Key == info.Transfers[0].Token).Value); // PNL is negative because user loses money to feeTo
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(new List<KeyValuePair<string, BigDecimal>>() { new KeyValuePair<string, BigDecimal>(feeTo, pnl) });
+        }
+    }
+}
+```

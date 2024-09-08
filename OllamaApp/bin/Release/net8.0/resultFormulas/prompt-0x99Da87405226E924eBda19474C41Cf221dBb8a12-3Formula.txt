@@ -1,0 +1,59 @@
+```csharp
+[assembly: FormulaAssembly("UniswapV2")]
+
+namespace Sauron.Formula.UniswapV2
+{
+    public class UniswapV2Formula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Check if tokens exist in transaction info
+            if (info.Transfers == null || !info.Transfers.Any() || info.Transfers.Count < 2)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Not enough token transfers in transaction");
+
+            // Get distinct tokens in the transaction
+            var tokens = info.GetDistinctTokens();
+
+            if (tokens == null || tokens.Count() != 2)
+                return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null, "Invalid number of tokens involved in the transaction");
+
+            // Assign token0 and token1 based on their addresses from the transaction info
+            var token0 = tokens.ElementAt(0);
+            var token1 = tokens.ElementAt(1);
+
+            // Calculate PNL for each user address
+            var pnlResult = new Dictionary<string, BigDecimal>();
+
+            foreach (var transfer in info.Transfers)
+            {
+                if (transfer.TokenInfo.Symbol == token0.Symbol)
+                    UpdatePnL(pnlResult, transfer.FromAddress, -transfer.Amount); // Subtract amount sent
+                else if (transfer.TokenInfo.Symbol == token1.Symbol)
+                    UpdatePnL(pnlResult, transfer.FromAddress, -transfer.Amount); // Subtract amount sent
+
+                UpdatePnL(pnlResult, transfer.ToAddress, transfer.Amount); // Add amount received
+            }
+
+            // Convert PNL to Eth if token prices are provided
+            if (tokenPrices != null)
+            {
+                var ethPrice = tokenPrices.FirstOrDefault(p => p.Key == "ETH").Value;
+                foreach (var kvp in pnlResult)
+                    kvp.Value *= new BigDecimal((decimal)(tokenPrices.FirstOrDefault(p => p.Key == kvp.Key).Value / ethPrice));
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlResult.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)), null);
+        }
+
+        private void UpdatePnL(Dictionary<string, BigDecimal> pnl, string address, BigDecimal amount)
+        {
+            if (pnl.ContainsKey(address))
+                pnl[address] += amount;
+            else
+                pnl[address] = amount;
+        }
+    }
+}
+```
+This C# code calculates the profit and loss for each user address involved in a UniswapV2 token swap transaction. It first checks if the transaction involves two distinct tokens, then assigns those tokens to `token0` and `token1`. The PNL is calculated by subtracting the amount of tokens sent and adding the amount of tokens received for each transfer in the transaction. If token prices are provided, the PNL is converted to Eth. Finally, it returns a dictionary containing the PNL for each user address involved in the transaction.

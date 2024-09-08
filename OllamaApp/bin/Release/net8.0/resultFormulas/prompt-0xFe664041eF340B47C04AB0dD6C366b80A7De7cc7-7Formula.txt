@@ -1,0 +1,51 @@
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using Sauron.Core.Primitives;
+using Sauron.Core.Interfaces;
+using Sauron.Core.Extensions;
+using System.Linq;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Assume getReserves(), totalSupply and other necessary data are provided in TransactionInfo object
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Extract relevant information from the transaction
+            var reserve0 = info.Reserve0;
+            var reserve1 = info.Reserve1;
+            var balance0 = info.Balance0;
+            var balance1 = info.Balance1;
+            var liquidity = info.Liquidity;
+            var totalSupply = info.TotalSupply;
+            var toAddress = info.ToAddress;
+            var fromAddress = info.FromAddress;
+
+            // Calculate burned amounts
+            var amount0 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance0), totalSupply);
+            var amount1 = BigDecimal.Divide(BigDecimal.Multiply(liquidity, balance1), totalSupply);
+
+            // Calculate PNL
+            var pnl = BigDecimal.Zero;
+            if (tokenPrices != null)
+            {
+                var token0Price = tokenPrices.FirstOrDefault(x => x.Key == info.Token0).Value;
+                var token1Price = tokenPrices.FirstOrDefault(x => x.Key == info.Token1).Value;
+                pnl -= amount0 * (decimal)token0Price + amount1 * (decimal)token1Price;
+            }
+
+            // If burning to the same address, no fee is applied
+            if (toAddress != fromAddress)
+            {
+                var fee = info.Fee; // Assume Fee is included in TransactionInfo object
+                pnl -= fee;
+            }
+
+            return new CalculationResult<BigDecimal?>(pnl);
+        }
+    }
+}
+```

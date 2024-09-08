@@ -1,0 +1,70 @@
+```csharp
+[assembly: FormulaAssembly("TokenSwap")]
+
+namespace Sauron.Formula.TokenSwap
+{
+    public class TokenSwapFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var fromAddress = info.From;
+            var toAddress = info.To;
+            var transfers = info.Transfers;
+            var fee = info.Fee;
+
+            // Check if token swap is happening within the same address, if so no PNL change
+            if (fromAddress == toAddress)
+                return null;
+
+            BigDecimal pnl = BigDecimal.Zero;
+
+            foreach (var transfer in transfers)
+            {
+                var fromToken = transfer.FromToken;
+                var toToken = transfer.ToToken;
+                var amount = transfer.Amount;
+
+                // If the same token, no swap happened, so continue to next transfer
+                if (fromToken == toToken)
+                    continue;
+
+                decimal fromTokenPrice = GetTokenPrice(tokenPrices, fromToken);
+                decimal toTokenPrice = GetTokenPrice(tokenPrices, toToken);
+
+                // Calculate the amount of tokens received after swap
+                BigDecimal amountOut = CalculateAmountOut(fromToken, toToken, amount, info.FeeTier);
+
+                // Convert both amounts into ETH and calculate PNL change
+                pnl -= amount * fromTokenPrice;   // Money spent on the swap
+                pnl += amountOut * toTokenPrice;  // Money received after the swap
+            }
+
+            // Subtract Fee
+            pnl -= fee;
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> {
+                Data = new[] { new KeyValuePair<string, BigDecimal>(fromAddress, pnl) },
+                Success = true
+            };
+        }
+
+        // This method calculates the amount of tokens received after swap using Uniswap V3 formula
+        private BigDecimal CalculateAmountOut(string fromToken, string toToken, BigDecimal amount, uint feeTier)
+        {
+            // Uniswap V3 quoteExactInputSingle function logic goes here
+            // This is a placeholder and should be replaced with actual calculation
+            return amount * 0.98M;  // Placeholder value, replace this with real calculation
+        }
+
+        private decimal GetTokenPrice(IEnumerable<KeyValuePair<string, decimal>>? tokenPrices, string token)
+        {
+            // If token prices are not provided or the specific token price is not found, return 0
+            if (tokenPrices == null || !tokenPrices.Any(tp => tp.Key == token))
+                return 0;
+
+            return tokenPrices.First(tp => tp.Key == token).Value;
+        }
+    }
+}
+```

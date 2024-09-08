@@ -1,0 +1,50 @@
+```csharp
+using Sauron.Formula;
+using System.Collections.Generic;
+using Nethereum.Util;
+using BigDecimal = System.Numerics.BigInteger;
+
+namespace Sauron.Formula.Burn
+{
+    public class BurnFormula : IFormulaPlugin
+    {
+        // Assuming reserve0, reserve1, totalSupply are properties or methods that can be accessed from the contract
+        // balanceOf is a dictionary that returns the balance of a specific address
+        // token0 and token1 are addresses of tokens
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var _reserve0 = GetReserves().Item1;
+            var _reserve1 = GetReserves().Item2;
+            var _token0 = Token0;
+            var _token1 = Token1;
+
+            // Fetching balances of the contract for both tokens
+            var balance0 = IERC20(_token0).BalanceOf(info.ToAddress);
+            var balance1 = IERC20(_token1).BalanceOf(info.ToAddress);
+
+            var liquidity = BalanceOf[info.ToAddress];
+            var _totalSupply = TotalSupply; // Assuming TotalSupply is a property or method that can be accessed from the contract
+
+            // Calculating burned amounts for both tokens
+            BigDecimal amount0 = (BigDecimal)liquidity * balance0 / _totalSupply;
+            BigDecimal amount1 = (BigDecimal)liquidity * balance1 / _totalSupply;
+
+            var feeOn = MintFee(_reserve0, _reserve1);
+            if (feeOn)
+            {
+                // Calculate fee if it's on
+                // Add your fee calculation logic here
+            }
+
+            // Calculating PNL for the user
+            var pnl = amount0 * tokenPrices[_token0] + amount1 * tokenPrices[_token1];
+
+            // Subtracting Fee from PNL if it's not sent to the same address
+            if (info.ToAddress != info.FromAddress)
+                pnl -= Fee;
+
+            return new CalculationResult<BigDecimal?> { Value = pnl };
+        }
+    }
+}
+```

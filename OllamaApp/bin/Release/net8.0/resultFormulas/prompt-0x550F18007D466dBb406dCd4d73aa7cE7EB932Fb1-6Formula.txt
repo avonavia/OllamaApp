@@ -1,0 +1,38 @@
+```csharp
+// Assembly Info
+[assembly: FormulaAssembly("UniswapV2Mint")]
+
+namespace Sauron.Formula.UniswapV2Mint
+{
+    public class UniswapV2MintFormula : IFormulaPlugin
+    {
+        public CalculationResult<BigDecimal?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var balance0 = new BigDecimal(info.TokenBalances[info.FromAddress][0]);
+            var balance1 = new BigDecimal(info.TokenBalances[info.FromAddress][1]);
+
+            var reserve0 = new BigDecimal((ulong)info.ReserveData[0]);
+            var reserve1 = new BigDecimal((ulong)info.ReserveData[1]);
+
+            var amount0 = balance0 - reserve0;
+            var amount1 = balance1 - reserve1;
+
+            // If total supply is 0, liquidity is calculated differently
+            if (info.TotalSupply == BigDecimal.Zero)
+                return CalculationResult<BigDecimal?>.Success(Math.Sqrt(amount0 * amount1) - new BigDecimal(500));
+            else
+            {
+                var liquidity = Min((amount0 * info.TotalSupply) / reserve0, (amount1 * info.TotalSupply) / reserve1);
+
+                // Calculate PNL as the difference between input and output tokens
+                var pnl = amount0 - new BigDecimal(info.OutputData[0]) + amount1 - new BigDecimal(info.OutputData[1]);
+
+                return CalculationResult<BigDecimal?>.Success(pnl);
+            }
+        }
+
+        // Helper function to find the minimum of two BigDecimals
+        private static BigDecimal Min(BigDecimal a, BigDecimal b) => (a < b) ? a : b;
+    }
+}
+```

@@ -1,0 +1,36 @@
+[assembly: FormulaAssembly("rescueERC20")]
+
+namespace Sauron.Formula.RescueERC20
+{
+    public class RescueERC20Formula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            var pnlResults = new Dictionary<string, BigDecimal>();
+
+            if (info.Transfers != null && info.FromAddress == info.OwnerAddress && info.MethodName == "rescueERC20")
+            {
+                foreach (var transfer in info.Transfers)
+                {
+                    // Calculate the amount of tokens rescued based on the percent provided in the transaction input data
+                    var percent = new BigDecimal(BitConverter.ToUInt32(info.InputData.Skip(4).Take(32).ToArray(), 0));
+                    var amountRescued = transfer.Amount * (percent / 100);
+
+                    // Subtract the rescued amount from the owner's balance and add it to the taxWallet balance
+                    if (pnlResults.ContainsKey(info.OwnerAddress))
+                        pnlResults[info.OwnerAddress] -= amountRescued;
+                    else
+                        pnlResults[info.OwnerAddress] = -amountRescued;
+
+                    var taxWalletAddress = BitConverter.ToString(info.InputData.Skip(36).Take(20).ToArray()).Replace("-", "").ToLower();
+                    if (pnlResults.ContainsKey(taxWalletAddress))
+                        pnlResults[taxWalletAddress] += amountRescued;
+                    else
+                        pnlResults[taxWalletAddress] = amountRescued;
+                }
+            }
+
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Value = pnlResults.Select(kvp => new KeyValuePair<string, BigDecimal>(kvp.Key, kvp.Value)) };
+        }
+    }
+}

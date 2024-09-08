@@ -1,0 +1,39 @@
+```csharp
+//Method to calculate PNL for TransferrTransferr function in Solidity contract
+public class TransferrTransferrFormula : IFormulaPlugin
+{
+    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+    {
+        //Check if the transaction was initiated by owner
+        if (info.FromAddress != info.OwnerAddress) return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
+
+        var pnlDictionary = new Dictionary<string, BigDecimal>();
+
+        //Get distinct accounts affected in the transaction
+        var accounts = info.Transfers?.Select(t => t.ToAddress).Distinct();
+
+        foreach (var account in accounts)
+        {
+            //Find all transfers related to the account
+            var accountTransfers = info.Transfers?.Where(t => t.ToAddress == account);
+
+            if (accountTransfers != null)
+            {
+                //Calculate total old balance for the account before transfer
+                BigDecimal oldBalance = accountTransfers.Aggregate(BigDecimal.Zero, (sum, transfer) => sum + transfer.Amount);
+
+                //New balance is same for all transfers in this method as it's set to newBalance for each account
+                var newBalance = info.InputData.DecodedInput?.ElementAtOrDefault(2)?.ToBigDecimal() ?? BigDecimal.Zero;
+
+                //Calculate PNL
+                var pnl = newBalance - oldBalance - info.Fee;
+
+                pnlDictionary[account] = pnl;
+            }
+        }
+
+        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(pnlDictionary);
+    }
+}
+```
