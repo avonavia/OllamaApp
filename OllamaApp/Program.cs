@@ -4,7 +4,7 @@
 FileWorker fileWorker = new FileWorker();
 OllamaSetUp setup = new OllamaSetUp();
 
-var chat = setup.setUp("codestral", fileWorker);
+var chat = setup.setUp("codestral-formulas", fileWorker);
 
 if (chat != null)
     Console.WriteLine("Started successfully");

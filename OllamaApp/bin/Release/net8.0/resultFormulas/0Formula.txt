@@ -1,30 +1,15 @@
-This is how you can implement the `swapTokensForExactTokens` method in a C# class:
+Here is a C# version of the Solidity contract method `swapTokensForExactTokens`. Please note that this is a simplified representation and may need additional error handling or adjustments depending on the specific environment you are using:
 
 ```csharp
-using System;
-using System.Numerics;
-using System.Threading.Tasks;
+public uint[] SwapTokensForExactTokens(uint amountOut, uint amountInMax, List<string> path, string to, uint deadline) {
+    var amounts = UniswapV2Library.GetAmountsIn(Factory, amountOut, path);
 
-public class UniswapV2Router
-{
-    // Implement methods and properties as required by your application
+    if (amounts[0] > amountInMax) throw new Exception("UniswapV2Router: EXCESSIVE_INPUT_AMOUNT");
 
-    public async Task<BigInteger[]> SwapTokensForExactTokens(BigInteger amountOut, BigInteger amountInMax, string[] path, string to, DateTimeOffset deadline)
-    {
-        var amounts = UniswapV2Library.GetAmountsIn(amountOut, path);
+    TransferHelper.SafeTransferFrom(path[0], msgSender, UniswapV2Library.PairFor(Factory, path[0], path[1]), amounts[0]);
 
-        if (amounts[0] > amountInMax)
-            throw new Exception("UniswapV2Router: EXCESSIVE_INPUT_AMOUNT");
+    _Swap(amounts, path, to);
 
-        await TransferHelper.SafeTransferFrom(path[0], GetSenderAddress(), UniswapV2Library.PairFor(path[0], path[1]), amounts[0]);
-
-        return _swap(amounts, path, to);
-    }
-
-    // Implement the rest of the methods as required by your application
+    return amounts;
 }
 ```
-
-In this implementation, I assumed that you have a `UniswapV2Library` class and a `TransferHelper` class with appropriate static methods. You may need to adjust or add more classes/methods based on your project's structure and requirements.
-
-This C# method is asynchronous (returns a Task) because it makes an external call to the blockchain, which can be a time-consuming operation that doesn't block the execution of other tasks in your application.

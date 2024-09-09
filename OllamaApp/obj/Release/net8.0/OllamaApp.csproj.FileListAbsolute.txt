@@ -17,3 +17,4 @@ C:\Users\DragoNyan\RiderProjects\OllamaApp\OllamaApp\obj\Release\net8.0\refint\O
 C:\Users\DragoNyan\RiderProjects\OllamaApp\OllamaApp\obj\Release\net8.0\OllamaApp.pdb
 C:\Users\DragoNyan\RiderProjects\OllamaApp\OllamaApp\obj\Release\net8.0\OllamaApp.genruntimeconfig.cache
 C:\Users\DragoNyan\RiderProjects\OllamaApp\OllamaApp\obj\Release\net8.0\ref\OllamaApp.dll
+C:\Users\DragoNyan\RiderProjects\OllamaApp\OllamaApp\obj\Release\net8.0\OllamaApp.sourcelink.json
