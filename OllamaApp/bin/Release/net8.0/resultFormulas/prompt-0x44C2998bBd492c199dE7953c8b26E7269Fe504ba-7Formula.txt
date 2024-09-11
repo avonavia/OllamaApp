@@ -1,6 +1,0 @@
-```csharp
-// Solidity contract method: approve(address spender, uint256 amount)
-// This method is used for token approval, allowing another address to spend tokens on behalf of the owner.
-// However, this method does not directly affect the PNL calculation in a transaction, so we cannot create an equivalent C# Formula method for it.
-// Therefore, I'm unable to provide the requested C# code.
-```

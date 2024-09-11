@@ -1,8 +1,0 @@
-//Method to try division of two numbers safely without causing overflow exceptions
-    public static (bool success, BigDecimal result) TryDiv(BigDecimal a, BigDecimal b)
-    {
-        if (b == 0)
-            return (false, 0);
-
-        return (true, a / b);
-    }

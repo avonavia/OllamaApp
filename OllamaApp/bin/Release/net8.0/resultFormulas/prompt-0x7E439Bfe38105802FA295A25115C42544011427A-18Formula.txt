@@ -1,6 +1,0 @@
-// Since this method does not calculate PNL, we will return null as per the CalculationResult type requirement
-   public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info, IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
-   {
-       // No PNL calculation required for this method
-       return null;
-   }

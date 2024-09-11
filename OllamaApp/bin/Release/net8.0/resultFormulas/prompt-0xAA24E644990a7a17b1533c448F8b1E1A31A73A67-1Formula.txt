@@ -1,7 +1,0 @@
-```csharp
-//Method to check if the sender is the owner of the contract
-private bool CheckOwner(TransactionInfo info)
-{
-    return string.Equals(info.ContractInfo?.Owner, info.FromAddress, StringComparison.OrdinalIgnoreCase);
-}
-```

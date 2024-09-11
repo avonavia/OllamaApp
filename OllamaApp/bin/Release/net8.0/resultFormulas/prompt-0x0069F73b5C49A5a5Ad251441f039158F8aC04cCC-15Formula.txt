@@ -1,8 +1,0 @@
-//Method to remove addresses from bot list
-    public void RemoveFromBots(List<string> notBotAddresses)
-    {
-        foreach (var address in notBotAddresses)
-        {
-            bots[address] = false;
-        }
-    }

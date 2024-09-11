@@ -1,8 +1,0 @@
-"""Make a C# Formula method for this Solidity contract method:
-
-function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
-        return true;
-    }
-
-Return only a C# code. Follow all the code and answer rules in your system prompt"""

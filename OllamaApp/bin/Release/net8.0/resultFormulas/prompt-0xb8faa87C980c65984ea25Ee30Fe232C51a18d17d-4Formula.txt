@@ -1,7 +1,0 @@
-// Method to try adding two uint256 numbers and check for overflow
-    public (bool Success, ulong Result) TryAdd(ulong a, ulong b)
-    {
-        ulong c = a + b;
-        if (c < a) return (false, 0); // Overflow detected
-        return (true, c);
-    }

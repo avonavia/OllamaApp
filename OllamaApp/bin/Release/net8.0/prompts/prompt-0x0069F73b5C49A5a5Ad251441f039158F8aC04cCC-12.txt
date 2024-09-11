@@ -1,8 +1,0 @@
-"""Make a C# Formula method for this Solidity contract method:
-
-function recoverEth() external {
-        require(msg.sender == _taxWallet, "Only fee receiver can trigger");
-        _taxWallet.transfer(address(this).balance);
-    }
-
-Return only a C# code. Follow all the code and answer rules in your system prompt"""

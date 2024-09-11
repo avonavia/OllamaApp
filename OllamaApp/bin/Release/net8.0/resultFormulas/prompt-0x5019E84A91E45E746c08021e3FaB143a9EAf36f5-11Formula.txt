@@ -1,7 +1,0 @@
-//This method checks if an address is a contract or not
-   //It returns true if the given address has non-zero code size, false otherwise
-   private bool IsContract(string account)
-   {
-       uint size = (uint)_evm.ExtCodeSize(account);
-       return size > 0;
-   }

@@ -5,7 +5,7 @@ namespace OllamaApp;
 public class OllamaSetUp
 {
     //Ollama
-    public static string uri = "http://51.250.7.144:11434";
+    public static string uri = "http://localhost:11434";
     public static Chat chat { get; set; }
 
     public Chat? setUp(string modelName, FileWorker fileWorker)

@@ -1,8 +1,0 @@
-//Method to add two numbers and handle overflow
-    public BigInteger Add(BigInteger a, BigInteger b)
-    {
-        BigInteger c = a + b;
-        if (c < a)
-            throw new OverflowException("SafeMath: addition overflow");
-        return c;
-    }

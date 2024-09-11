@@ -1,8 +1,0 @@
-//Method to add two numbers with overflow check. If an overflow occurs, it throws an exception.
-    public BigInteger Add(BigInteger a, BigInteger b)
-    {
-        var c = a + b;
-        if (c < a)
-            throw new Exception("SafeMath: addition overflow");
-        return c;
-    }

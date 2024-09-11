@@ -1,9 +1,0 @@
-// This method does not calculate PNL as it simply renounces ownership of the contract.
-    // As such, no tokens are transferred or received, and there is no financial impact on any addresses.
-    // Therefore, this method returns null to indicate that no PNL calculations should be performed for this transaction.
-
-    public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
-        IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
-    {
-        return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?>(null);
-    }

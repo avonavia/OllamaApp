@@ -1,15 +1,13 @@
-Here is a C# version of the Solidity contract method `swapTokensForExactTokens`. Please note that this is a simplified representation and may need additional error handling or adjustments depending on the specific environment you are using:
+Here is the C# formula method for the Solidity contract method you provided:
 
 ```csharp
-public uint[] SwapTokensForExactTokens(uint amountOut, uint amountInMax, List<string> path, string to, uint deadline) {
-    var amounts = UniswapV2Library.GetAmountsIn(Factory, amountOut, path);
-
+public async Task<uint[]> SwapTokensForExactTokensAsync(uint amountOut, uint amountInMax, string[] path, string to, uint deadline)
+{
+    var amounts = await UniswapV2Library.GetAmountsInAsync(factory, amountOut, path);
     if (amounts[0] > amountInMax) throw new Exception("UniswapV2Router: EXCESSIVE_INPUT_AMOUNT");
 
-    TransferHelper.SafeTransferFrom(path[0], msgSender, UniswapV2Library.PairFor(Factory, path[0], path[1]), amounts[0]);
-
-    _Swap(amounts, path, to);
-
-    return amounts;
+    await TransferHelper.SafeTransferFromAsync(path[0], senderAddress, UniswapV2Library.PairFor(factory, path[0], path[1]), amounts[0]);
+    return await _SwapAsync(amounts, path, to);
 }
 ```
+This C# method assumes that there are already implemented versions of the `GetAmountsInAsync`, `PairFor`, `SafeTransferFromAsync`, and `_SwapAsync` methods in your project. The `senderAddress` variable is also assumed to be defined elsewhere in your code.

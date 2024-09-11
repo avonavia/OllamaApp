@@ -1,4 +1,0 @@
-//Method to multiply two uint numbers without overflow check
-    public static BigDecimal Multiply(BigDecimal x, BigDecimal y)
-    {
-        return BigDecimal.Multiply(x, y); //Use BigDecimal's built-in Multiply method

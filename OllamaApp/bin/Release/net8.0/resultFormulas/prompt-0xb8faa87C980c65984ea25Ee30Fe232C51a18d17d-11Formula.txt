@@ -1,8 +1,0 @@
-// Method to calculate modulus of two uint256 numbers in Solidity style
-    public BigInteger Mod(BigInteger a, BigInteger b)
-    {
-        if (b <= 0)
-            throw new ArgumentException("Divisor must be greater than zero");
-
-        return BigInteger.Remainder(a, b);
-    }
