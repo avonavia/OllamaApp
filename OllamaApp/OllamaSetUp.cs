@@ -8,7 +8,7 @@ public class OllamaSetUp
     public static string uri = "http://localhost:11434";
     public static Chat chat { get; set; }
 
-    public Chat? setUp(string modelName, FileWorker fileWorker)
+    public Chat? setUp(string modelName)
     {
         HttpClient client = new HttpClient();
         client.BaseAddress = new Uri(uri);

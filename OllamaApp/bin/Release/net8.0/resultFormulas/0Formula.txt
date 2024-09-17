@@ -1,13 +1,39 @@
-Here is the C# formula method for the Solidity contract method you provided:
+[assembly: FormulaAssembly("SwapTokensForExactTokens")]
 
-```csharp
-public async Task<uint[]> SwapTokensForExactTokensAsync(uint amountOut, uint amountInMax, string[] path, string to, uint deadline)
+namespace Sauron.Formula.SwapTokensForExactTokens
 {
-    var amounts = await UniswapV2Library.GetAmountsInAsync(factory, amountOut, path);
-    if (amounts[0] > amountInMax) throw new Exception("UniswapV2Router: EXCESSIVE_INPUT_AMOUNT");
+    public class SwapTokensForExactTokensFormula : IFormulaPlugin
+    {
+        public CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> Formula(TransactionInfo info,
+            IEnumerable<KeyValuePair<string, decimal>>? tokenPrices = null)
+        {
+            // Initialize an empty list to store address-PNL pairs
+            var pnlList = new List<KeyValuePair<string, BigDecimal>>();
 
-    await TransferHelper.SafeTransferFromAsync(path[0], senderAddress, UniswapV2Library.PairFor(factory, path[0], path[1]), amounts[0]);
-    return await _SwapAsync(amounts, path, to);
+            if (info.Transfers != null && info.FromAddress != null && info.ToAddress != null && tokenPrices != null)
+            {
+                // Get the price of the input token and output token
+                var inputTokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == info.Transfers[0].Symbol).Value;
+                var outputTokenPrice = tokenPrices.FirstOrDefault(tp => tp.Key == info.Transfers[^1].Symbol).Value;
+
+                // Calculate the input amount in Eth and output amount in Eth
+                var inputAmountEth = (decimal)info.Transfers[0].Amount * inputTokenPrice;
+                var outputAmountEth = (decimal)info.Transfers[^1].Amount * outputTokenPrice;
+
+                // Calculate the PNL for the sender address
+                var pnlSender = new BigDecimal(outputAmountEth - inputAmountEth - info.Fee);
+                pnlList.Add(new KeyValuePair<string, BigDecimal>(info.FromAddress, pnlSender));
+
+                // Calculate the PNL for the receiver address (if it's different from the sender)
+                if (info.ToAddress != info.FromAddress)
+                {
+                    var pnlReceiver = new BigDecimal(inputAmountEth - outputAmountEth);
+                    pnlList.Add(new KeyValuePair<string, BigDecimal>(info.ToAddress, pnlReceiver));
+                }
+            }
+
+            // Return the list of address-PNL pairs or NULL if there are no transfers
+            return new CalculationResult<IEnumerable<KeyValuePair<string, BigDecimal>>?> { Result = pnlList };
+        }
+    }
 }
-```
-This C# method assumes that there are already implemented versions of the `GetAmountsInAsync`, `PairFor`, `SafeTransferFromAsync`, and `_SwapAsync` methods in your project. The `senderAddress` variable is also assumed to be defined elsewhere in your code.
