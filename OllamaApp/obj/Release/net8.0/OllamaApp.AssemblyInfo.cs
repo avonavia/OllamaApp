@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OllamaApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b46b55f7a79dd0c3ee0072e43b02c53500a0f0af")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e203a9f412bf50e5647e96d2948727c188df52fe")]
 [assembly: System.Reflection.AssemblyProductAttribute("OllamaApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OllamaApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

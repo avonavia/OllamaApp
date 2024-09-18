@@ -7,7 +7,6 @@ OllamaSetUp setup = new OllamaSetUp();
 APIWorker apiWorker = new APIWorker();
 
 var codestral_formulas_chat = setup.setUp("codestral-formulas");
-//var codestral_formulas_checker_chat = setup.setUp("codestral-formulas-checker");
 
 if (codestral_formulas_chat != null)
     Console.WriteLine("Started successfully");
