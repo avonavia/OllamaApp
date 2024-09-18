@@ -13,11 +13,7 @@ if (codestral_formulas_chat != null)
 
 var count = 0;
 
-var firstPrompt = new KeyValuePair<string, string>("0",
-    "\"\"\"Make a C# Formula method for this Solidity contract method:\n\nfunction swapTokensForExactTokens(\n        uint amountOut,\n        uint amountInMax,\n        address[] calldata path,\n        address to,\n        uint deadline\n    ) external virtual override ensure(deadline) returns (uint[] memory amounts) {\n        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);\n        require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');\n        TransferHelper.safeTransferFrom(\n            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]\n        );\n        _swap(amounts, path, to);\n    }\n\nReturn only a C# code. Follow all the code and answer rules in your system prompt\"\"\"");
-
 var prompts = new List<KeyValuePair<string, string>?>();
-prompts.Add(firstPrompt);
 
 string promptCount = "";
 Console.WriteLine("Enter prompt count: ");
@@ -43,16 +39,18 @@ foreach (var prompt in prompts)
     var resultMessage = String.Empty;
 
     var promptName = prompt.Value.Key;
+    var fileName = promptName.Replace("prompt-", string.Empty).Trim();
 
-    //Проверка на то, что файл-результат уже существует. Игнорируем 0, его нужно обработать ВСЕГДА, потому что для первого запроса игнорируется System промпт
-    if (doneFiles.FirstOrDefault(df => Path.GetFileName(df) == promptName + "Formula.txt") != null && promptName != "0")
+    //Проверка на то, что файл-результат уже существует
+    if (doneFiles.FirstOrDefault(df => Path.GetFileName(df) == fileName + "-Formula.cs") != null)
     {
-        Console.WriteLine("Skipping file [" + promptName + "]");
+        Console.WriteLine("Skipping file [" + fileName + "]");
     }
     else
     {
+        var attempt = 1;
         var checkResult = false;
-        while (!checkResult)
+        while (!checkResult && attempt < 6)
         {
             resultMessage = String.Empty;
             Console.WriteLine($"Sending prompt [{promptName}]");
@@ -66,16 +64,26 @@ foreach (var prompt in prompts)
             checkResult = checkPrompt(resultMessage);
 
             if (!checkResult)
-                Console.WriteLine("Regenerating...");
+            {
+                Console.WriteLine("Regenerating... " + "Attempt: " + attempt);
+                attempt++;
+            }
         }
 
-        var path = fileWorker.formPath(promptName + "Formula");
+        if (attempt < 6)
+        {
+            var path = fileWorker.formPath(fileName + "-Formula");
 
-        Console.WriteLine("Writing file...");
-        var codeToWrite = TrimOutput(resultMessage.Substring(1));
-        fileWorker.writeFile(path, codeToWrite);
-        count++;
-        Console.WriteLine($"File [{path}] wrote successfully");
+            Console.WriteLine("Writing file...");
+            var codeToWrite = TrimOutput(resultMessage.Substring(1));
+            fileWorker.writeFile(path, codeToWrite);
+            count++;
+            Console.WriteLine($"File [{path}] wrote successfully");
+        }
+        else
+        {
+            Console.WriteLine("Out of attempts");
+        }
     }
 }
 

@@ -4,17 +4,12 @@ public class FileWorker
 {
     public string formPath(string fileName)
     {
-        var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resultFormulas", fileName + ".txt");
+        var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resultFormulas", fileName + ".cs");
         return path;
     }
 
     public void writeFile(string path, string text)
     {
         File.WriteAllText(path, text);
-    }
-
-    public string readFile(string path)
-    {
-        return File.ReadAllText(path);
     }
 }
