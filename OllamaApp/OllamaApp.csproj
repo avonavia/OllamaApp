@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="ChatGPT.Net" Version="2.0.0" />
       <PackageReference Include="OllamaSharp" Version="3.0.0" />
     </ItemGroup>
 

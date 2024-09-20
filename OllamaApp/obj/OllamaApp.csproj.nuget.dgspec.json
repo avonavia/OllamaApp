@@ -39,6 +39,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "ChatGPT.Net": {
+              "target": "Package",
+              "version": "[2.0.0, )"
+            },
             "OllamaSharp": {
               "target": "Package",
               "version": "[3.0.0, )"

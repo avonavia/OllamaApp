@@ -1,10 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "iztRqSyF5qjG7zbN+nadGpUawizJRx+UAw13n93jfsLKmZakrNEZt0HbBZihvqn1rLu0XxSLr2vNT1ydAGH4+A==",
+  "dgSpecHash": "lQkSTI3biO/q8zFb4OY55ZtwwrMc2VtwHDfqhey1Bl9UL2KGyLKWClF77gG7X6H5po98gwFvqFGpFhY04M1Qug==",
   "success": true,
   "projectFilePath": "C:\\Users\\DragoNyan\\RiderProjects\\OllamaApp\\OllamaApp\\OllamaApp.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\DragoNyan\\.nuget\\packages\\chatgpt.net\\2.0.0\\chatgpt.net.2.0.0.nupkg.sha512",
     "C:\\Users\\DragoNyan\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
+    "C:\\Users\\DragoNyan\\.nuget\\packages\\newtonsoft.json\\13.0.2\\newtonsoft.json.13.0.2.nupkg.sha512",
     "C:\\Users\\DragoNyan\\.nuget\\packages\\ollamasharp\\3.0.0\\ollamasharp.3.0.0.nupkg.sha512",
     "C:\\Users\\DragoNyan\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
     "C:\\Users\\DragoNyan\\.nuget\\packages\\system.text.json\\8.0.4\\system.text.json.8.0.4.nupkg.sha512"

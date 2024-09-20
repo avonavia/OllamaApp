@@ -1,15 +1,28 @@
 ﻿using System.Text.RegularExpressions;
+using ChatGPT.Net;
 using OllamaApp;
 
 //Ollama должна быть запущена перед запуском
 FileWorker fileWorker = new FileWorker();
-OllamaSetUp setup = new OllamaSetUp();
+/*OllamaSetUp setup = new OllamaSetUp();*/
 APIWorker apiWorker = new APIWorker();
+OpenAISetup openAISetup = new OpenAISetup();
 
-var codestral_formulas_chat = setup.setUp("codestral-formulas");
+string apiKey = "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";
+
+
+/*ChatGPTSetup gptSetup = new ChatGPTSetup();
+var gptClient = gptSetup.SetUp(apiKey);
+gptSetup.SendSystemPromptToGPT(gptClient);*/
+
+
+ChatGpt o1_miniChat = new(apiKey);
+
+
+/*var codestral_formulas_chat = setup.setUp("codestral-formulas");
 
 if (codestral_formulas_chat != null)
-    Console.WriteLine("Started successfully");
+    Console.WriteLine("Started successfully");*/
 
 var count = 0;
 
@@ -40,7 +53,11 @@ foreach (var prompt in prompts)
 
     var promptName = prompt.Value.Key;
     var fileName = promptName.Replace("prompt-", string.Empty).Trim();
+    
+    o1_miniChat = openAISetup.SetUp(apiKey, promptName);
 
+    //gptClient = gptSetup.SetUp(apiKey);
+    
     //Проверка на то, что файл-результат уже существует
     if (doneFiles.FirstOrDefault(df => Path.GetFileName(df) == fileName + "-Formula.cs") != null)
     {
@@ -55,11 +72,14 @@ foreach (var prompt in prompts)
             resultMessage = String.Empty;
             Console.WriteLine($"Sending prompt [{promptName}]");
 
-            //Читаем сообщение. Ответ отправляется частями, поэтому так
+            /*//Читаем сообщение. Ответ отправляется частями, поэтому так
             await foreach (var answerToken in codestral_formulas_chat.Send(prompt.Value.Value))
             {
                 resultMessage += answerToken;
-            }
+            }*/
+
+            //resultMessage = await gptSetup.SendPromptToGPT(gptClient, prompt.Value.Value);
+            resultMessage = await o1_miniChat.Ask(prompt.Value.Value, promptName);
 
             checkResult = checkPrompt(resultMessage);
 
