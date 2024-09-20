@@ -8,7 +8,7 @@ FileWorker fileWorker = new FileWorker();
 APIWorker apiWorker = new APIWorker();
 OpenAISetup openAISetup = new OpenAISetup();
 
-string apiKey = "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";
+string apiKey = "";
 
 
 /*ChatGPTSetup gptSetup = new ChatGPTSetup();
