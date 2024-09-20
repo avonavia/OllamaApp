@@ -2,18 +2,6 @@
   "version": 3,
   "targets": {
     "net8.0": {
-      "ChatGPT.Net/2.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Newtonsoft.Json": "13.0.2"
-        },
-        "compile": {
-          "lib/net7.0/ChatGPT.Net.dll": {}
-        },
-        "runtime": {
-          "lib/net7.0/ChatGPT.Net.dll": {}
-        }
-      },
       "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
         "type": "package",
         "compile": {
@@ -97,20 +85,6 @@
     }
   },
   "libraries": {
-    "ChatGPT.Net/2.0.0": {
-      "sha512": "2qGhJKCTBB0/wW4WQNhW9+Qv7U9JlY6uTZvpLqbIznH2go5VkrWG716yzX7bzXyzKPpnrQMqfjLW6Hj7VQ/PaQ==",
-      "type": "package",
-      "path": "chatgpt.net/2.0.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "artificial-intelligence.png",
-        "chatgpt.net.2.0.0.nupkg.sha512",
-        "chatgpt.net.nuspec",
-        "lib/net6.0/ChatGPT.Net.dll",
-        "lib/net7.0/ChatGPT.Net.dll"
-      ]
-    },
     "Microsoft.Bcl.AsyncInterfaces/8.0.0": {
       "sha512": "3WA9q9yVqJp222P3x1wYIGDAkpjAku0TMUaaQV22g6L67AI0LdOIrVS7Ht2vJfLHGSPVuqN94vIr15qn+HEkHw==",
       "type": "package",
@@ -291,7 +265,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
-      "ChatGPT.Net >= 2.0.0",
+      "Newtonsoft.Json >= 13.0.2",
       "OllamaSharp >= 3.0.0"
     ]
   },
@@ -333,9 +307,9 @@
       "net8.0": {
         "targetAlias": "net8.0",
         "dependencies": {
-          "ChatGPT.Net": {
+          "Newtonsoft.Json": {
             "target": "Package",
-            "version": "[2.0.0, )"
+            "version": "[13.0.2, )"
           },
           "OllamaSharp": {
             "target": "Package",

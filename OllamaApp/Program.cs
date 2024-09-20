@@ -1,28 +1,28 @@
-﻿using System.Text.RegularExpressions;
-using ChatGPT.Net;
+﻿using System.Net;
+using System.Text.RegularExpressions;
 using OllamaApp;
+using OllamaApp.Entities;
 
-//Ollama должна быть запущена перед запуском
+
 FileWorker fileWorker = new FileWorker();
-/*OllamaSetUp setup = new OllamaSetUp();*/
 APIWorker apiWorker = new APIWorker();
 OpenAISetup openAISetup = new OpenAISetup();
 
+WebProxy proxy = new WebProxy  {
+    Address = new Uri(""), //proxy uri here
+    Credentials = new NetworkCredential("", "") //login and password here
+};
+        
+var httpClientHandler = new HttpClientHandler
+{
+    Proxy = proxy,
+};
+        
+var httpClientWithProxy = new HttpClient(httpClientHandler);
+
 string apiKey = "";
 
-
-/*ChatGPTSetup gptSetup = new ChatGPTSetup();
-var gptClient = gptSetup.SetUp(apiKey);
-gptSetup.SendSystemPromptToGPT(gptClient);*/
-
-
-ChatGpt o1_miniChat = new(apiKey);
-
-
-/*var codestral_formulas_chat = setup.setUp("codestral-formulas");
-
-if (codestral_formulas_chat != null)
-    Console.WriteLine("Started successfully");*/
+ChatGpt apiChat = new(apiKey);
 
 var count = 0;
 
@@ -54,9 +54,7 @@ foreach (var prompt in prompts)
     var promptName = prompt.Value.Key;
     var fileName = promptName.Replace("prompt-", string.Empty).Trim();
     
-    o1_miniChat = openAISetup.SetUp(apiKey, promptName);
-
-    //gptClient = gptSetup.SetUp(apiKey);
+    apiChat = openAISetup.SetUp(apiKey, promptName);
     
     //Проверка на то, что файл-результат уже существует
     if (doneFiles.FirstOrDefault(df => Path.GetFileName(df) == fileName + "-Formula.cs") != null)
@@ -71,15 +69,8 @@ foreach (var prompt in prompts)
         {
             resultMessage = String.Empty;
             Console.WriteLine($"Sending prompt [{promptName}]");
-
-            /*//Читаем сообщение. Ответ отправляется частями, поэтому так
-            await foreach (var answerToken in codestral_formulas_chat.Send(prompt.Value.Value))
-            {
-                resultMessage += answerToken;
-            }*/
-
-            //resultMessage = await gptSetup.SendPromptToGPT(gptClient, prompt.Value.Value);
-            resultMessage = await o1_miniChat.Ask(prompt.Value.Value, promptName);
+            
+            resultMessage = await apiChat.Ask(prompt.Value.Value, httpClientWithProxy, promptName);
 
             checkResult = checkPrompt(resultMessage);
 

@@ -1,4 +1,5 @@
 ﻿using ChatGPT.Net;
+using OllamaApp.Entities;
 
 namespace OllamaApp;
 
