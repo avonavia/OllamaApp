@@ -8,7 +8,7 @@ FileWorker fileWorker = new FileWorker();
 APIWorker apiWorker = new APIWorker();
 OpenAISetup openAISetup = new OpenAISetup();
 
-string apiKey = "";
+string apiKey = " ";
 
 
 /*ChatGPTSetup gptSetup = new ChatGPTSetup();
