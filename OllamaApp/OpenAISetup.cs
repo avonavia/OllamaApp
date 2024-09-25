@@ -20,8 +20,8 @@ public class OpenAISetup
             Console.WriteLine(e.Message);
         }
 
-        if (conversationName != null)
-            bot.SetConversationSystemMessage(conversationName, systemMessage);
+        //if (conversationName != null)
+           // bot.SetConversationSystemMessage(conversationName, systemMessage);
         
         return bot;
     }

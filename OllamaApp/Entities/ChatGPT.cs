@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ChatGPT.Net.DTO.ChatGPT;
 using Newtonsoft.Json;
@@ -123,7 +124,7 @@ public class ChatGpt
         Conversations.Clear();
     }
 
-    public async Task<string> Ask(string prompt, HttpClient httpClient, string? conversationId = null)
+    public async Task<string> Ask(string prompt, string? conversationId = null)
     {
         var conversation = GetConversation(conversationId);
 
@@ -132,7 +133,7 @@ public class ChatGpt
             Role = ChatGptMessageRoles.USER,
         });
         
-        var reply = await SendMessage(httpClient, new ChatGptRequest
+        var reply = await SendMessage(new ChatGptRequest
         {
             Messages = conversation.Messages,
             Model = Config.Model,
@@ -166,7 +167,7 @@ public class ChatGpt
             Role = ChatGptMessageRoles.USER,
         });
 
-        var reply = await SendMessage(httpClient, new ChatGptRequest
+        var reply = await SendMessage(new ChatGptRequest
         {
             Messages = conversation.Messages,
             Model = Config.Model,
@@ -201,7 +202,7 @@ public class ChatGpt
         msg.ContentItems.AddRange(promptContentItems);
         conversation.Messages.Add(msg);
 
-        var reply = await SendMessage(httpClient, new ChatGptRequest
+        var reply = await SendMessage(new ChatGptRequest
         {
             Messages = conversation.Messages,
             Model = Config.Model,
@@ -224,9 +225,22 @@ public class ChatGpt
         return reply.Choices.FirstOrDefault()?.Message.GetContent ?? "";
     }
 
-    public async Task<ChatGptResponse> SendMessage(HttpClient httpClient, ChatGptRequest requestBody, Action<ChatGptStreamChunkResponse>? callback = null)
+    public async Task<ChatGptResponse> SendMessage(ChatGptRequest requestBody, Action<ChatGptStreamChunkResponse>? callback = null)
     {
-        var client = httpClient;
+        WebProxy proxy = new WebProxy  {
+            Address = new Uri(""), //proxy uri here
+            Credentials = new NetworkCredential("", "") //login and password here
+        };
+        
+        var httpClientHandler = new SocketsHttpHandler
+        {
+            Proxy = proxy,
+        };
+        
+        var httpClientWithProxy = new HttpClient(httpClientHandler);
+        httpClientWithProxy.Timeout = TimeSpan.FromMilliseconds(Timeout.Infinite);
+        
+        var client = new HttpClient(httpClientHandler);
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Post,

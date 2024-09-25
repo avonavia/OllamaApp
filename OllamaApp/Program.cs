@@ -8,17 +8,8 @@ FileWorker fileWorker = new FileWorker();
 APIWorker apiWorker = new APIWorker();
 OpenAISetup openAISetup = new OpenAISetup();
 
-WebProxy proxy = new WebProxy  {
-    Address = new Uri(""), //proxy uri here
-    Credentials = new NetworkCredential("", "") //login and password here
-};
-        
-var httpClientHandler = new HttpClientHandler
-{
-    Proxy = proxy,
-};
-        
-var httpClientWithProxy = new HttpClient(httpClientHandler);
+//OllamaSetUp setup = new OllamaSetUp();
+//var codestral_formulas_chat = setup.setUp("codestral-formulas");
 
 string apiKey = "";
 
@@ -39,9 +30,9 @@ while (!int.TryParse(promptCount, out int _))
 Console.WriteLine("Enter prompt query: ");
 var promptQuery = Console.ReadLine();
 
-var apiPrompts = apiWorker.GetPrompts(Convert.ToInt32(promptCount), promptQuery);
+//var apiPrompts = apiWorker.GetPrompts(Convert.ToInt32(promptCount), promptQuery);
 
-prompts.AddRange(apiPrompts);
+prompts.Add(new KeyValuePair<string, string>("Test", "test")); //CHANGE TO LIST AFTER TESTS!
 
 var resultPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resultFormulas");
 
@@ -70,7 +61,12 @@ foreach (var prompt in prompts)
             resultMessage = String.Empty;
             Console.WriteLine($"Sending prompt [{promptName}]");
             
-            resultMessage = await apiChat.Ask(prompt.Value.Value, httpClientWithProxy, promptName);
+            /*await foreach (var answerToken in codestral_formulas_chat.Send(prompt.Value.Value))
+            {
+                resultMessage += answerToken;
+            }*/
+            
+            resultMessage = await apiChat.Ask(prompt.Value.Value, promptName);
 
             checkResult = checkPrompt(resultMessage);
 
